@@ -154,15 +154,17 @@ def test_on_maj_verifiee_affiche_indicateur_et_carte(qtbot):
     assert "1.1.0" in fenetre._vue_parametres.label_maj_version.text()
 
 
-def test_on_maj_verifiee_none_cache_indicateur_et_carte(qtbot):
+def test_on_maj_verifiee_none_cache_indicateur_mais_pas_la_carte(qtbot):
     fenetre = FenetrePrincipale()
     qtbot.addWidget(fenetre)
     fenetre.show()
+    fenetre.bouton_nav_parametres.click()
 
     fenetre._on_maj_verifiee(None)
 
     assert fenetre.point_maj.isVisible() is False
-    assert fenetre._vue_parametres.carte_maj.isVisible() is False
+    assert fenetre._vue_parametres.carte_maj.isVisible() is True
+    assert fenetre._vue_parametres.bouton_maj.isEnabled() is False
 
 
 def test_demander_maj_immediate_marque_le_redemarrage(qtbot):

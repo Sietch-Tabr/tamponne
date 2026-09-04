@@ -6,7 +6,7 @@ Application de bureau pour rechercher des offres d'emploi de la fonction publiqu
 
 ## Prérequis
 
-- [Python 3.12+](https://www.python.org/downloads/)
+- [Python 3.14+](https://www.python.org/downloads/)
 - [uv](https://docs.astral.sh/uv/getting-started/installation/) — gestionnaire de paquets Python
 
 ```bash
@@ -55,7 +55,7 @@ uv run python -m src.gui.app
 
 Au lancement, l'app vérifie en arrière-plan s'il existe une publication ([Releases](https://codeberg.org/Kwaite/tamponne/releases) Codeberg) plus récente que la version installée — jamais un `git pull` sur une branche, uniquement ce qui a été explicitement publié.
 
-- Une mise à jour disponible se signale par un point vert à côté de « Paramètres » dans le bandeau de navigation, et par une carte dans l'écran Paramètres (notes de version incluses).
+- Une mise à jour disponible se signale par un point vert à côté de « Paramètres » dans le bandeau de navigation. La carte « Mise à jour » de l'écran Paramètres est toujours visible : elle indique la version installée quand tout est à jour, ou la version disponible (notes de version incluses) avec le bouton de mise à jour actif sinon.
 - Par défaut, elle s'applique automatiquement **au prochain lancement**, sans action requise.
 - Le bouton « Mettre à jour maintenant » de cette carte l'applique **immédiatement** : l'app se ferme et relance toute seule.
 
