@@ -19,10 +19,17 @@ winget install astral-sh.uv                         # Windows
 
 ## Installation et lancement
 
-```bash
-git clone https://codeberg.org/Kwaite/tamponne.git
-cd tamponne
-```
+Deux façons de récupérer les fichiers :
+
+- **Sans Git** (recommandé si vous n'avez pas Git installé) : téléchargez le zip depuis la page [Releases](https://codeberg.org/Kwaite/tamponne/releases) (lien « Source code (zip) » de la dernière version), puis dézippez-le.
+- **Avec Git** :
+
+  ```bash
+  git clone https://codeberg.org/Kwaite/tamponne.git
+  cd tamponne
+  ```
+
+Puis, dans le dossier obtenu :
 
 | Système       | Commande      |
 | ------------- | ------------- |
