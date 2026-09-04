@@ -84,6 +84,29 @@ def test_parametres_afficher_maj_none_cache_la_carte(qtbot):
     assert vue.carte_maj.isVisible() is False
 
 
+def test_parametres_rafraichir_cache_erreur_reseau_affiche_avertissement(
+    qtbot, monkeypatch
+):
+    def _obtenir_organisations_factice(forcer=False):
+        raise RuntimeError("Erreur HTTP 500 lors du chargement de ...")
+
+    monkeypatch.setattr(
+        "src.gui.vues.parametres.obtenir_organisations",
+        _obtenir_organisations_factice,
+    )
+    avertissements = []
+    monkeypatch.setattr(
+        "src.gui.vues.parametres.QMessageBox.warning",
+        lambda *a, **k: avertissements.append(True),
+    )
+    vue = VueParametres()
+    qtbot.addWidget(vue)
+
+    vue._rafraichir_cache()
+
+    assert avertissements == [True]
+
+
 def test_parametres_bouton_maj_emet_demande_maj_immediate(qtbot):
     vue = VueParametres()
     qtbot.addWidget(vue)

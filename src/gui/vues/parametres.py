@@ -9,6 +9,7 @@ from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
     QGroupBox,
     QLabel,
+    QMessageBox,
     QPushButton,
     QVBoxLayout,
     QWidget,
@@ -86,6 +87,15 @@ class VueParametres(QWidget):
     def _rafraichir_cache(self) -> None:
         """Force le rafraîchissement (scraping synchrone — rare, pas besoin
         d'un `QThread` dédié pour cette action manuelle et occasionnelle)."""
-        orgas_cache: Organisations = obtenir_organisations(forcer=True)
+        try:
+            orgas_cache: Organisations = obtenir_organisations(forcer=True)
+        except RuntimeError:
+            QMessageBox.warning(
+                self,
+                "Rafraîchissement impossible",
+                "Le site choisirleservicepublic.gouv.fr est actuellement "
+                "inaccessible. Réessayez plus tard.",
+            )
+            return
         self.rafraichir()
         self.cache_rafraichi.emit(orgas_cache)
