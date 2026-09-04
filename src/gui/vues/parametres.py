@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
 )
 
 from src.cache import age_cache_organisations, obtenir_organisations
+from src.maj import version_locale
 from src.types import InfoMaj, Organisations
 
 
@@ -37,8 +38,7 @@ class VueParametres(QWidget):
         titre.setProperty("role", "titre")
         disposition.addWidget(titre)
 
-        self.carte_maj = QGroupBox("Mise à jour disponible")
-        self.carte_maj.setVisible(False)
+        self.carte_maj = QGroupBox("Mise à jour")
         pile_maj = QVBoxLayout(self.carte_maj)
         self.label_maj_version = QLabel()
         self.label_maj_version.setProperty("role", "nom")
@@ -66,14 +66,19 @@ class VueParametres(QWidget):
         disposition.addStretch()
 
         self.rafraichir()
+        self.afficher_maj(None)
 
     def afficher_maj(self, info: InfoMaj | None) -> None:
-        """Affiche ou cache la carte de mise à jour disponible."""
-        self.carte_maj.setVisible(info is not None)
+        """Peuple la carte mise à jour — toujours visible, bouton actif
+        seulement si une mise à jour est disponible."""
         if info is None:
+            self.label_maj_version.setText(f"Version {version_locale()} (à jour)")
+            self.label_maj_notes.setText("Aucune mise à jour disponible.")
+            self.bouton_maj.setEnabled(False)
             return
-        self.label_maj_version.setText(f"Version {info['version']}")
+        self.label_maj_version.setText(f"Version {info['version']} disponible")
         self.label_maj_notes.setText(info["notes"] or "Pas de notes de version.")
+        self.bouton_maj.setEnabled(True)
 
     def rafraichir(self) -> None:
         """Met à jour l'affichage de l'âge du cache (pas de scraping)."""

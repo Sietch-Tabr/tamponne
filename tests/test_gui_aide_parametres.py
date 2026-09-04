@@ -47,10 +47,13 @@ def test_parametres_sans_cache_indique_jamais_charge(qtbot):
     assert "jamais chargé" in vue.label_cache.text()
 
 
-def test_parametres_carte_maj_cachee_par_defaut(qtbot):
+def test_parametres_carte_maj_visible_par_defaut_bouton_desactive(qtbot):
     vue = VueParametres()
     qtbot.addWidget(vue)
-    assert vue.carte_maj.isVisible() is False
+    vue.show()
+    assert vue.carte_maj.isVisible() is True
+    assert vue.bouton_maj.isEnabled() is False
+    assert "à jour" in vue.label_maj_notes.text()
 
 
 def test_parametres_afficher_maj_montre_et_peuple_la_carte(qtbot):
@@ -67,11 +70,12 @@ def test_parametres_afficher_maj_montre_et_peuple_la_carte(qtbot):
     vue.afficher_maj(info)
 
     assert vue.carte_maj.isVisible() is True
+    assert vue.bouton_maj.isEnabled() is True
     assert "1.2.0" in vue.label_maj_version.text()
     assert "Corrige un bug." in vue.label_maj_notes.text()
 
 
-def test_parametres_afficher_maj_none_cache_la_carte(qtbot):
+def test_parametres_afficher_maj_none_desactive_le_bouton_sans_cacher_la_carte(qtbot):
     vue = VueParametres()
     qtbot.addWidget(vue)
     vue.show()
@@ -81,7 +85,8 @@ def test_parametres_afficher_maj_none_cache_la_carte(qtbot):
 
     vue.afficher_maj(None)
 
-    assert vue.carte_maj.isVisible() is False
+    assert vue.carte_maj.isVisible() is True
+    assert vue.bouton_maj.isEnabled() is False
 
 
 def test_parametres_rafraichir_cache_erreur_reseau_affiche_avertissement(
@@ -110,6 +115,9 @@ def test_parametres_rafraichir_cache_erreur_reseau_affiche_avertissement(
 def test_parametres_bouton_maj_emet_demande_maj_immediate(qtbot):
     vue = VueParametres()
     qtbot.addWidget(vue)
+    vue.afficher_maj(
+        {"version": "1.2.0", "notes": "", "url_zip": "", "url_publication": ""}
+    )
     recus = []
     vue.demande_maj_immediate.connect(lambda: recus.append(True))
 
