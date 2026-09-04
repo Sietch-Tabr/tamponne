@@ -6,7 +6,7 @@ Application de bureau pour rechercher des offres d'emploi de la fonction publiqu
 
 ## Prérequis
 
-- Python 3.12+
+- [Python 3.12+](https://www.python.org/downloads/)
 - [uv](https://docs.astral.sh/uv/getting-started/installation/) — gestionnaire de paquets Python
 
 ```bash
