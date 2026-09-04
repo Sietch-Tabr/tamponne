@@ -1,0 +1,95 @@
+"""Tests des écrans Aide et Paramètres (src/gui/vues/aide.py, parametres.py).
+
+Pas de bouton retour propre à ces écrans — couvert par le bandeau de
+navigation de `FenetrePrincipale`, testé dans `test_gui_app.py`.
+"""
+
+import pytest
+from PySide6.QtWidgets import QGroupBox, QLabel
+
+from src import cache
+from src.gui.vues.aide import VueAide
+from src.gui.vues.parametres import VueParametres
+from src.types import InfoMaj
+
+
+@pytest.fixture(autouse=True)
+def _rediriger_cache_vers_tmp(tmp_path, monkeypatch):
+    monkeypatch.setattr(cache, "CHEMIN_CACHE", tmp_path / "cache.json")
+    monkeypatch.setattr(cache, "CHEMIN_OFFRES", tmp_path / "offres.json")
+
+
+def _texte_complet(widget) -> str:
+    """Concatène le texte de tous les QLabel et titres de QGroupBox —
+    l'Aide est construite en widgets natifs (QGroupBox/QLabel), pas en
+    HTML brut, même pattern que les tuiles composées (_LigneProfil,
+    _LigneCandidature)."""
+    labels = " ".join(label.text() for label in widget.findChildren(QLabel))
+    titres = " ".join(g.title() for g in widget.findChildren(QGroupBox))
+    return f"{labels} {titres}"
+
+
+def test_aide_affiche_le_vocabulaire_cle(qtbot):
+    vue = VueAide()
+    qtbot.addWidget(vue)
+    texte = _texte_complet(vue)
+    assert "IDIV" in texte
+    assert "grades supérieurs" in texte
+    assert "Suivi de candidature" in texte
+    assert "Offre dépubliée" in texte
+    assert "Attaché principal territorial" in texte
+    assert "Chef de projet informatique" in texte
+
+
+def test_parametres_sans_cache_indique_jamais_charge(qtbot):
+    vue = VueParametres()
+    qtbot.addWidget(vue)
+    assert "jamais chargé" in vue.label_cache.text()
+
+
+def test_parametres_carte_maj_cachee_par_defaut(qtbot):
+    vue = VueParametres()
+    qtbot.addWidget(vue)
+    assert vue.carte_maj.isVisible() is False
+
+
+def test_parametres_afficher_maj_montre_et_peuple_la_carte(qtbot):
+    vue = VueParametres()
+    qtbot.addWidget(vue)
+    vue.show()
+    info: InfoMaj = {
+        "version": "1.2.0",
+        "notes": "Corrige un bug.",
+        "url_zip": "https://codeberg.org/x.zip",
+        "url_publication": "https://codeberg.org/x",
+    }
+
+    vue.afficher_maj(info)
+
+    assert vue.carte_maj.isVisible() is True
+    assert "1.2.0" in vue.label_maj_version.text()
+    assert "Corrige un bug." in vue.label_maj_notes.text()
+
+
+def test_parametres_afficher_maj_none_cache_la_carte(qtbot):
+    vue = VueParametres()
+    qtbot.addWidget(vue)
+    vue.show()
+    vue.afficher_maj(
+        {"version": "1.2.0", "notes": "", "url_zip": "", "url_publication": ""}
+    )
+
+    vue.afficher_maj(None)
+
+    assert vue.carte_maj.isVisible() is False
+
+
+def test_parametres_bouton_maj_emet_demande_maj_immediate(qtbot):
+    vue = VueParametres()
+    qtbot.addWidget(vue)
+    recus = []
+    vue.demande_maj_immediate.connect(lambda: recus.append(True))
+
+    vue.bouton_maj.click()
+
+    assert recus == [True]

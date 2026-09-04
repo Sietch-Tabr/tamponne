@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+data/
+exports/
+.DS_Store
+PLAN.md
+CLAUDE.md
+.claudeignore
