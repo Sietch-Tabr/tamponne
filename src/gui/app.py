@@ -22,14 +22,13 @@ from PySide6.QtWidgets import (
 )
 
 from src.cache import obtenir_organisations
-from src.gui.theme import FEUILLE_STYLE
+from src.gui.theme import construire_feuille_style
 from src.gui.travailleurs import VerificateurMiseAJour
 from src.gui.vues.accueil import VueAccueil
 from src.gui.vues.aide import VueAide
 from src.gui.vues.candidatures import VueCandidatures
 from src.gui.vues.parametres import VueParametres
 from src.gui.vues.recherche_resultats import VueRechercheResultats
-from src.gui.vues.sources import VueSources
 from src.gui.widgets.point_statut import PointStatut
 from src.types import FiltresRecherche, InfoMaj, Organisations, Profil
 
@@ -78,9 +77,6 @@ class FenetrePrincipale(QMainWindow):
         self._vue_candidatures = VueCandidatures()
         self._pile.addWidget(self._vue_candidatures)
 
-        self._vue_sources = VueSources()
-        self._pile.addWidget(self._vue_sources)
-
         self._vue_aide = VueAide()
         self._pile.addWidget(self._vue_aide)
 
@@ -90,11 +86,15 @@ class FenetrePrincipale(QMainWindow):
         self._pile.addWidget(self._vue_parametres)
 
         self._pile.setCurrentWidget(self._vue_accueil)
+        self.setMinimumSize(
+            720, 480
+        )  # garde-fou : en dessous, formulaires/tableau illisibles
         self.resize(1100, 750)
 
     def _construire_barre_navigation(self) -> QWidget:
         barre = QWidget()
         barre.setObjectName("barreNavigation")
+        barre.setMinimumHeight(40)  # garde-fou : jamais écrasé au redimensionnement
         disposition = QHBoxLayout(barre)
         disposition.setContentsMargins(16, 0, 16, 0)
         disposition.setSpacing(4)
@@ -111,14 +111,11 @@ class FenetrePrincipale(QMainWindow):
         self.bouton_nav_candidatures = self._ajouter_bouton_nav(
             disposition, "Suivi", self._ouvrir_candidatures
         )
-        self.bouton_nav_sources = self._ajouter_bouton_nav(
-            disposition, "Sources", self._ouvrir_sources
+        self.bouton_nav_parametres = self._ajouter_bouton_nav(
+            disposition, "Paramètres", self._ouvrir_parametres
         )
         self.bouton_nav_aide = self._ajouter_bouton_nav(
             disposition, "Aide", self._ouvrir_aide
-        )
-        self.bouton_nav_parametres = self._ajouter_bouton_nav(
-            disposition, "Paramètres", self._ouvrir_parametres
         )
         self.point_maj = PointStatut()
         self.point_maj.setToolTip("Mise à jour disponible")
@@ -215,10 +212,6 @@ class FenetrePrincipale(QMainWindow):
         self._pile.setCurrentWidget(self._vue_candidatures)
         self.bouton_nav_candidatures.setChecked(True)
 
-    def _ouvrir_sources(self) -> None:
-        self._pile.setCurrentWidget(self._vue_sources)
-        self.bouton_nav_sources.setChecked(True)
-
     def _on_cache_rafraichi(self, orgas_cache: Organisations) -> None:
         self._orgas_cache = orgas_cache
 
@@ -284,11 +277,16 @@ def main() -> int:
     app.setApplicationName("Tamponné")
     app.setApplicationDisplayName("Tamponné")
     app.setOrganizationName("Tamponné")
-    app.setStyleSheet(FEUILLE_STYLE)
+    # Capturée avant setStyleSheet : QApplication.font() reflète déjà la
+    # police par défaut du système (donc, sur Linux/KDE notamment, les
+    # préférences d'accessibilité de taille de texte) — ne pas l'écraser
+    # par une valeur fixe (voir src/gui/theme.py::construire_feuille_style).
+    taille_base_pt = app.font().pointSizeF()
+    app.setStyleSheet(construire_feuille_style(taille_base_pt))
 
     try:
         orgas_cache = obtenir_organisations()
-    except (OSError, json.JSONDecodeError, urllib.error.URLError, RuntimeError):
+    except OSError, json.JSONDecodeError, urllib.error.URLError, RuntimeError:
         orgas_cache = {}
 
     fenetre = FenetrePrincipale(orgas_cache)

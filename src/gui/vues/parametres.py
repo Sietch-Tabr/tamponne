@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
 )
 
 from src.cache import age_cache_organisations, obtenir_organisations
+from src.gui.vues.sources import VueSources
 from src.maj import version_locale
 from src.types import InfoMaj, Organisations
 
@@ -37,6 +38,12 @@ class VueParametres(QWidget):
         titre = QLabel("Paramètres")
         titre.setProperty("role", "titre")
         disposition.addWidget(titre)
+
+        self.groupe_sources = QGroupBox("Sources")
+        pile_sources = QVBoxLayout(self.groupe_sources)
+        self.vue_sources = VueSources(afficher_titre=False)
+        pile_sources.addWidget(self.vue_sources)
+        disposition.addWidget(self.groupe_sources)
 
         self.carte_maj = QGroupBox("Mise à jour")
         pile_maj = QVBoxLayout(self.carte_maj)

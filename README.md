@@ -9,12 +9,24 @@ Application de bureau pour rechercher des offres d'emploi de la fonction publiqu
 - [Python 3.14+](https://www.python.org/downloads/)
 - [uv](https://docs.astral.sh/uv/getting-started/installation/) — gestionnaire de paquets Python
 
+Installation uv (si absent) :
+
+**macOS/Linux** :
+
 ```bash
-# Installation uv (si absent)
-curl -LsSf https://astral.sh/uv/install.sh | sh   # macOS/Linux
-# ou
-brew install uv                                      # macOS (Homebrew)
-winget install astral-sh.uv                         # Windows
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+**macOS (Homebrew)** :
+
+```bash
+brew install uv
+```
+
+**Windows** :
+
+```bash
+winget install astral-sh.uv
 ```
 
 ## Installation et lancement
@@ -71,7 +83,7 @@ src/
     travailleurs.py          recherche réseau + vérification de mise à jour, sur QThread
     vues/                   écrans : accueil, recherche+résultats, candidatures, sources, aide, paramètres
     widgets/                composants réutilisables (CaseACocher, dialogues de sélection,
-                             détail d'offre, section repliable, point de statut)
+                             détail d'offre, ligne responsive, point de statut)
   sources/
     base.py                 Protocol commun aux sources d'offres + dédoublonnage
     choisirleservicepublic/ requêtes GET filtrées + parsing HTML (BeautifulSoup4)

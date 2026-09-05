@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QSplitter
 
 from src import cache, candidatures, export, parametres_sources
 from src.gui.vues.recherche_resultats import VueRechercheResultats
@@ -151,6 +152,17 @@ def test_bouton_domaines_affiche_tous_par_defaut(qtbot):
     assert vue.bouton_localisations.text() == "Localisation(s)\nTous"
     assert vue.bouton_organisations.text() == "Organisation(s)\nTous"
     assert vue.bouton_grades.text() == "Grade(s)\nTous"
+
+
+def test_panneau_filtres_ne_peut_pas_etre_reduit_a_zero(qtbot):
+    vue = VueRechercheResultats()
+    qtbot.addWidget(vue)
+    splitter = vue.findChild(QSplitter)
+    assert splitter is not None
+
+    splitter.setSizes([0, 1000])
+
+    assert splitter.sizes()[0] >= 260
 
 
 def test_selection_domaines_via_dialogue_met_a_jour_le_bouton(qtbot, monkeypatch):

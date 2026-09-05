@@ -1,6 +1,7 @@
 """Tests de l'écran Sources (src/gui/vues/sources.py)."""
 
 import pytest
+from PySide6.QtWidgets import QLabel
 
 from src import parametres_sources
 from src.gui.vues.sources import VueSources
@@ -39,3 +40,24 @@ def test_etat_sauvegarde_est_relu_a_la_reconstruction(qtbot):
     qtbot.addWidget(vue)
     assert vue._cases["emploiterritorial"].isChecked() is False
     assert vue._cases["choisirleservicepublic"].isChecked() is True
+
+
+def test_sans_titre_naffiche_pas_le_label_titre(qtbot):
+    """`afficher_titre=False` : usage intégré (Paramètres), pas de titre
+    « Sources » en double avec celui de l'écran parent."""
+    vue = VueSources(afficher_titre=False)
+    qtbot.addWidget(vue)
+    titres = [
+        label for label in vue.findChildren(QLabel) if label.property("role") == "titre"
+    ]
+    assert titres == []
+
+
+def test_avec_titre_par_defaut_affiche_le_label_titre(qtbot):
+    vue = VueSources()
+    qtbot.addWidget(vue)
+    titres = [
+        label for label in vue.findChildren(QLabel) if label.property("role") == "titre"
+    ]
+    assert len(titres) == 1
+    assert titres[0].text() == "Sources"
