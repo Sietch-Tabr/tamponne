@@ -194,16 +194,55 @@ LOCALISATIONS: dict[str, int] = {
 # Regex de détection des grades supérieurs (IDiv, IP*, AFIPA)
 RE_GRADE_SUPERIEUR = re.compile(r"^(IDIV|AFIPA?|IP[A-Z\s\-\(])", re.IGNORECASE)
 
-# Grades reconnus par mots-clés dans le titre — best-effort, aucune source
-# n'exposant ce niveau de granularité côté serveur (voir RECHERCHES.md §5 pour
-# les mêmes limites appliquées à RE_GRADE_SUPERIEUR). Une seule table sert les
-# 3 versants : les intitulés longs par versant embarquent le nom court du
-# grade en sous-chaîne (ex. « Attaché principal d'administration de l'État »
-# contient bien « attaché principal »).
+# Grades reconnus par mots-clés dans le titre, regroupés par corps —
+# best-effort, aucune source n'exposant ce niveau de granularité côté
+# serveur (voir RECHERCHES.md §5 pour les mêmes limites appliquées à
+# RE_GRADE_SUPERIEUR). Une seule table sert les 3 versants : les intitulés
+# longs par versant embarquent le nom court du grade en sous-chaîne (ex.
+# « Attaché principal d'administration de l'État » contient bien
+# « attaché principal »).
+#
+# Corps vérifié (Attaché) et corps candidats croisés avec ~470 intitulés
+# réels scrapés sur le site avant ajout — Secrétaire administratif et
+# Rédacteur territorial, bien que statutairement définis, n'apparaissent
+# quasiment jamais tels quels dans les titres réels et n'ont pas été
+# ajoutés (voir décrets cités en commentaire de chaque corps).
+CORPS_GRADES: dict[str, dict[str, re.Pattern[str]]] = {
+    # Décret n°2011-1317 du 17 octobre 2011, article 4.
+    "Attaché": {
+        "Attaché": re.compile(
+            r"attaché(?!\s+(principal|hors[\s-]classe))", re.IGNORECASE
+        ),
+        "Attaché principal": re.compile(r"attaché\s+principal", re.IGNORECASE),
+        "Attaché hors classe": re.compile(r"attaché\s+hors[\s-]classe", re.IGNORECASE),
+    },
+    # Décret n°2006-1760 du 23 décembre 2006, article 4. Grades "principal"
+    # confirmés par des offres réelles ; "1re classe" non observé en
+    # pratique mais construit par symétrie avec "2e classe".
+    "Adjoint administratif": {
+        "Adjoint administratif": re.compile(
+            # (?!s?\s+principal) et non (?!\s+principal) : sans le "s?", le
+            # moteur regex peut contourner la négation en ne consommant pas
+            # le "s" optionnel du pluriel, laissant "s principal" derrière
+            # (vérifié : "adjoints administratifs principal" matchait à tort).
+            r"adjoints?\s+administratifs?(?!s?\s+principal)",
+            re.IGNORECASE,
+        ),
+        "Adjoint administratif principal de 2e classe": re.compile(
+            r"adjoints?\s+administratifs?\s+principal(e)?s?\s+(de\s+)?2\s*[eèé]?(me)?\s*classe",
+            re.IGNORECASE,
+        ),
+        "Adjoint administratif principal de 1re classe": re.compile(
+            r"adjoints?\s+administratifs?\s+principal(e)?s?\s+(de\s+)?1\s*[eèé]?re\s*classe",
+            re.IGNORECASE,
+        ),
+    },
+}
+
 GRADES: dict[str, re.Pattern[str]] = {
-    "Attaché": re.compile(r"attaché(?!\s+(principal|hors[\s-]classe))", re.IGNORECASE),
-    "Attaché principal": re.compile(r"attaché\s+principal", re.IGNORECASE),
-    "Attaché hors classe": re.compile(r"attaché\s+hors[\s-]classe", re.IGNORECASE),
+    grade: motif
+    for grades_du_corps in CORPS_GRADES.values()
+    for grade, motif in grades_du_corps.items()
 }
 
 

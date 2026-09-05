@@ -112,19 +112,23 @@ class VueAide(QWidget):
         _entree(
             disposition,
             "Attaché principal territorial (Hérault)",
-            "Statut → Catégorie A + Grade « Attaché principal » ; Versant "
-            "→ Territoriale ; Lieu & Organisation → Localisation "
-            "Hérault. Le filtre Grade repère « attaché principal » dans le "
-            "titre, quel que soit le versant — pas besoin de le recocher "
-            "si la recherche est élargie à l'État ou l'Hospitalière.",
+            "Catégorie → A\n"
+            "Grade → Attaché principal\n"
+            "Versant → Territoriale\n"
+            "Lieu & Organisation → Localisation Hérault\n\n"
+            "Le filtre Grade repère « attaché principal » dans le titre, "
+            "quel que soit le versant — pas besoin de le recocher si la "
+            "recherche est élargie à l'État ou l'Hospitalière.",
         )
         _entree(
             disposition,
             "Chef de projet informatique (DGFiP → fonction publique d'État)",
+            "Catégorie → A\n"
+            "Versant → État\n"
+            "Poste → Domaine « Numérique »\n"
+            "Options → mot-clé libre « chef de projet »\n\n"
             "Pas de grade statutaire dédié pour ce métier (contrairement à "
-            "« attaché ») : Statut → Catégorie A ; Versant → État ; Poste "
-            "→ Domaine « Numérique » ; Options → mot-clé libre « chef de "
-            "projet » pour resserrer sur l'intitulé du poste.",
+            "« attaché ») — le mot-clé resserre sur l'intitulé du poste.",
         )
         return groupe
 

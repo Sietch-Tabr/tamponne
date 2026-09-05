@@ -1,6 +1,6 @@
 """Tests du filtre de grade (client, cross-source) — src/filtres.py."""
 
-from src.filtres import GRADES, filtrer_par_grades
+from src.filtres import CORPS_GRADES, GRADES, filtrer_par_grades
 from src.types import Offre
 
 
@@ -76,3 +76,49 @@ def test_filtrer_par_grades_plusieurs_grades_en_or():
 def test_filtrer_par_grades_ignore_cle_inconnue():
     offres = [_offre("Attaché principal")]
     assert filtrer_par_grades(offres, ["Grade inexistant"]) == []
+
+
+# --- Adjoint administratif — variantes réelles vérifiées sur le site ---
+
+
+def test_adjoint_administratif_matche_grade_de_base():
+    assert GRADES["Adjoint administratif"].search(
+        "Adjoint administratif H/F 50% au sein du Secrétariat"
+    )
+    assert GRADES["Adjoint administratif"].search(
+        "ADJOINT ADMINISTRATIF - FRAIS DE JUSTICE OU RH"
+    )
+
+
+def test_adjoint_administratif_ne_matche_pas_principal():
+    assert not GRADES["Adjoint administratif"].search(
+        "Adjoint administratif principal 2ème classe"
+    )
+    # Cas piège corrigé : le "s" optionnel du pluriel ne doit pas
+    # permettre de contourner la négation.
+    assert not GRADES["Adjoint administratif"].search(
+        "épreuves d'adjoints administratifs principal 2è classe"
+    )
+
+
+def test_adjoint_administratif_principal_2e_classe_matche_variantes_orthographiques():
+    grade = GRADES["Adjoint administratif principal de 2e classe"]
+    assert grade.search("Adjoint administratif principal 2ème classe")
+    assert grade.search("Adjoint administratif principal de 2ème classe")
+    assert grade.search("Adjoint Administratif principal de 2éme classe")
+    assert grade.search("adjoints administratifs principal 2è classe")
+
+
+def test_adjoint_administratif_principal_1re_classe_matche_variantes_orthographiques():
+    grade = GRADES["Adjoint administratif principal de 1re classe"]
+    assert grade.search("Adjoint administratif principal de 1re classe")
+    assert grade.search("Adjoint administratif principal de 1ère classe")
+
+
+def test_corps_grades_regroupe_les_memes_grades_que_grades_a_plat():
+    """CORPS_GRADES (structure pour l'UI) et GRADES (lookup à plat pour le
+    filtrage) doivent rester synchronisés."""
+    grades_via_corps = {
+        grade for grades_du_corps in CORPS_GRADES.values() for grade in grades_du_corps
+    }
+    assert grades_via_corps == set(GRADES.keys())

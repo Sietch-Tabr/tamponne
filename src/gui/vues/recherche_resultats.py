@@ -38,10 +38,10 @@ from src.cache import maj_cache_offres
 from src.candidatures import ajouter_candidature, generer_archive_pdf
 from src.export import exporter_html, ouvrir_dans_navigateur
 from src.filtres import (
+    CORPS_GRADES,
     DATES_PUBLICATION,
     DOMAINES,
     EXPERIENCES,
-    GRADES,
     LOCALISATIONS,
     filtrer_par_grades,
     resumer_filtres,
@@ -50,6 +50,7 @@ from src.gui.travailleurs import TravailleurRecherche, offre_vers_ligne
 from src.gui.widgets.case_a_cocher import CaseACocher
 from src.gui.widgets.dialogue_detail_offre import DialogueDetailOffre
 from src.gui.widgets.dialogue_selection import (
+    DialogueSelectionGrades,
     DialogueSelectionListe,
     DialogueSelectionOrganisations,
     question_oui_non,
@@ -249,7 +250,6 @@ class VueRechercheResultats(QWidget):
         # Titres de section fixes plutôt que des sections repliables :
         # tout reste visible, plus besoin de plier/déplier.
         disposition.addWidget(_titre_section("Catégorie"))
-        disposition.addWidget(QLabel("Catégorie(s)"))
 
         def _ajouter_ligne(choix: list[tuple[str, str]]) -> None:
             ligne = QHBoxLayout()
@@ -417,13 +417,12 @@ class VueRechercheResultats(QWidget):
             _libelle_selection("Organisation(s)", self._organisations_selection)
         )
         self.bouton_grades.setText(
-            _libelle_selection("Grade(s)", self._grades_selection)
+            _libelle_selection("Corps / Grade", self._grades_selection)
         )
 
     def _ouvrir_selection_grades(self) -> None:
-        dialogue = DialogueSelectionListe(
-            "Grade(s)", sorted(GRADES), self._grades_selection, self
-        )
+        corps_grades = {corps: list(grades) for corps, grades in CORPS_GRADES.items()}
+        dialogue = DialogueSelectionGrades(corps_grades, self._grades_selection, self)
         if dialogue.exec() == QDialog.DialogCode.Accepted:
             self._grades_selection = dialogue.selection()
             self._maj_libelles_selection()
