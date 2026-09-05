@@ -7,7 +7,7 @@ navigation de `FenetrePrincipale`, testé dans `test_gui_app.py`.
 import pytest
 from PySide6.QtWidgets import QGroupBox, QLabel
 
-from src import cache
+from src import cache, parametres_sources
 from src.gui.vues.aide import VueAide
 from src.gui.vues.parametres import VueParametres
 from src.types import InfoMaj
@@ -17,6 +17,14 @@ from src.types import InfoMaj
 def _rediriger_cache_vers_tmp(tmp_path, monkeypatch):
     monkeypatch.setattr(cache, "CHEMIN_CACHE", tmp_path / "cache.json")
     monkeypatch.setattr(cache, "CHEMIN_OFFRES", tmp_path / "offres.json")
+
+
+@pytest.fixture(autouse=True)
+def _rediriger_sources_vers_tmp(tmp_path, monkeypatch):
+    """VueParametres intègre désormais VueSources (lecture/écriture de
+    parametres_sources.json) — jamais le vrai fichier de config pendant
+    les tests, même pattern que _rediriger_cache_vers_tmp."""
+    monkeypatch.setattr(parametres_sources, "CHEMIN_SOURCES", tmp_path / "sources.json")
 
 
 def _texte_complet(widget) -> str:

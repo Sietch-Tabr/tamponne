@@ -54,7 +54,7 @@ from src.gui.widgets.dialogue_selection import (
     DialogueSelectionOrganisations,
     question_oui_non,
 )
-from src.gui.widgets.section_repliable import SectionRepliable
+from src.gui.widgets.ligne_responsive import LigneResponsive
 from src.profils import ajouter_profil, mettre_a_jour_stats, modifier_profil
 from src.sources.choisirleservicepublic import MAX_PAGES, recuperer_detail_offre
 from src.sources.choisirleservicepublic.extraction import filtrer_grades_superieurs
@@ -98,6 +98,33 @@ def _libelle_selection(prefixe: str, selection: list[str]) -> str:
     else:
         etat = f"{len(selection)} sélectionnés"
     return f"{prefixe}\n{etat}"
+
+
+def _titre_section(texte: str) -> QLabel:
+    """Titre de section fixe (les sections ne se replient plus)."""
+    label = QLabel(texte)
+    label.setProperty("role", "nom")
+    return label
+
+
+def _bouton_selection() -> QPushButton:
+    """Bouton résumant une sélection multiple (voir `_libelle_selection`) —
+    largeur adaptée au contenu plutôt qu'étirée sur tout le panneau."""
+    bouton = QPushButton()
+    bouton.setMinimumWidth(130)
+    return bouton
+
+
+def _ligne_solo(widget: QWidget) -> QHBoxLayout:
+    """Empêche un widget seul de s'étirer sur toute la largeur du panneau
+    dans le `QVBoxLayout` parent — `QSizePolicy` seule n'y suffit pas
+    (vérifié : un `QVBoxLayout` étire son unique enfant quelle que soit sa
+    politique de taille horizontale), il faut un `addStretch()` à côté,
+    même pattern que `_ajouter_ligne`/`ligne_versants`/`ligne_options`."""
+    ligne = QHBoxLayout()
+    ligne.addWidget(widget)
+    ligne.addStretch()
+    return ligne
 
 
 class VueRechercheResultats(QWidget):
@@ -183,10 +210,16 @@ class VueRechercheResultats(QWidget):
 
     def _construire_ui(self) -> None:
         splitter = QSplitter(Qt.Orientation.Horizontal)
-        splitter.addWidget(self._construire_panneau_filtres())
+        panneau_filtres = self._construire_panneau_filtres()
+        # Garde-fou : jamais écrasé au redimensionnement. 280 (pas 260) car
+        # le cadre + la barre de défilement verticale du QScrollArea
+        # mangent ~12px de la largeur allouée (vérifié empiriquement).
+        panneau_filtres.setMinimumWidth(280)
+        splitter.addWidget(panneau_filtres)
         splitter.addWidget(self._construire_panneau_resultats())
         splitter.setStretchFactor(0, 0)
         splitter.setStretchFactor(1, 1)
+        splitter.setChildrenCollapsible(False)
 
         disposition = QVBoxLayout(self)
         disposition.addWidget(splitter)
@@ -213,12 +246,10 @@ class VueRechercheResultats(QWidget):
 
         categories_existantes = self._filtres_existants.get("categories") or []
 
-        # 4 sections repliables plutôt qu'une pile de QGroupBox toujours
-        # dépliées — reste lisible malgré le nombre de filtres (Grade en plus).
-        section_statut = SectionRepliable("Statut")
-        pile_statut = section_statut.corps()
-
-        pile_statut.addWidget(QLabel("Catégorie(s)"))
+        # Titres de section fixes plutôt que des sections repliables :
+        # tout reste visible, plus besoin de plier/déplier.
+        disposition.addWidget(_titre_section("Catégorie"))
+        disposition.addWidget(QLabel("Catégorie(s)"))
 
         def _ajouter_ligne(choix: list[tuple[str, str]]) -> None:
             ligne = QHBoxLayout()
@@ -229,7 +260,7 @@ class VueRechercheResultats(QWidget):
                 self._categories_cases.append((case, valeur))
                 ligne.addWidget(case)
             ligne.addStretch()
-            pile_statut.addLayout(ligne)
+            disposition.addLayout(ligne)
 
         # A+ : description nécessaire (distinction pas évidente entre
         # direction et autres emplois fonctionnels), sur une ligne.
@@ -237,12 +268,16 @@ class VueRechercheResultats(QWidget):
         # A / B / C : pas de descriptif (connu de tous), sur une ligne.
         _ajouter_ligne(_CATEGORIES_SIMPLES)
 
-        self.bouton_grades = QPushButton()
+        # Rattaché à Catégorie (pas à Versant) : c'est un sous-filtre de la
+        # catégorie A, sans lien avec le versant.
+        self.bouton_grades = _bouton_selection()
         self.bouton_grades.clicked.connect(self._ouvrir_selection_grades)
-        pile_statut.addWidget(self.bouton_grades)
+        disposition.addLayout(_ligne_solo(self.bouton_grades))
+        disposition.addSpacing(12)
 
-        pile_statut.addWidget(QLabel("Versant"))
+        disposition.addWidget(_titre_section("Versant"))
         ligne_versants = QHBoxLayout()
+        ligne_versants.setSpacing(16)
         versants_existants = self._versants_existants_compat()
         for cle, abrege, nom_complet in _VERSANTS_CHOIX:
             case = CaseACocher(abrege)
@@ -251,36 +286,46 @@ class VueRechercheResultats(QWidget):
             self._versants_cases.append((case, cle))
             ligne_versants.addWidget(case)
         ligne_versants.addStretch()
-        pile_statut.addLayout(ligne_versants)
-        disposition.addWidget(section_statut)
+        disposition.addLayout(ligne_versants)
+        disposition.addSpacing(12)
 
-        section_poste = SectionRepliable("Poste")
-        pile_poste = section_poste.corps()
+        disposition.addWidget(_titre_section("Poste"))
 
         # Bouton résumé + dialogue modal (recherche) plutôt que liste embarquée :
         # jusqu'à ~2400 sous-organisations côté Organisation(s), inutilisable en
         # défilement imbriqué — même motif appliqué par cohérence ici.
-        self.bouton_domaines = QPushButton()
+        self.bouton_domaines = _bouton_selection()
         self.bouton_domaines.clicked.connect(self._ouvrir_selection_domaines)
-        pile_poste.addWidget(self.bouton_domaines)
+        disposition.addLayout(_ligne_solo(self.bouton_domaines))
 
         types_poste_existant = self._filtres_existants.get("types_poste")
         self._type_poste_combo = QComboBox()
+        # Largeur bornée plutôt qu'ajustée au libellé le plus long (66
+        # caractères) : sinon ce combo impose sa largeur à tout le panneau.
+        # Qt affiche « … » nativement pour le texte tronqué.
+        self._type_poste_combo.setSizeAdjustPolicy(
+            QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+        )
+        self._type_poste_combo.setMinimumContentsLength(22)
         for label, valeur_poste in _TYPES_POSTE_CHOIX:
             self._type_poste_combo.addItem(label)
             if valeur_poste == types_poste_existant:
                 self._type_poste_combo.setCurrentIndex(
                     self._type_poste_combo.count() - 1
                 )
-        pile_poste.addWidget(QLabel("Type de poste"))
-        pile_poste.addWidget(self._type_poste_combo)
+        self._type_poste_combo.currentTextChanged.connect(
+            self._type_poste_combo.setToolTip
+        )
+        self._type_poste_combo.setToolTip(self._type_poste_combo.currentText())
+        disposition.addWidget(QLabel("Type de poste"))
+        disposition.addWidget(self._type_poste_combo)
 
         experience_existante = self._filtres_existants.get("experience") or _INDIFFERENT
         self._experience_combo = QComboBox()
         self._experience_combo.addItems([_INDIFFERENT, *EXPERIENCES])
         self._experience_combo.setCurrentText(experience_existante)
-        pile_poste.addWidget(QLabel("Expérience souhaitée"))
-        pile_poste.addWidget(self._experience_combo)
+        disposition.addWidget(QLabel("Expérience souhaitée"))
+        disposition.addWidget(self._experience_combo)
 
         date_pub_existante = (
             self._filtres_existants.get("date_publication") or _INDIFFERENT
@@ -288,49 +333,51 @@ class VueRechercheResultats(QWidget):
         self._date_pub_combo = QComboBox()
         self._date_pub_combo.addItems([_INDIFFERENT, *DATES_PUBLICATION])
         self._date_pub_combo.setCurrentText(date_pub_existante)
-        pile_poste.addWidget(QLabel("Date de publication"))
-        pile_poste.addWidget(self._date_pub_combo)
-        disposition.addWidget(section_poste)
+        disposition.addWidget(QLabel("Date de publication"))
+        disposition.addWidget(self._date_pub_combo)
+        disposition.addSpacing(12)
 
-        section_lieu = SectionRepliable("Lieu & Organisation")
-        pile_lieu = section_lieu.corps()
+        disposition.addWidget(_titre_section("Lieu & Organisation"))
 
-        self.bouton_localisations = QPushButton()
+        self.bouton_localisations = _bouton_selection()
         self.bouton_localisations.clicked.connect(self._ouvrir_selection_localisations)
-        pile_lieu.addWidget(self.bouton_localisations)
 
-        self.bouton_organisations = QPushButton()
+        self.bouton_organisations = _bouton_selection()
         self.bouton_organisations.clicked.connect(self._ouvrir_selection_organisations)
-        pile_lieu.addWidget(self.bouton_organisations)
-        disposition.addWidget(section_lieu)
+
+        disposition.addWidget(
+            LigneResponsive(self.bouton_localisations, self.bouton_organisations)
+        )
+        disposition.addSpacing(12)
 
         self._maj_libelles_selection()
 
-        section_options = SectionRepliable("Options")
-        pile_options = section_options.corps()
+        disposition.addWidget(_titre_section("Options"))
 
         self._management_case = CaseACocher("Management")
         self._management_case.setChecked(
             bool(self._filtres_existants.get("management"))
         )
-        pile_options.addWidget(self._management_case)
-
         self._teletravail_case = CaseACocher("Télétravail")
         self._teletravail_case.setChecked(
             bool(self._filtres_existants.get("teletravail"))
         )
-        pile_options.addWidget(self._teletravail_case)
+        ligne_options = QHBoxLayout()
+        ligne_options.setSpacing(16)
+        ligne_options.addWidget(self._management_case)
+        ligne_options.addWidget(self._teletravail_case)
+        ligne_options.addStretch()
+        disposition.addLayout(ligne_options)
 
         self._grades_superieurs_case = CaseACocher(
             "Afficher aussi les grades supérieurs"
         )
-        pile_options.addWidget(self._grades_superieurs_case)
+        disposition.addWidget(self._grades_superieurs_case)
 
         self._mot_cle_champ = QLineEdit(self._filtres_existants.get("query", ""))
         self._mot_cle_champ.setPlaceholderText("Mot-clé libre (ex: IDIV)")
-        pile_options.addWidget(QLabel("Mot-clé libre"))
-        pile_options.addWidget(self._mot_cle_champ)
-        disposition.addWidget(section_options)
+        disposition.addWidget(QLabel("Mot-clé libre"))
+        disposition.addWidget(self._mot_cle_champ)
 
         ligne_actions = QHBoxLayout()
         self.bouton_lancer = QPushButton(

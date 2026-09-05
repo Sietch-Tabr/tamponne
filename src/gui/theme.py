@@ -25,30 +25,44 @@ SUCCES = "#5FCB8D"
 ATTENTION = "#E8B15C"
 DANGER = "#E1685C"
 
-FEUILLE_STYLE = f"""
+
+def construire_feuille_style(taille_base_pt: float) -> str:
+    """QSS avec tailles de police dérivées de `taille_base_pt` (capturée
+    depuis ``QApplication.font().pointSizeF()`` avant application) plutôt
+    que codées en dur — respecte la police par défaut du système (donc,
+    sur Linux/KDE notamment, les préférences d'accessibilité de taille de
+    texte de l'utilisateur) au lieu de l'écraser. Ratios calqués sur les
+    tailles historiques (13px/18px/14px/11px/12px, base 13px)."""
+    pt_base = taille_base_pt
+    pt_titre = taille_base_pt * (18 / 13)
+    pt_nom = taille_base_pt * (14 / 13)
+    pt_badge = taille_base_pt * (11 / 13)
+    pt_ligne_action = taille_base_pt * (12 / 13)
+
+    return f"""
 QWidget {{
     background-color: {BG};
     color: {TEXTE};
-    font-size: 13px;
+    font-size: {pt_base:.1f}pt;
 }}
 
 QLabel {{
     background: transparent;
 }}
 QLabel[role="titre"] {{
-    font-size: 18px;
+    font-size: {pt_titre:.1f}pt;
     font-weight: bold;
 }}
 QLabel[role="sousTexte"] {{
     color: {TEXTE_DIM};
 }}
 QLabel[role="nom"] {{
-    font-size: 14px;
+    font-size: {pt_nom:.1f}pt;
     font-weight: bold;
 }}
 QLabel[role="statut"] {{
     color: {ACCENT_CLAIR};
-    font-size: 14px;
+    font-size: {pt_nom:.1f}pt;
     font-weight: bold;
 }}
 QLabel[role="badge"] {{
@@ -56,7 +70,7 @@ QLabel[role="badge"] {{
     color: {ACCENT_CLAIR};
     border-radius: 9px;
     padding: 2px 9px;
-    font-size: 11px;
+    font-size: {pt_badge:.1f}pt;
     font-weight: bold;
 }}
 QLabel[role="badgeAttention"] {{
@@ -64,7 +78,7 @@ QLabel[role="badgeAttention"] {{
     color: {BG};
     border-radius: 9px;
     padding: 2px 9px;
-    font-size: 11px;
+    font-size: {pt_badge:.1f}pt;
     font-weight: bold;
 }}
 QLabel[role="badgeNeutre"] {{
@@ -73,7 +87,7 @@ QLabel[role="badgeNeutre"] {{
     border: 1px solid {BORDER};
     border-radius: 9px;
     padding: 2px 9px;
-    font-size: 11px;
+    font-size: {pt_badge:.1f}pt;
     font-weight: bold;
 }}
 
@@ -98,7 +112,7 @@ QPushButton[variant="primaire"]:hover {{
 }}
 QPushButton[variant="ligneAction"] {{
     padding: 3px 10px;
-    font-size: 12px;
+    font-size: {pt_ligne_action:.1f}pt;
     border-radius: 5px;
     color: {TEXTE_DIM};
 }}
@@ -108,7 +122,7 @@ QPushButton[variant="ligneAction"]:hover {{
 }}
 QPushButton[variant="ligneActionDanger"] {{
     padding: 3px 10px;
-    font-size: 12px;
+    font-size: {pt_ligne_action:.1f}pt;
     border-radius: 5px;
     color: {DANGER};
     border-color: {DANGER};
@@ -139,7 +153,7 @@ QPushButton[variant="nav"] {{
     border: none;
     border-bottom: 2px solid transparent;
     border-radius: 0;
-    padding: 10px 18px;
+    padding: 6px 14px;
     color: {TEXTE_DIM};
     font-weight: bold;
 }}
@@ -221,7 +235,9 @@ QGroupBox {{
 }}
 QGroupBox::title {{
     subcontrol-origin: margin;
+    subcontrol-position: top left;
     left: 10px;
+    top: -7px;
     padding: 0 6px;
     color: {TEXTE_DIM};
     font-weight: bold;
