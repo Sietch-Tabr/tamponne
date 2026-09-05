@@ -162,7 +162,7 @@ def test_panneau_filtres_ne_peut_pas_etre_reduit_a_zero(qtbot):
 
     splitter.setSizes([0, 1000])
 
-    assert splitter.sizes()[0] >= 260
+    assert splitter.sizes()[0] >= 280
 
 
 def test_selection_domaines_via_dialogue_met_a_jour_le_bouton(qtbot, monkeypatch):

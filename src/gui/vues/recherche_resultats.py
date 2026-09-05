@@ -211,9 +211,10 @@ class VueRechercheResultats(QWidget):
     def _construire_ui(self) -> None:
         splitter = QSplitter(Qt.Orientation.Horizontal)
         panneau_filtres = self._construire_panneau_filtres()
-        panneau_filtres.setMinimumWidth(
-            260
-        )  # garde-fou : jamais écrasé au redimensionnement
+        # Garde-fou : jamais écrasé au redimensionnement. 280 (pas 260) car
+        # le cadre + la barre de défilement verticale du QScrollArea
+        # mangent ~12px de la largeur allouée (vérifié empiriquement).
+        panneau_filtres.setMinimumWidth(280)
         splitter.addWidget(panneau_filtres)
         splitter.addWidget(self._construire_panneau_resultats())
         splitter.setStretchFactor(0, 0)
@@ -299,12 +300,23 @@ class VueRechercheResultats(QWidget):
 
         types_poste_existant = self._filtres_existants.get("types_poste")
         self._type_poste_combo = QComboBox()
+        # Largeur bornée plutôt qu'ajustée au libellé le plus long (66
+        # caractères) : sinon ce combo impose sa largeur à tout le panneau.
+        # Qt affiche « … » nativement pour le texte tronqué.
+        self._type_poste_combo.setSizeAdjustPolicy(
+            QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+        )
+        self._type_poste_combo.setMinimumContentsLength(22)
         for label, valeur_poste in _TYPES_POSTE_CHOIX:
             self._type_poste_combo.addItem(label)
             if valeur_poste == types_poste_existant:
                 self._type_poste_combo.setCurrentIndex(
                     self._type_poste_combo.count() - 1
                 )
+        self._type_poste_combo.currentTextChanged.connect(
+            self._type_poste_combo.setToolTip
+        )
+        self._type_poste_combo.setToolTip(self._type_poste_combo.currentText())
         disposition.addWidget(QLabel("Type de poste"))
         disposition.addWidget(self._type_poste_combo)
 
