@@ -28,6 +28,8 @@ Dans le dossier obtenu :
 | macOS / Linux | `./lancer.sh` |
 | Windows       | `lancer.bat`  |
 
+> **macOS/Linux** : si le terminal répond `permission denied`, le bit exécutable n'a pas été conservé à la décompression — lancez `chmod +x lancer.sh` une fois, puis relancez `./lancer.sh`.
+
 `uv sync` installe automatiquement le virtualenv et les dépendances au premier lancement. Ces deux scripts appliquent aussi les mises à jour en attente (voir plus bas) — c'est la façon recommandée de lancer l'app.
 
 ```bash

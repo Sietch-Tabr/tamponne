@@ -59,7 +59,7 @@ def verifier_derniere_publication() -> InfoMaj | None:
         )
         with urllib.request.urlopen(requete, timeout=_TIMEOUT) as reponse:
             donnees = json.loads(reponse.read().decode("utf-8"))
-    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, OSError):
+    except urllib.error.URLError, urllib.error.HTTPError, TimeoutError, OSError:
         return None
     except json.JSONDecodeError:
         return None
@@ -82,7 +82,7 @@ def lire_maj_disponible() -> InfoMaj | None:
         return None
     try:
         return json.loads(CHEMIN_MARQUEUR.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
+    except json.JSONDecodeError, OSError:
         return None
 
 
@@ -117,6 +117,12 @@ def appliquer_maj(info: InfoMaj) -> None:
             urllib.request.urlretrieve(info["url_zip"], chemin_zip)
             with zipfile.ZipFile(chemin_zip) as archive:
                 archive.extractall(dossier_tmp)
+                # extractall() n'applique pas les bits Unix (rwx) codés dans
+                # l'archive : sans ça, lancer.sh perd son +x à chaque maj.
+                for membre in archive.infolist():
+                    permissions = (membre.external_attr >> 16) & 0o777
+                    if permissions:
+                        (Path(dossier_tmp) / membre.filename).chmod(permissions)
         except (urllib.error.URLError, OSError, zipfile.BadZipFile) as e:
             raise RuntimeError(
                 f"Impossible de télécharger ou d'extraire la mise à jour : {e}"
