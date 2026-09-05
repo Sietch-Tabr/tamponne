@@ -172,6 +172,34 @@ def test_appliquer_maj_copie_les_fichiers_de_larchive(tmp_path, monkeypatch):
     assert (maj.CHEMIN_RACINE / "src" / "nouveau.py").exists()
 
 
+def _construire_zip_test_avec_executable(tmp_path) -> str:
+    """Zip avec un fichier marqué exécutable dans `external_attr` (bit Unix
+    rwxr-xr-x), comme le produit `git archive --format=zip` pour lancer.sh."""
+    chemin_zip = tmp_path / "source_executable.zip"
+    with zipfile.ZipFile(chemin_zip, "w") as archive:
+        info = zipfile.ZipInfo("tamponne-abc123/lancer.sh")
+        info.external_attr = 0o100755 << 16
+        archive.writestr(info, "#!/bin/sh\necho lancement\n")
+    return str(chemin_zip)
+
+
+def test_appliquer_maj_fichier_executable_dans_larchive_reste_executable(
+    tmp_path, monkeypatch
+):
+    """extractall() n'applique pas les bits Unix de l'archive : sans
+    restauration manuelle, lancer.sh perdrait son +x à chaque mise à jour."""
+    chemin_zip = _construire_zip_test_avec_executable(tmp_path)
+    monkeypatch.setattr(
+        maj.urllib.request,
+        "urlretrieve",
+        lambda url, filename: shutil.copy(chemin_zip, filename),
+    )
+
+    maj.appliquer_maj(_info())
+
+    assert (maj.CHEMIN_RACINE / "lancer.sh").stat().st_mode & 0o111
+
+
 def test_appliquer_maj_ne_touche_pas_data(tmp_path, monkeypatch):
     """data/ n'est jamais dans l'archive (gitignore) — doit survivre intact."""
     dossier_data = maj.CHEMIN_RACINE / "data"
