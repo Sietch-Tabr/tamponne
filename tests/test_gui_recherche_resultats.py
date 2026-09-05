@@ -151,7 +151,7 @@ def test_bouton_domaines_affiche_tous_par_defaut(qtbot):
     assert vue.bouton_domaines.text() == "Domaine(s)\nTous"
     assert vue.bouton_localisations.text() == "Localisation(s)\nTous"
     assert vue.bouton_organisations.text() == "Organisation(s)\nTous"
-    assert vue.bouton_grades.text() == "Grade(s)\nTous"
+    assert vue.bouton_grades.text() == "Corps / Grade\nTous"
 
 
 def test_panneau_filtres_ne_peut_pas_etre_reduit_a_zero(qtbot):
@@ -204,13 +204,13 @@ def test_selection_domaines_annulee_ne_change_rien(qtbot, monkeypatch):
 def test_selection_grades_via_dialogue_met_a_jour_le_bouton(qtbot, monkeypatch):
     from PySide6.QtWidgets import QDialog
 
-    from src.gui.widgets.dialogue_selection import DialogueSelectionListe
+    from src.gui.widgets.dialogue_selection import DialogueSelectionGrades
 
     monkeypatch.setattr(
-        DialogueSelectionListe, "exec", lambda self: QDialog.DialogCode.Accepted
+        DialogueSelectionGrades, "exec", lambda self: QDialog.DialogCode.Accepted
     )
     monkeypatch.setattr(
-        DialogueSelectionListe, "selection", lambda self: ["Attaché principal"]
+        DialogueSelectionGrades, "selection", lambda self: ["Attaché principal"]
     )
 
     vue = VueRechercheResultats()
@@ -218,7 +218,7 @@ def test_selection_grades_via_dialogue_met_a_jour_le_bouton(qtbot, monkeypatch):
     vue._ouvrir_selection_grades()
 
     assert vue._grades_selection == ["Attaché principal"]
-    assert vue.bouton_grades.text() == "Grade(s)\n1 sélectionné"
+    assert vue.bouton_grades.text() == "Corps / Grade\n1 sélectionné"
     assert vue.construire_filtres()["grades"] == ["Attaché principal"]
 
 
@@ -263,7 +263,7 @@ def test_raz_reinitialise_les_selections_domaines_localisations_organisations_gr
     assert vue._organisations_selection == []
     assert vue._grades_selection == []
     assert vue.bouton_domaines.text() == "Domaine(s)\nTous"
-    assert vue.bouton_grades.text() == "Grade(s)\nTous"
+    assert vue.bouton_grades.text() == "Corps / Grade\nTous"
 
 
 def test_bouton_porte_le_bon_libelle_selon_le_mode(qtbot):

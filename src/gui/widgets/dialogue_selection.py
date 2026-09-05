@@ -197,3 +197,85 @@ class DialogueSelectionOrganisations(QDialog):
                 if enfant is not None and enfant.checkState(0) == Qt.CheckState.Checked:
                     resultat.append(f"{item_ministere.text(0)} - {enfant.text(0)}")
         return resultat
+
+
+class DialogueSelectionGrades(QDialog):
+    """Modale de sélection multiple avec recherche, pour l'arbre
+    corps → grade (ex. Attaché → Attaché principal → Attaché hors
+    classe) — même pattern que `DialogueSelectionOrganisations`, en plus
+    compact (peu de corps/grades) donc déplié par défaut."""
+
+    def __init__(
+        self,
+        corps_grades: dict[str, list[str]],
+        deja_selectionnes: list[str],
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Corps / Grade")
+        self.resize(380, 420)
+        disposition = QVBoxLayout(self)
+
+        self._recherche = QLineEdit()
+        self._recherche.setPlaceholderText("Rechercher...")
+        self._recherche.textChanged.connect(self._filtrer)
+        disposition.addWidget(self._recherche)
+
+        self._arbre = QTreeWidget()
+        self._arbre.setHeaderHidden(True)
+        deja = set(deja_selectionnes)
+        for corps, grades in corps_grades.items():
+            item_corps = QTreeWidgetItem([corps])
+            for grade in grades:
+                item_grade = QTreeWidgetItem([grade])
+                item_grade.setFlags(
+                    item_grade.flags() | Qt.ItemFlag.ItemIsUserCheckable
+                )
+                item_grade.setCheckState(
+                    0,
+                    Qt.CheckState.Checked if grade in deja else Qt.CheckState.Unchecked,
+                )
+                item_corps.addChild(item_grade)
+            self._arbre.addTopLevelItem(item_corps)
+            # setExpanded() après addTopLevelItem() : sans effet sur un item
+            # pas encore attaché à l'arbre (vérifié).
+            item_corps.setExpanded(True)
+        disposition.addWidget(self._arbre, 1)
+
+        boutons = boutons_ok_annuler()
+        boutons.accepted.connect(self.accept)
+        boutons.rejected.connect(self.reject)
+        disposition.addWidget(boutons)
+
+    def _filtrer(self, texte: str) -> None:
+        """Même comportement que `DialogueSelectionOrganisations._filtrer` :
+        cache les grades ne correspondant pas, cache un corps si aucun de
+        ses grades n'est visible."""
+        texte = texte.strip().lower()
+        for i in range(self._arbre.topLevelItemCount()):
+            item_corps = self._arbre.topLevelItem(i)
+            if item_corps is None:
+                continue
+            un_enfant_visible = False
+            for j in range(item_corps.childCount()):
+                enfant = item_corps.child(j)
+                if enfant is None:
+                    continue
+                correspond = not texte or texte in enfant.text(0).lower()
+                enfant.setHidden(not correspond)
+                un_enfant_visible = un_enfant_visible or correspond
+            item_corps.setHidden(not un_enfant_visible)
+
+    def selection(self) -> list[str]:
+        """Grades cochés (libellés seuls, sans le nom du corps), à lire
+        après `exec() == DialogCode.Accepted`."""
+        resultat = []
+        for i in range(self._arbre.topLevelItemCount()):
+            item_corps = self._arbre.topLevelItem(i)
+            if item_corps is None:
+                continue
+            for j in range(item_corps.childCount()):
+                enfant = item_corps.child(j)
+                if enfant is not None and enfant.checkState(0) == Qt.CheckState.Checked:
+                    resultat.append(enfant.text(0))
+        return resultat

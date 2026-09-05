@@ -4,6 +4,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QPushButton
 
 from src.gui.widgets.dialogue_selection import (
+    DialogueSelectionGrades,
     DialogueSelectionListe,
     DialogueSelectionOrganisations,
 )
@@ -79,3 +80,50 @@ def test_selection_organisations_cocher_une_sous_org(qtbot):
     enfant = racine.child(0)
     enfant.setCheckState(0, Qt.CheckState.Checked)
     assert dialogue.selection() == ["Ministère Alpha - Sous-org 1"]
+
+
+_CORPS_GRADES_TEST = {
+    "Attaché": ["Attaché", "Attaché principal", "Attaché hors classe"],
+    "Adjoint administratif": [
+        "Adjoint administratif",
+        "Adjoint administratif principal",
+    ],
+}
+
+
+def test_selection_grades_preremplie(qtbot):
+    dialogue = DialogueSelectionGrades(_CORPS_GRADES_TEST, ["Attaché principal"])
+    qtbot.addWidget(dialogue)
+    assert dialogue.selection() == ["Attaché principal"]
+
+
+def test_selection_grades_corps_toujours_deplies_par_defaut(qtbot):
+    """Peu de corps/grades : tout visible d'emblée, pas besoin de déplier."""
+    dialogue = DialogueSelectionGrades(_CORPS_GRADES_TEST, [])
+    qtbot.addWidget(dialogue)
+    for i in range(dialogue._arbre.topLevelItemCount()):
+        assert dialogue._arbre.topLevelItem(i).isExpanded() is True
+
+
+def test_selection_grades_recherche_cache_corps_sans_correspondance(qtbot):
+    dialogue = DialogueSelectionGrades(_CORPS_GRADES_TEST, [])
+    qtbot.addWidget(dialogue)
+
+    dialogue._recherche.setText("hors classe")
+    racine_attache = dialogue._arbre.topLevelItem(0)
+    racine_adjoint = dialogue._arbre.topLevelItem(1)
+    assert racine_attache.isHidden() is False
+    assert racine_adjoint.isHidden() is True
+
+    dialogue._recherche.setText("")
+    assert racine_attache.isHidden() is False
+    assert racine_adjoint.isHidden() is False
+
+
+def test_selection_grades_cocher_un_grade(qtbot):
+    dialogue = DialogueSelectionGrades(_CORPS_GRADES_TEST, [])
+    qtbot.addWidget(dialogue)
+    racine = dialogue._arbre.topLevelItem(0)
+    enfant = racine.child(1)  # Attaché principal
+    enfant.setCheckState(0, Qt.CheckState.Checked)
+    assert dialogue.selection() == ["Attaché principal"]
