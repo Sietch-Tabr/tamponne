@@ -9,7 +9,7 @@ import urllib.error
 from collections.abc import Callable
 
 from PySide6.QtCore import QThread
-from PySide6.QtGui import QCloseEvent, QKeySequence
+from PySide6.QtGui import QCloseEvent, QGuiApplication, QKeySequence
 from PySide6.QtWidgets import (
     QApplication,
     QButtonGroup,
@@ -22,7 +22,7 @@ from PySide6.QtWidgets import (
 )
 
 from src.cache import obtenir_organisations
-from src.gui.theme import construire_feuille_style
+from src.gui.theme import appliquer_theme
 from src.gui.travailleurs import VerificateurMiseAJour
 from src.gui.vues.accueil import VueAccueil
 from src.gui.vues.aide import VueAide
@@ -90,6 +90,17 @@ class FenetrePrincipale(QMainWindow):
             720, 480
         )  # garde-fou : en dessous, formulaires/tableau illisibles
         self.resize(1100, 750)
+
+        QGuiApplication.styleHints().colorSchemeChanged.connect(
+            self._on_schema_couleurs_change
+        )
+
+    def _on_schema_couleurs_change(self) -> None:
+        """Réapplique le thème quand le système bascule entre clair et
+        sombre, sans redémarrer l'application."""
+        app = QApplication.instance()
+        if isinstance(app, QApplication):
+            appliquer_theme(app)
 
     def _construire_barre_navigation(self) -> QWidget:
         barre = QWidget()
@@ -282,7 +293,10 @@ def main() -> int:
     # préférences d'accessibilité de taille de texte) — ne pas l'écraser
     # par une valeur fixe (voir src/gui/theme.py::construire_feuille_style).
     taille_base_pt = app.font().pointSizeF()
-    app.setStyleSheet(construire_feuille_style(taille_base_pt))
+    # Base Fusion : rendu identique sur toutes les plateformes, là où la QSS
+    # posée sur le style natif (macOS, Windows) donne des résultats inégaux.
+    app.setStyle("Fusion")
+    appliquer_theme(app, taille_base_pt)
 
     try:
         orgas_cache = obtenir_organisations()

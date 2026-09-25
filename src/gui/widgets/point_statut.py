@@ -7,7 +7,7 @@ from PySide6.QtCore import QRectF, Qt
 from PySide6.QtGui import QColor, QPainter, QPaintEvent
 from PySide6.QtWidgets import QWidget
 
-from src.gui.theme import SUCCES
+from src.gui.theme import palette_active
 
 _TAILLE = 8
 
@@ -25,5 +25,5 @@ class PointStatut(QWidget):
         peintre = QPainter(self)
         peintre.setRenderHint(QPainter.RenderHint.Antialiasing)
         peintre.setPen(Qt.PenStyle.NoPen)
-        peintre.setBrush(QColor(SUCCES))
+        peintre.setBrush(QColor(palette_active().succes))
         peintre.drawEllipse(QRectF(0, 0, _TAILLE, _TAILLE))

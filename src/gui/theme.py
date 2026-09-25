@@ -1,8 +1,9 @@
-"""Feuille de style QSS de Tamponné.
+"""Feuille de style QSS de Tamponné, en variantes claire et sombre.
 
 Dérivée des mêmes tokens de couleur que la maquette validée
 (« Vigie Carrière », 2026-08-31) — voir REFONTE.md §5bis pour la
-chronologie du passage TUI → GUI.
+chronologie du passage TUI → GUI. La palette suit le réglage clair/sombre
+du système (`palette_systeme`) et se réapplique à chaud (`appliquer_theme`).
 
 Les variantes de widgets (`QPushButton[variant="primaire"]`, etc.) se
 sélectionnent via une propriété Qt dynamique, à poser avec
@@ -12,27 +13,143 @@ widget (ou en forçant un repolish avec
 si posée après coup).
 """
 
-BG = "#0A0D14"
-SURFACE = "#131826"
-PANEL = "#1A2133"
-BORDER = "#2A3348"
-TEXTE = "#E7EAF2"
-TEXTE_DIM = "#8891A6"
-ACCENT = "#8B93F8"
-ACCENT_CLAIR = "#A0A7FA"
-ACCENT_SOFT = "#3A3F82"
-SUCCES = "#5FCB8D"
-ATTENTION = "#E8B15C"
-DANGER = "#E1685C"
+from dataclasses import dataclass
+
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor, QGuiApplication, QPalette
+from PySide6.QtWidgets import QApplication
 
 
-def construire_feuille_style(taille_base_pt: float) -> str:
-    """QSS avec tailles de police dérivées de `taille_base_pt` (capturée
-    depuis ``QApplication.font().pointSizeF()`` avant application) plutôt
-    que codées en dur — respecte la police par défaut du système (donc,
+@dataclass(frozen=True)
+class Palette:
+    """Tokens de couleur d'un thème (valeurs hexadécimales `#RRGGBB`)."""
+
+    bg: str
+    surface: str
+    panel: str
+    bordure: str
+    texte: str
+    texte_dim: str
+    accent: str
+    accent_clair: str
+    """Survol d'un fond accent et texte d'accent (statut, badge)."""
+    accent_soft: str
+    succes: str
+    attention: str
+    danger: str
+    sur_accent: str
+    """Texte ou tracé posé sur un fond accent, attention ou danger."""
+
+
+PALETTE_SOMBRE = Palette(
+    bg="#0A0D14",
+    surface="#131826",
+    panel="#1A2133",
+    bordure="#2A3348",
+    texte="#E7EAF2",
+    texte_dim="#8891A6",
+    accent="#8B93F8",
+    accent_clair="#A0A7FA",
+    # Assombri depuis #3A3F82 : texte des badges à 4,25:1, sous le seuil AA.
+    accent_soft="#363B7B",
+    succes="#5FCB8D",
+    attention="#E8B15C",
+    danger="#E1685C",
+    sur_accent="#0A0D14",
+)
+
+PALETTE_CLAIRE = Palette(
+    bg="#F5F6FA",
+    surface="#FFFFFF",
+    panel="#ECEEF4",
+    bordure="#CDD2DE",
+    texte="#161B29",
+    texte_dim="#535C70",
+    accent="#4A53D6",
+    accent_clair="#3A42B8",
+    accent_soft="#E1E3FC",
+    succes="#1F8A4C",
+    attention="#8F5400",
+    danger="#B83227",
+    sur_accent="#FFFFFF",
+)
+
+_palette_active = PALETTE_SOMBRE
+_taille_base_pt = 13.0
+
+
+def palette_systeme() -> Palette:
+    """Palette correspondant au réglage clair/sombre du système — sombre
+    si le système ne l'indique pas (`ColorScheme.Unknown`), comme avant
+    l'introduction du thème clair."""
+    schema = QGuiApplication.styleHints().colorScheme()
+    return PALETTE_CLAIRE if schema == Qt.ColorScheme.Light else PALETTE_SOMBRE
+
+
+def palette_active() -> Palette:
+    """Palette appliquée en dernier par `appliquer_theme` — à lire au
+    moment du dessin (`paintEvent`) par les widgets peints à la main."""
+    return _palette_active
+
+
+def construire_qpalette(palette: Palette) -> QPalette:
+    """`QPalette` Qt équivalente, pour ce que la QSS ne couvre pas avec le
+    style Fusion (infobulles, menus, calendrier de `QDateEdit`…)."""
+    roles = QPalette.ColorRole
+    qpalette = QPalette()
+    for role, couleur in [
+        (roles.Window, palette.bg),
+        (roles.WindowText, palette.texte),
+        (roles.Base, palette.surface),
+        (roles.AlternateBase, palette.panel),
+        (roles.Text, palette.texte),
+        (roles.PlaceholderText, palette.texte_dim),
+        (roles.Button, palette.panel),
+        (roles.ButtonText, palette.texte),
+        (roles.Highlight, palette.accent),
+        (roles.HighlightedText, palette.sur_accent),
+        (roles.ToolTipBase, palette.panel),
+        (roles.ToolTipText, palette.texte),
+        (roles.Link, palette.accent_clair),
+        (roles.Mid, palette.bordure),
+    ]:
+        qpalette.setColor(role, QColor(couleur))
+    return qpalette
+
+
+def appliquer_theme(app: QApplication, taille_base_pt: float | None = None) -> None:
+    """Applique à `app` la palette et la feuille de style correspondant au
+    réglage clair/sombre du système.
+
+    Args:
+        app: Application Qt.
+        taille_base_pt: Taille de police de base, voir
+            `construire_feuille_style` ; ``None`` reprend celle du dernier
+            appel (réapplication à chaud au changement de réglage système).
+    """
+    global _palette_active, _taille_base_pt
+    if taille_base_pt is not None:
+        _taille_base_pt = taille_base_pt
+    _palette_active = palette_systeme()
+    app.setPalette(construire_qpalette(_palette_active))
+    app.setStyleSheet(construire_feuille_style(_taille_base_pt, _palette_active))
+
+
+def construire_feuille_style(
+    taille_base_pt: float, palette: Palette = PALETTE_SOMBRE
+) -> str:
+    """QSS de `palette`, tailles de police dérivées de `taille_base_pt`
+    (capturée depuis ``QApplication.font().pointSizeF()`` avant
+    application) plutôt que codées en dur — respecte la police par défaut du système (donc,
     sur Linux/KDE notamment, les préférences d'accessibilité de taille de
     texte de l'utilisateur) au lieu de l'écraser. Ratios calqués sur les
-    tailles historiques (13px/18px/14px/11px/12px, base 13px)."""
+    tailles historiques (13px/18px/14px/11px/12px, base 13px).
+
+    Args:
+        taille_base_pt: Taille de police de base, en points.
+        palette: Tokens de couleur à utiliser (sombre par défaut).
+    """
+    p = palette
     pt_base = taille_base_pt
     pt_titre = taille_base_pt * (18 / 13)
     pt_nom = taille_base_pt * (14 / 13)
@@ -41,8 +158,8 @@ def construire_feuille_style(taille_base_pt: float) -> str:
 
     return f"""
 QWidget {{
-    background-color: {BG};
-    color: {TEXTE};
+    background-color: {p.bg};
+    color: {p.texte};
     font-size: {pt_base:.1f}pt;
 }}
 
@@ -54,37 +171,37 @@ QLabel[role="titre"] {{
     font-weight: bold;
 }}
 QLabel[role="sousTexte"] {{
-    color: {TEXTE_DIM};
+    color: {p.texte_dim};
 }}
 QLabel[role="nom"] {{
     font-size: {pt_nom:.1f}pt;
     font-weight: bold;
 }}
 QLabel[role="statut"] {{
-    color: {ACCENT_CLAIR};
+    color: {p.accent_clair};
     font-size: {pt_nom:.1f}pt;
     font-weight: bold;
 }}
 QLabel[role="badge"] {{
-    background-color: {ACCENT_SOFT};
-    color: {ACCENT_CLAIR};
+    background-color: {p.accent_soft};
+    color: {p.accent_clair};
     border-radius: 9px;
     padding: 2px 9px;
     font-size: {pt_badge:.1f}pt;
     font-weight: bold;
 }}
 QLabel[role="badgeAttention"] {{
-    background-color: {ATTENTION};
-    color: {BG};
+    background-color: {p.attention};
+    color: {p.sur_accent};
     border-radius: 9px;
     padding: 2px 9px;
     font-size: {pt_badge:.1f}pt;
     font-weight: bold;
 }}
 QLabel[role="badgeNeutre"] {{
-    background-color: {PANEL};
-    color: {TEXTE_DIM};
-    border: 1px solid {BORDER};
+    background-color: {p.panel};
+    color: {p.texte_dim};
+    border: 1px solid {p.bordure};
     border-radius: 9px;
     padding: 2px 9px;
     font-size: {pt_badge:.1f}pt;
@@ -92,44 +209,44 @@ QLabel[role="badgeNeutre"] {{
 }}
 
 QPushButton {{
-    background-color: {PANEL};
-    color: {TEXTE};
-    border: 1px solid {BORDER};
+    background-color: {p.panel};
+    color: {p.texte};
+    border: 1px solid {p.bordure};
     border-radius: 6px;
     padding: 6px 14px;
 }}
 QPushButton:hover {{
-    border-color: {ACCENT};
+    border-color: {p.accent};
 }}
 QPushButton[variant="primaire"] {{
-    background-color: {ACCENT};
-    color: {BG};
+    background-color: {p.accent};
+    color: {p.sur_accent};
     font-weight: bold;
     border: none;
 }}
 QPushButton[variant="primaire"]:hover {{
-    background-color: {ACCENT_CLAIR};
+    background-color: {p.accent_clair};
 }}
 QPushButton[variant="ligneAction"] {{
     padding: 3px 10px;
     font-size: {pt_ligne_action:.1f}pt;
     border-radius: 5px;
-    color: {TEXTE_DIM};
+    color: {p.texte_dim};
 }}
 QPushButton[variant="ligneAction"]:hover {{
-    color: {TEXTE};
-    border-color: {ACCENT};
+    color: {p.texte};
+    border-color: {p.accent};
 }}
 QPushButton[variant="ligneActionDanger"] {{
     padding: 3px 10px;
     font-size: {pt_ligne_action:.1f}pt;
     border-radius: 5px;
-    color: {DANGER};
-    border-color: {DANGER};
+    color: {p.danger};
+    border-color: {p.danger};
 }}
 QPushButton[variant="ligneActionDanger"]:hover {{
-    background-color: {DANGER};
-    color: {BG};
+    background-color: {p.danger};
+    color: {p.sur_accent};
 }}
 QPushButton[variant="entete"] {{
     background-color: transparent;
@@ -137,16 +254,16 @@ QPushButton[variant="entete"] {{
     border-radius: 0;
     text-align: left;
     padding: 6px 2px;
-    color: {TEXTE_DIM};
+    color: {p.texte_dim};
     font-weight: bold;
 }}
 QPushButton[variant="entete"]:hover {{
-    color: {TEXTE};
+    color: {p.texte};
 }}
 
 #barreNavigation {{
-    background-color: {SURFACE};
-    border-bottom: 1px solid {BORDER};
+    background-color: {p.surface};
+    border-bottom: 1px solid {p.bordure};
 }}
 QPushButton[variant="nav"] {{
     background-color: transparent;
@@ -154,25 +271,25 @@ QPushButton[variant="nav"] {{
     border-bottom: 2px solid transparent;
     border-radius: 0;
     padding: 6px 14px;
-    color: {TEXTE_DIM};
+    color: {p.texte_dim};
     font-weight: bold;
 }}
 QPushButton[variant="nav"]:hover {{
-    color: {TEXTE};
+    color: {p.texte};
 }}
 QPushButton[variant="nav"]:checked {{
-    color: {TEXTE};
-    border-bottom: 2px solid {ACCENT};
+    color: {p.texte};
+    border-bottom: 2px solid {p.accent};
 }}
 
 QLineEdit, QComboBox {{
-    background-color: {SURFACE};
-    border: 1px solid {BORDER};
+    background-color: {p.surface};
+    border: 1px solid {p.bordure};
     border-radius: 6px;
     padding: 5px 8px;
 }}
 QLineEdit:focus, QComboBox:focus {{
-    border-color: {ACCENT};
+    border-color: {p.accent};
 }}
 
 QCheckBox {{
@@ -182,56 +299,56 @@ QCheckBox {{
 QCheckBox::indicator {{
     width: 18px;
     height: 18px;
-    border: 2px solid {BORDER};
+    border: 2px solid {p.bordure};
     border-radius: 4px;
-    background-color: {SURFACE};
+    background-color: {p.surface};
 }}
 QCheckBox::indicator:hover {{
-    border-color: {ACCENT};
+    border-color: {p.accent};
 }}
 QCheckBox::indicator:checked {{
-    background-color: {ACCENT};
-    border: 2px solid {ACCENT_CLAIR};
+    background-color: {p.accent};
+    border: 2px solid {p.accent_clair};
 }}
 
 QTableWidget, QTreeWidget, QListWidget {{
-    background-color: {SURFACE};
-    border: 1px solid {BORDER};
+    background-color: {p.surface};
+    border: 1px solid {p.bordure};
     border-radius: 8px;
-    gridline-color: {BORDER};
+    gridline-color: {p.bordure};
     outline: none;
 }}
 QListWidget::item {{
-    border-bottom: 1px solid {BORDER};
+    border-bottom: 1px solid {p.bordure};
     padding: 2px;
 }}
 QListWidget::item:last {{
     border-bottom: none;
 }}
 QListWidget::item:hover {{
-    background-color: {PANEL};
+    background-color: {p.panel};
 }}
 QListWidget::item:selected {{
-    background-color: {ACCENT_SOFT};
+    background-color: {p.accent_soft};
 }}
 QHeaderView::section {{
-    background-color: {PANEL};
-    color: {TEXTE_DIM};
+    background-color: {p.panel};
+    color: {p.texte_dim};
     border: none;
     padding: 6px;
     font-weight: bold;
 }}
 
 QSplitter::handle {{
-    background-color: {BORDER};
+    background-color: {p.bordure};
 }}
 
 QGroupBox {{
-    border: 1px solid {BORDER};
+    border: 1px solid {p.bordure};
     border-radius: 8px;
     margin-top: 12px;
     padding-top: 10px;
-    background-color: {SURFACE};
+    background-color: {p.surface};
 }}
 QGroupBox::title {{
     subcontrol-origin: margin;
@@ -239,27 +356,27 @@ QGroupBox::title {{
     left: 10px;
     top: -7px;
     padding: 0 6px;
-    color: {TEXTE_DIM};
+    color: {p.texte_dim};
     font-weight: bold;
 }}
 
 QScrollBar:vertical {{
-    background: {BG};
+    background: {p.bg};
     width: 10px;
 }}
 QScrollBar::handle:vertical {{
-    background: {PANEL};
+    background: {p.panel};
     border-radius: 4px;
 }}
 
 QProgressBar {{
-    background-color: {PANEL};
+    background-color: {p.panel};
     border: none;
     border-radius: 3px;
     max-height: 6px;
 }}
 QProgressBar::chunk {{
-    background-color: {ACCENT};
+    background-color: {p.accent};
     border-radius: 3px;
 }}
 """
