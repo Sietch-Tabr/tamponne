@@ -13,8 +13,9 @@ classe, jamais de fonctions/lambdas (règle vérifiée §8, étape 2).
 import webbrowser
 from typing import cast
 
-from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtCore import QModelIndex, Qt, QThread, Signal
 from PySide6.QtWidgets import (
+    QAbstractItemView,
     QApplication,
     QComboBox,
     QDialog,
@@ -28,8 +29,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QScrollArea,
     QSplitter,
-    QTableWidget,
-    QTableWidgetItem,
+    QTableView,
     QVBoxLayout,
     QWidget,
 )
@@ -46,7 +46,8 @@ from src.filtres import (
     filtrer_par_grades,
     resumer_filtres,
 )
-from src.gui.travailleurs import TravailleurRecherche, offre_vers_ligne
+from src.gui.modele_offres import ROLE_OFFRE, ModeleOffres, ProxyOffres
+from src.gui.travailleurs import TravailleurRecherche
 from src.gui.widgets.case_a_cocher import CaseACocher
 from src.gui.widgets.dialogue_detail_offre import DialogueDetailOffre
 from src.gui.widgets.dialogue_selection import (
@@ -178,7 +179,8 @@ class VueRechercheResultats(QWidget):
         self.bouton_raz: QPushButton
         self.bouton_suivre: QPushButton
         self.bouton_voir_detail: QPushButton
-        self.table_resultats: QTableWidget
+        self.table_resultats: QTableView
+        self.champ_filtre_resultats: QLineEdit
         self.label_entete: QLabel
         self.barre_progression: QProgressBar
         self.case_nouvelles_seulement: CaseACocher
@@ -186,7 +188,9 @@ class VueRechercheResultats(QWidget):
         self._afficher_tout = False
         self._grades_filtrage: list[str] = []
         self._offres_affichees: list[Offre] = []
-        self._offres_visibles: list[Offre] = []
+        self._modele_offres = ModeleOffres(self)
+        self._proxy_offres = ProxyOffres(self)
+        self._proxy_offres.setSourceModel(self._modele_offres)
         self._nouvelles: set[str] = set()
         self._dernier_nb_pages = 1
         self._thread: QThread | None = None
@@ -206,8 +210,15 @@ class VueRechercheResultats(QWidget):
         self.case_nouvelles_seulement.toggled.connect(
             self._on_toggle_nouvelles_seulement
         )
-        self.table_resultats.itemDoubleClicked.connect(self._ouvrir_offre)
-        self.table_resultats.itemSelectionChanged.connect(self._maj_boutons_selection)
+        self.champ_filtre_resultats.textChanged.connect(
+            self._proxy_offres.setFilterFixedString
+        )
+        self.table_resultats.doubleClicked.connect(self._ouvrir_offre)
+        self.table_resultats.selectionModel().selectionChanged.connect(
+            self._maj_boutons_selection
+        )
+        # Un reset du modèle vide la sélection sans émettre selectionChanged.
+        self._proxy_offres.modelReset.connect(self._maj_boutons_selection)
 
     # --- Construction ---
 
@@ -475,11 +486,22 @@ class VueRechercheResultats(QWidget):
         self.case_nouvelles_seulement.setVisible(False)
         disposition.addWidget(self.case_nouvelles_seulement)
 
-        self.table_resultats = QTableWidget(0, 5)
-        self.table_resultats.setHorizontalHeaderLabels(
-            ["Titre", "Employeur", "Localisation", "Publiée le", "Source"]
+        self.champ_filtre_resultats = QLineEdit()
+        self.champ_filtre_resultats.setPlaceholderText("Filtrer les résultats…")
+        self.champ_filtre_resultats.setClearButtonEnabled(True)
+        self.champ_filtre_resultats.setToolTip(
+            "Filtre les offres affichées sur toutes les colonnes, sans relancer "
+            "de recherche"
         )
+        disposition.addWidget(self.champ_filtre_resultats)
+
+        self.table_resultats = QTableView()
+        self.table_resultats.setModel(self._proxy_offres)
         entete = self.table_resultats.horizontalHeader()
+        # Aucune colonne triée au départ : l'ordre d'origine des sources
+        # est conservé tant que l'utilisateur ne clique pas un en-tête.
+        entete.setSortIndicator(-1, Qt.SortOrder.AscendingOrder)
+        self.table_resultats.setSortingEnabled(True)
         # Titre étiré (colonne la plus lue), date et source compactes.
         entete.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         entete.setSectionResizeMode(3, QHeaderView.ResizeMode.Fixed)
@@ -490,9 +512,14 @@ class VueRechercheResultats(QWidget):
         self.table_resultats.verticalHeader().setSectionResizeMode(
             QHeaderView.ResizeMode.ResizeToContents
         )
-        self.table_resultats.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.table_resultats.setEditTriggers(
+            QAbstractItemView.EditTrigger.NoEditTriggers
+        )
         self.table_resultats.setSelectionBehavior(
-            QTableWidget.SelectionBehavior.SelectRows
+            QAbstractItemView.SelectionBehavior.SelectRows
+        )
+        self.table_resultats.setSelectionMode(
+            QAbstractItemView.SelectionMode.SingleSelection
         )
         disposition.addWidget(self.table_resultats)
 
@@ -770,55 +797,40 @@ class VueRechercheResultats(QWidget):
         """Filtre le tableau sur les seules offres nouvelles, sans relancer
         de recherche — équivalent du choix « Afficher nouvelles seulement »
         du CLI historique (`_construire_choices_navigation`)."""
-        if coche:
-            offres = [
-                o
-                for o in self._offres_affichees
-                if o.get("reference") in self._nouvelles
-            ]
-        else:
-            offres = self._offres_affichees
-        self._peupler_table(offres)
-
-    def _peupler_table(self, offres: list[Offre]) -> None:
-        self._offres_visibles = offres
-        self.bouton_suivre.setEnabled(False)
-        self.bouton_voir_detail.setEnabled(False)
-        self.table_resultats.setRowCount(len(offres))
-        for ligne, offre in enumerate(offres):
-            colonnes = list(offre_vers_ligne(offre))
-            titre_complet = colonnes[0]
-            if offre.get("reference") in self._nouvelles:
-                colonnes[0] = f"★ {colonnes[0]}"
-            for colonne, valeur in enumerate(colonnes):
-                item = QTableWidgetItem(valeur)
-                if colonne == 0:
-                    # infobulle avec le titre complet : filet de sécurité
-                    # si même 2 lignes ne suffisent pas à tout afficher.
-                    item.setToolTip(titre_complet)
-                self.table_resultats.setItem(ligne, colonne, item)
+        self._proxy_offres.definir_nouvelles_seulement(coche)
         self.table_resultats.resizeRowsToContents()
 
-    def _ouvrir_offre(self, item: QTableWidgetItem) -> None:
-        ligne = item.row()
-        if 0 <= ligne < len(self._offres_visibles):
-            url = self._offres_visibles[ligne]["url"]
-            if url.startswith("https://"):
-                webbrowser.open(url)
+    def _peupler_table(self, offres: list[Offre]) -> None:
+        self._proxy_offres.definir_nouvelles_seulement(False)
+        self._modele_offres.definir_offres(offres, self._nouvelles)
+        self.table_resultats.resizeRowsToContents()
+
+    @property
+    def _offres_visibles(self) -> list[Offre]:
+        """Offres affichées dans l'ordre courant du tableau (tri, filtre
+        texte et « nouvelles seulement » compris)."""
+        return self._proxy_offres.offres_visibles()
+
+    def _offre_selectionnee(self) -> Offre | None:
+        lignes = self.table_resultats.selectionModel().selectedRows()
+        if not lignes:
+            return None
+        return lignes[0].data(ROLE_OFFRE)
+
+    def _ouvrir_offre(self, index: QModelIndex) -> None:
+        offre = index.data(ROLE_OFFRE) if index.isValid() else None
+        if offre is not None and offre["url"].startswith("https://"):
+            webbrowser.open(offre["url"])
 
     def _maj_boutons_selection(self) -> None:
-        selection = bool(self.table_resultats.selectedItems())
+        selection = self.table_resultats.selectionModel().hasSelection()
         self.bouton_suivre.setEnabled(selection)
         self.bouton_voir_detail.setEnabled(selection)
 
     def _voir_detail_offre(self) -> None:
-        lignes = self.table_resultats.selectionModel().selectedRows()
-        if not lignes:
+        offre = self._offre_selectionnee()
+        if offre is None:
             return
-        ligne = lignes[0].row()
-        if not (0 <= ligne < len(self._offres_visibles)):
-            return
-        offre = self._offres_visibles[ligne]
 
         # GET synchrone ponctuel, pas besoin d'un QThread dédié.
         QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
@@ -838,13 +850,9 @@ class VueRechercheResultats(QWidget):
         dialogue.exec()
 
     def _suivre_candidature(self) -> None:
-        lignes = self.table_resultats.selectionModel().selectedRows()
-        if not lignes:
+        offre = self._offre_selectionnee()
+        if offre is None:
             return
-        ligne = lignes[0].row()
-        if not (0 <= ligne < len(self._offres_visibles)):
-            return
-        offre = self._offres_visibles[ligne]
 
         # GET synchrone ponctuel, même compromis que le rafraîchissement du cache.
         QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)

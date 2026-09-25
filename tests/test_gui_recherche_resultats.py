@@ -322,7 +322,7 @@ def test_lancer_recherche_peuple_la_table(qtbot, monkeypatch):
     vue = VueRechercheResultats()
     qtbot.addWidget(vue)
     qtbot.mouseClick(vue.bouton_lancer, Qt.MouseButton.LeftButton)
-    qtbot.waitUntil(lambda: vue.table_resultats.rowCount() == 1, timeout=2000)
+    qtbot.waitUntil(lambda: vue.table_resultats.model().rowCount() == 1, timeout=2000)
 
 
 def test_barre_progression_visible_pendant_recherche_puis_cachee(qtbot, monkeypatch):
@@ -336,7 +336,7 @@ def test_barre_progression_visible_pendant_recherche_puis_cachee(qtbot, monkeypa
     assert vue.barre_progression.isVisible() is False
 
     qtbot.mouseClick(vue.bouton_lancer, Qt.MouseButton.LeftButton)
-    qtbot.waitUntil(lambda: vue.table_resultats.rowCount() == 1, timeout=2000)
+    qtbot.waitUntil(lambda: vue.table_resultats.model().rowCount() == 1, timeout=2000)
     qtbot.waitUntil(lambda: vue._thread is None, timeout=2000)
 
     assert vue.barre_progression.isVisible() is False
@@ -355,6 +355,57 @@ def test_progression_agregee_sur_les_sources_en_parallele(qtbot):
     assert vue.barre_progression.value() == 3
     assert "page 3/8" in vue.label_entete.text()
     assert "1/2 sources terminées" in vue.label_entete.text()
+
+
+def test_filtre_texte_restreint_le_tableau_et_lexport(qtbot, monkeypatch):
+    offre_autre: Offre = {
+        **_OFFRE_TEST,
+        "reference": "O9",
+        "titre": "Juriste contentieux",
+        "employeur": "Préfecture",
+    }
+
+    def _rechercher_factice(self, filtres, on_page=None):
+        return [_OFFRE_TEST, offre_autre], 1, False
+
+    monkeypatch.setattr(ChoisirLeServicePublic, "rechercher", _rechercher_factice)
+    monkeypatch.setattr(
+        "src.gui.vues.recherche_resultats.question_oui_non",
+        lambda *a, **k: False,
+    )
+
+    vue = VueRechercheResultats()
+    qtbot.addWidget(vue)
+    qtbot.mouseClick(vue.bouton_lancer, Qt.MouseButton.LeftButton)
+    qtbot.waitUntil(lambda: vue.table_resultats.model().rowCount() == 2, timeout=2000)
+
+    vue.champ_filtre_resultats.setText("juriste")
+    assert vue.table_resultats.model().rowCount() == 1
+    assert vue._offres_visibles == [offre_autre]
+
+    vue._exporter_html()
+    html = next(export.DOSSIER_EXPORTS.glob("*.html")).read_text(encoding="utf-8")
+    assert "Juriste contentieux" in html
+    assert _OFFRE_TEST["titre"] not in html
+
+
+def test_clic_entete_trie_le_tableau(qtbot, monkeypatch):
+    offre_z: Offre = {**_OFFRE_TEST, "reference": "OZ", "titre": "Zoologiste"}
+    offre_a: Offre = {**_OFFRE_TEST, "reference": "OA", "titre": "Archiviste"}
+
+    def _rechercher_factice(self, filtres, on_page=None):
+        return [offre_z, offre_a], 1, False
+
+    monkeypatch.setattr(ChoisirLeServicePublic, "rechercher", _rechercher_factice)
+
+    vue = VueRechercheResultats()
+    qtbot.addWidget(vue)
+    qtbot.mouseClick(vue.bouton_lancer, Qt.MouseButton.LeftButton)
+    qtbot.waitUntil(lambda: vue.table_resultats.model().rowCount() == 2, timeout=2000)
+    assert vue._offres_visibles == [offre_z, offre_a]  # ordre d'origine
+
+    vue.table_resultats.sortByColumn(0, Qt.SortOrder.AscendingOrder)
+    assert vue._offres_visibles == [offre_a, offre_z]
 
 
 def test_statut_recherche_visible_puis_retabli_apres_resultat(qtbot, monkeypatch):
@@ -407,8 +458,8 @@ def test_fenetre_reste_reactive_pendant_une_recherche_lente(qtbot, monkeypatch):
 
     qtbot.waitUntil(lambda: vue._thread is None, timeout=2000)
 
-    assert vue.table_resultats.item(0, 0).text() == _OFFRE_TEST["titre"]
-    assert vue.table_resultats.item(0, 1).text() == "DGFiP Hérault"
+    assert vue.table_resultats.model().index(0, 0).data() == _OFFRE_TEST["titre"]
+    assert vue.table_resultats.model().index(0, 1).data() == "DGFiP Hérault"
     assert "1 offre(s)" in vue.label_entete.text()
     assert vue.bouton_lancer.text() == "Lancer la recherche"
     assert vue.bouton_lancer.isEnabled()
@@ -423,7 +474,7 @@ def test_bouton_suivre_desactive_sans_selection_puis_active(qtbot, monkeypatch):
     vue = VueRechercheResultats()
     qtbot.addWidget(vue)
     qtbot.mouseClick(vue.bouton_lancer, Qt.MouseButton.LeftButton)
-    qtbot.waitUntil(lambda: vue.table_resultats.rowCount() == 1, timeout=2000)
+    qtbot.waitUntil(lambda: vue.table_resultats.model().rowCount() == 1, timeout=2000)
     assert vue.bouton_suivre.isEnabled() is False
 
     vue.table_resultats.selectRow(0)
@@ -439,7 +490,7 @@ def test_bouton_voir_detail_desactive_sans_selection_puis_active(qtbot, monkeypa
     vue = VueRechercheResultats()
     qtbot.addWidget(vue)
     qtbot.mouseClick(vue.bouton_lancer, Qt.MouseButton.LeftButton)
-    qtbot.waitUntil(lambda: vue.table_resultats.rowCount() == 1, timeout=2000)
+    qtbot.waitUntil(lambda: vue.table_resultats.model().rowCount() == 1, timeout=2000)
     assert vue.bouton_voir_detail.isEnabled() is False
 
     vue.table_resultats.selectRow(0)
@@ -483,7 +534,7 @@ def test_voir_detail_offre_ouvre_la_dialogue_avec_le_detail(qtbot, monkeypatch):
     vue = VueRechercheResultats()
     qtbot.addWidget(vue)
     qtbot.mouseClick(vue.bouton_lancer, Qt.MouseButton.LeftButton)
-    qtbot.waitUntil(lambda: vue.table_resultats.rowCount() == 1, timeout=2000)
+    qtbot.waitUntil(lambda: vue.table_resultats.model().rowCount() == 1, timeout=2000)
 
     vue.table_resultats.selectRow(0)
     qtbot.mouseClick(vue.bouton_voir_detail, Qt.MouseButton.LeftButton)
@@ -527,7 +578,7 @@ def test_suivre_cette_offre_demarre_le_suivi_de_candidature(qtbot, monkeypatch):
     vue = VueRechercheResultats()
     qtbot.addWidget(vue)
     qtbot.mouseClick(vue.bouton_lancer, Qt.MouseButton.LeftButton)
-    qtbot.waitUntil(lambda: vue.table_resultats.rowCount() == 1, timeout=2000)
+    qtbot.waitUntil(lambda: vue.table_resultats.model().rowCount() == 1, timeout=2000)
 
     vue.table_resultats.selectRow(0)
     qtbot.mouseClick(vue.bouton_suivre, Qt.MouseButton.LeftButton)
@@ -576,7 +627,7 @@ def test_avertissement_source_en_echec_affiche_sans_bloquer_les_autres(
     vue = VueRechercheResultats(filtres_existants={"versants": []})
     qtbot.addWidget(vue)
     qtbot.mouseClick(vue.bouton_lancer, Qt.MouseButton.LeftButton)
-    qtbot.waitUntil(lambda: vue.table_resultats.rowCount() == 1, timeout=2000)
+    qtbot.waitUntil(lambda: vue.table_resultats.model().rowCount() == 1, timeout=2000)
 
     assert "indisponible" in vue.label_entete.text()
 
@@ -616,9 +667,9 @@ def test_double_clic_ouvre_loffre_dans_le_navigateur(qtbot, monkeypatch):
     vue = VueRechercheResultats()
     qtbot.addWidget(vue)
     qtbot.mouseClick(vue.bouton_lancer, Qt.MouseButton.LeftButton)
-    qtbot.waitUntil(lambda: vue.table_resultats.rowCount() == 1, timeout=2000)
+    qtbot.waitUntil(lambda: vue.table_resultats.model().rowCount() == 1, timeout=2000)
 
-    vue._ouvrir_offre(vue.table_resultats.item(0, 0))
+    vue._ouvrir_offre(vue.table_resultats.model().index(0, 0))
     assert ouvertes == [_OFFRE_TEST["url"]]
 
 
@@ -633,13 +684,13 @@ def test_grades_superieurs_exclus_par_defaut_et_reaffiches_sur_demande(
     vue = VueRechercheResultats()
     qtbot.addWidget(vue)
     qtbot.mouseClick(vue.bouton_lancer, Qt.MouseButton.LeftButton)
-    qtbot.waitUntil(lambda: vue.table_resultats.rowCount() >= 1, timeout=2000)
-    assert vue.table_resultats.rowCount() == 1  # l'offre IDIV est exclue
+    qtbot.waitUntil(lambda: vue.table_resultats.model().rowCount() >= 1, timeout=2000)
+    assert vue.table_resultats.model().rowCount() == 1  # l'offre IDIV est exclue
     assert "1 offre(s) IDiv/IP exclue" in vue.label_entete.text()
 
     vue._grades_superieurs_case.setChecked(True)
     qtbot.mouseClick(vue.bouton_lancer, Qt.MouseButton.LeftButton)
-    qtbot.waitUntil(lambda: vue.table_resultats.rowCount() == 2, timeout=2000)
+    qtbot.waitUntil(lambda: vue.table_resultats.model().rowCount() == 2, timeout=2000)
 
 
 def test_exporter_html_genere_un_fichier(qtbot, monkeypatch):
@@ -658,7 +709,7 @@ def test_exporter_html_genere_un_fichier(qtbot, monkeypatch):
     assert vue.bouton_exporter.isEnabled() is False
 
     qtbot.mouseClick(vue.bouton_lancer, Qt.MouseButton.LeftButton)
-    qtbot.waitUntil(lambda: vue.table_resultats.rowCount() == 1, timeout=2000)
+    qtbot.waitUntil(lambda: vue.table_resultats.model().rowCount() == 1, timeout=2000)
     assert vue.bouton_exporter.isEnabled() is True
 
     vue._exporter_html()
@@ -676,14 +727,14 @@ def test_badge_nouvelles_offres_pour_une_recherche_liee_a_un_profil(qtbot, monke
     vue = VueRechercheResultats(nom_profil="mon-profil")
     qtbot.addWidget(vue)
     qtbot.mouseClick(vue.bouton_lancer, Qt.MouseButton.LeftButton)
-    qtbot.waitUntil(lambda: vue.table_resultats.rowCount() == 1, timeout=2000)
+    qtbot.waitUntil(lambda: vue.table_resultats.model().rowCount() == 1, timeout=2000)
     # attend la fin réelle du thread (pas juste le résultat affiché) avant
     # de relancer une recherche — détruire un QThread encore en cours fait
     # planter Qt, cf. `arreter_recherche_en_cours`.
     qtbot.waitUntil(lambda: vue._thread is None, timeout=2000)
 
     assert vue._nouvelles == {"O1"}
-    assert "★" in vue.table_resultats.item(0, 0).text()
+    assert "★" in vue.table_resultats.model().index(0, 0).data()
     assert "1 nouvelle(s) offre(s)" in vue.label_entete.text()
     # toutes les offres sont nouvelles : rien à filtrer, la case reste
     # cachée (même règle que le CLI historique).
@@ -694,10 +745,10 @@ def test_badge_nouvelles_offres_pour_une_recherche_liee_a_un_profil(qtbot, monke
     # qui disparaîtrait au lancement suivant serait une régression, pas
     # le comportement voulu.
     qtbot.mouseClick(vue.bouton_lancer, Qt.MouseButton.LeftButton)
-    qtbot.waitUntil(lambda: vue.table_resultats.rowCount() == 1, timeout=2000)
+    qtbot.waitUntil(lambda: vue.table_resultats.model().rowCount() == 1, timeout=2000)
     qtbot.waitUntil(lambda: vue._thread is None, timeout=2000)
     assert vue._nouvelles == {"O1"}
-    assert "★" in vue.table_resultats.item(0, 0).text()
+    assert "★" in vue.table_resultats.model().index(0, 0).data()
 
 
 def test_case_nouvelles_seulement_filtre_le_tableau_sans_relancer(qtbot, monkeypatch):
@@ -729,7 +780,7 @@ def test_case_nouvelles_seulement_filtre_le_tableau_sans_relancer(qtbot, monkeyp
     qtbot.addWidget(vue)
     vue.show()  # isVisible() dépend du mappage réel à l'écran, cf. doc Qt
     qtbot.mouseClick(vue.bouton_lancer, Qt.MouseButton.LeftButton)
-    qtbot.waitUntil(lambda: vue.table_resultats.rowCount() == 2, timeout=2000)
+    qtbot.waitUntil(lambda: vue.table_resultats.model().rowCount() == 2, timeout=2000)
     qtbot.waitUntil(lambda: vue._thread is None, timeout=2000)
 
     assert vue._nouvelles == {"O1"}
@@ -737,12 +788,12 @@ def test_case_nouvelles_seulement_filtre_le_tableau_sans_relancer(qtbot, monkeyp
     assert vue.case_nouvelles_seulement.isChecked() is False
 
     vue.case_nouvelles_seulement.setChecked(True)
-    assert vue.table_resultats.rowCount() == 1
-    assert vue.table_resultats.item(0, 0).text() == f"★ {_OFFRE_TEST['titre']}"
+    assert vue.table_resultats.model().rowCount() == 1
+    assert vue.table_resultats.model().index(0, 0).data() == f"★ {_OFFRE_TEST['titre']}"
     assert vue._offres_visibles == [_OFFRE_TEST]
 
     vue.case_nouvelles_seulement.setChecked(False)
-    assert vue.table_resultats.rowCount() == 2
+    assert vue.table_resultats.model().rowCount() == 2
     assert vue._offres_visibles == [_OFFRE_TEST, offre_ancienne]
 
 
@@ -755,7 +806,7 @@ def test_pas_de_badge_nouvelles_offres_pour_une_recherche_vierge(qtbot, monkeypa
     vue = VueRechercheResultats()  # pas de nom_profil
     qtbot.addWidget(vue)
     qtbot.mouseClick(vue.bouton_lancer, Qt.MouseButton.LeftButton)
-    qtbot.waitUntil(lambda: vue.table_resultats.rowCount() == 1, timeout=2000)
+    qtbot.waitUntil(lambda: vue.table_resultats.model().rowCount() == 1, timeout=2000)
 
     assert vue._nouvelles == set()
     assert "nouvelle(s) offre(s)" not in vue.label_entete.text()
