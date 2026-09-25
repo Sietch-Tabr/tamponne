@@ -1,12 +1,12 @@
 """Écran Suivi de candidature : liste des candidatures suivies."""
 
 import webbrowser
-from collections.abc import Callable
-from datetime import date as date_cls
 from functools import partial
 
-from PySide6.QtCore import QDate, QThread, Qt
+from PySide6.QtCore import QDate, QEvent, QModelIndex, QObject, QThread, Qt
+from PySide6.QtGui import QAction, QKeyEvent
 from PySide6.QtWidgets import (
+    QAbstractItemView,
     QComboBox,
     QDateEdit,
     QDialog,
@@ -14,9 +14,9 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QListWidget,
-    QListWidgetItem,
+    QListView,
     QPushButton,
+    QStackedWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -26,11 +26,15 @@ from src.candidatures import (
     ajouter_evenement,
     charger_candidatures,
     marquer_disponibilite,
-    relance_suggeree,
-    statut_libelle,
     supprimer_candidature,
 )
 from src.gui.travailleurs import VerificateurDisponibilite
+from src.gui.widgets.delegue_candidature import (
+    ACTIONS,
+    ROLE_REFERENCE,
+    DelegueCandidature,
+    ModeleCandidatures,
+)
 from src.gui.widgets.dialogue_detail_offre import DialogueDetailOffre
 from src.gui.widgets.dialogue_selection import boutons_ok_annuler, question_oui_non
 from src.types import Candidature
@@ -71,105 +75,13 @@ class _DialogueEvenement(QDialog):
         return self.note_champ.text().strip()
 
 
-def _reformater_date_iso(date_iso: str) -> str:
-    """Reformate une date ISO (`YYYY-MM-DD`, format de `EvenementCandidature.date`)
-    en JJ/MM/AAAA. Retourne la chaîne d'origine si le format n'est pas
-    reconnu (ne devrait pas arriver, écrit uniquement par ce module)."""
-    try:
-        return date_cls.fromisoformat(date_iso).strftime("%d/%m/%Y")
-    except ValueError:
-        return date_iso
-
-
-class _LigneCandidature(QWidget):
-    """Une rangée composée par candidature : titre + statut + actions à
-    gauche (même pattern que `_LigneProfil`, src/gui/vues/accueil.py),
-    historique complet (ordre chronologique) à droite."""
-
-    def __init__(
-        self,
-        reference: str,
-        candidature: Candidature,
-        on_action: Callable[[str, str, Candidature], None],
-        parent: QWidget | None = None,
-    ) -> None:
-        super().__init__(parent)
-        disposition_principale = QHBoxLayout(self)
-        disposition_principale.setContentsMargins(14, 12, 14, 12)
-        disposition_principale.setSpacing(20)
-
-        colonne_gauche = QVBoxLayout()
-        colonne_gauche.setSpacing(6)
-
-        entete = QHBoxLayout()
-        entete.setSpacing(12)
-        titre_label = QLabel(candidature["offre_titre"])
-        titre_label.setProperty("role", "nom")
-        entete.addWidget(titre_label, 1)
-        if not candidature.get("disponible", True):
-            badge_offre = QLabel("Offre dépubliée")
-            badge_offre.setProperty("role", "badgeNeutre")
-            entete.addWidget(badge_offre, 0, Qt.AlignmentFlag.AlignVCenter)
-        if relance_suggeree(candidature):
-            badge = QLabel("Relance suggérée")
-            badge.setProperty("role", "badgeAttention")
-            entete.addWidget(badge, 0, Qt.AlignmentFlag.AlignVCenter)
-        colonne_gauche.addLayout(entete)
-
-        resume = QLabel(
-            f"{candidature['offre_employeur']} · suivi depuis le "
-            f"{_reformater_date_iso(candidature['date_candidature'])} · "
-            f"{statut_libelle(candidature)}"
-        )
-        resume.setProperty("role", "sousTexte")
-        colonne_gauche.addWidget(resume)
-
-        actions = QHBoxLayout()
-        actions.setSpacing(6)
-        for texte, action, variant in [
-            ("Voir l'offre", "voir", "ligneAction"),
-            ("Voir le détail", "detail", "ligneAction"),
-            ("Ajouter un événement", "evenement", "ligneAction"),
-            ("Supprimer", "supprimer", "ligneActionDanger"),
-        ]:
-            bouton = QPushButton(texte)
-            bouton.setProperty("variant", variant)
-            if action == "voir" and not candidature.get("disponible", True):
-                bouton.setToolTip(
-                    "Cette offre n'est plus en ligne — le lien ne mènera "
-                    "plus à rien d'utile, l'historique reste ci-dessus."
-                )
-            bouton.clicked.connect(partial(on_action, action, reference, candidature))
-            actions.addWidget(bouton)
-        actions.addStretch()
-        colonne_gauche.addLayout(actions)
-        disposition_principale.addLayout(colonne_gauche, 1)
-
-        colonne_historique = QWidget()
-        colonne_historique.setMinimumWidth(280)
-        colonne_historique.setMaximumWidth(380)
-        # Sans ça, hérite du fond opaque générique de theme.py (déjà vu sur les QCheckBox).
-        colonne_historique.setStyleSheet("background: transparent;")
-        disposition_historique = QVBoxLayout(colonne_historique)
-        disposition_historique.setContentsMargins(0, 0, 0, 0)
-        disposition_historique.setSpacing(3)
-        label_titre_historique = QLabel("Historique")
-        label_titre_historique.setProperty("role", "nom")
-        disposition_historique.addWidget(label_titre_historique)
-        historique = sorted(
-            candidature.get("historique") or [], key=lambda e: e["date"]
-        )
-        for evenement in historique:
-            libelle = TYPES_EVENEMENT.get(evenement["type"], evenement["type"])
-            texte = f"{_reformater_date_iso(evenement['date'])} — {libelle}"
-            if evenement.get("note"):
-                texte += f" ({evenement['note']})"
-            label_evenement = QLabel(texte)
-            label_evenement.setProperty("role", "sousTexte")
-            label_evenement.setWordWrap(True)
-            disposition_historique.addWidget(label_evenement)
-        disposition_historique.addStretch()
-        disposition_principale.addWidget(colonne_historique, 0)
+_TOUCHES_ACTIONS: dict[Qt.Key, str] = {
+    Qt.Key.Key_Return: "detail",
+    Qt.Key.Key_Enter: "detail",
+    Qt.Key.Key_Delete: "supprimer",
+    Qt.Key.Key_Backspace: "supprimer",
+}
+"""Touches du clavier → action sur la candidature courante."""
 
 
 class VueCandidatures(QWidget):
@@ -208,9 +120,75 @@ class VueCandidatures(QWidget):
         entete.addWidget(self.bouton_verifier, 0)
         disposition.addLayout(entete)
 
-        self.liste = QListWidget()
-        self.liste.setSpacing(0)
-        disposition.addWidget(self.liste, 1)
+        self.label_vide = QLabel(
+            "Aucune candidature suivie — utilise « Suivre cette offre » "
+            "depuis un résultat de recherche"
+        )
+        self.label_vide.setProperty("role", "sousTexte")
+        self.label_vide.setWordWrap(True)
+        self.label_vide.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        self.modele = ModeleCandidatures(self)
+        self.liste = QListView()
+        self.liste.setModel(self.modele)
+        self.liste.setMouseTracking(True)
+        # Adjust : relance la mise en page (hauteur des lignes, historique
+        # replié) quand la largeur change.
+        self.liste.setResizeMode(QListView.ResizeMode.Adjust)
+        self.liste.setVerticalScrollMode(
+            QAbstractItemView.ScrollMode.ScrollPerPixel
+        )
+        self.liste.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.delegue = DelegueCandidature(self.liste)
+        self.liste.setItemDelegate(self.delegue)
+        self.delegue.action_demandee.connect(self._on_action_demandee)
+        self.liste.doubleClicked.connect(self._on_double_clic)
+        self.liste.viewport().installEventFilter(self)
+        self._ajouter_actions_clavier()
+
+        self._pile = QStackedWidget()
+        self._pile.addWidget(self.label_vide)
+        self._pile.addWidget(self.liste)
+        disposition.addWidget(self._pile, 1)
+
+    def _ajouter_actions_clavier(self) -> None:
+        """Les boutons étant peints, leurs actions sont aussi exposées au
+        menu contextuel et au clavier (voir `_TOUCHES_ACTIONS`), sur la
+        ligne courante."""
+        self.liste.setContextMenuPolicy(Qt.ContextMenuPolicy.ActionsContextMenu)
+        for action, libelle in ACTIONS:
+            qaction = QAction(libelle, self.liste)
+            qaction.triggered.connect(partial(self._declencher_sur_courante, action))
+            self.liste.addAction(qaction)
+        self.liste.installEventFilter(self)
+
+    def eventFilter(self, objet: QObject, evenement: QEvent) -> bool:
+        if objet is self.liste.viewport() and evenement.type() == QEvent.Type.Leave:
+            self.delegue.reinitialiser_survol()
+        # Filtre plutôt que raccourcis QAction : ceux-ci exigent une
+        # fenêtre active, et QListView consomme déjà Entrée.
+        if (
+            objet is self.liste
+            and isinstance(evenement, QKeyEvent)
+            and evenement.type() == QEvent.Type.KeyPress
+            and evenement.key() in _TOUCHES_ACTIONS
+        ):
+            self._declencher_sur_courante(_TOUCHES_ACTIONS[Qt.Key(evenement.key())])
+            return True
+        return super().eventFilter(objet, evenement)
+
+    def _declencher_sur_courante(self, action: str) -> None:
+        index = self.liste.currentIndex()
+        if index.isValid():
+            self._on_action_demandee(action, index.data(ROLE_REFERENCE))
+
+    def _on_double_clic(self, index: QModelIndex) -> None:
+        self._on_action_demandee("detail", index.data(ROLE_REFERENCE))
+
+    def _on_action_demandee(self, action: str, reference: str) -> None:
+        candidature = self._candidatures.get(reference)
+        if candidature is not None:
+            self._traiter_action(action, reference, candidature)
 
     def _lancer_verification(self) -> None:
         if self._thread is not None and self._thread.isRunning():
@@ -257,31 +235,16 @@ class VueCandidatures(QWidget):
     def rafraichir(self) -> None:
         """Recharge la liste des candidatures depuis le disque."""
         self._candidatures = charger_candidatures()
-        self.liste.clear()
-        if not self._candidatures:
-            item = QListWidgetItem(
-                "Aucune candidature suivie — utilise « Suivre cette offre » "
-                "depuis un résultat de recherche"
-            )
-            item.setFlags(Qt.ItemFlag.NoItemFlags)
-            self.liste.addItem(item)
-            return
-        for reference, candidature in sorted(
-            self._candidatures.items(),
-            key=lambda kv: kv[1]["date_candidature"],
-            reverse=True,
-        ):
-            item = QListWidgetItem()
-            ligne = _LigneCandidature(reference, candidature, self._traiter_action)
-            item.setSizeHint(ligne.sizeHint())
-            self.liste.addItem(item)
-            self.liste.setItemWidget(item, ligne)
+        self.modele.definir_candidatures(self._candidatures)
+        self._pile.setCurrentWidget(
+            self.liste if self._candidatures else self.label_vide
+        )
 
     def _traiter_action(
         self, action: str, reference: str, candidature: Candidature
     ) -> None:
-        """Résolution de l'action choisie, appelée par les boutons de la
-        tuile — reste testable sans piloter de clic réel."""
+        """Résolution de l'action choisie (bouton peint, clavier ou menu
+        contextuel) — reste testable sans piloter de clic réel."""
         if action == "voir":
             url = candidature["offre_url"]
             if url.startswith("https://"):

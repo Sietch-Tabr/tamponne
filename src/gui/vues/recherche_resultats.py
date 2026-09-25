@@ -512,6 +512,7 @@ class VueRechercheResultats(QWidget):
         self.table_resultats.verticalHeader().setSectionResizeMode(
             QHeaderView.ResizeMode.ResizeToContents
         )
+        self.table_resultats.verticalHeader().setVisible(False)
         self.table_resultats.setEditTriggers(
             QAbstractItemView.EditTrigger.NoEditTriggers
         )

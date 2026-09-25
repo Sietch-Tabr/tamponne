@@ -30,8 +30,7 @@ def _rediriger_sources_vers_tmp(tmp_path, monkeypatch):
 def _texte_complet(widget) -> str:
     """Concatène le texte de tous les QLabel et titres de QGroupBox —
     l'Aide est construite en widgets natifs (QGroupBox/QLabel), pas en
-    HTML brut, même pattern que les tuiles composées (_LigneProfil,
-    _LigneCandidature)."""
+    HTML brut, même pattern que les tuiles composées (_LigneProfil)."""
     labels = " ".join(label.text() for label in widget.findChildren(QLabel))
     titres = " ".join(g.title() for g in widget.findChildren(QGroupBox))
     return f"{labels} {titres}"

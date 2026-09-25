@@ -111,7 +111,11 @@ def construire_qpalette(palette: Palette) -> QPalette:
         (roles.ToolTipBase, palette.panel),
         (roles.ToolTipText, palette.texte),
         (roles.Link, palette.accent_clair),
+        (roles.Light, palette.surface),
+        (roles.Midlight, palette.panel),
         (roles.Mid, palette.bordure),
+        (roles.Dark, palette.bordure),
+        (roles.Shadow, palette.bordure),
     ]:
         qpalette.setColor(role, QColor(couleur))
     return qpalette
@@ -311,12 +315,14 @@ QCheckBox::indicator:checked {{
     border: 2px solid {p.accent_clair};
 }}
 
-QTableWidget, QTreeWidget, QListWidget {{
+QTableView, QTreeView, QListView {{
     background-color: {p.surface};
     border: 1px solid {p.bordure};
     border-radius: 8px;
     gridline-color: {p.bordure};
     outline: none;
+    selection-background-color: {p.accent_soft};
+    selection-color: {p.texte};
 }}
 QListWidget::item {{
     border-bottom: 1px solid {p.bordure};
@@ -365,7 +371,7 @@ QScrollBar:vertical {{
     width: 10px;
 }}
 QScrollBar::handle:vertical {{
-    background: {p.panel};
+    background: {p.bordure};
     border-radius: 4px;
 }}
 

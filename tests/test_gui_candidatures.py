@@ -1,16 +1,16 @@
 """Tests de l'écran Suivi de candidature (src/gui/vues/candidatures.py)."""
 
 import pytest
-from PySide6.QtWidgets import QLabel, QWidget
+from PySide6.QtCore import QPoint, Qt
 
 from src import candidatures
 from src.gui.vues.candidatures import VueCandidatures, _DialogueEvenement
+from src.gui.widgets.delegue_candidature import ROLE_CONTENU
 
 
-def _texte_complet(widget: QWidget) -> str:
-    """Concatène le texte de tous les QLabel d'une rangée composée
-    (`_LigneCandidature`), même pattern que `test_gui_accueil.py`."""
-    return " ".join(label.text() for label in widget.findChildren(QLabel))
+def _texte_ligne(vue: VueCandidatures, ligne: int = 0) -> str:
+    """Concatène tous les textes peints pour une ligne du Suivi."""
+    return " ".join(vue.modele.index(ligne).data(ROLE_CONTENU).textes())
 
 
 @pytest.fixture(autouse=True)
@@ -23,8 +23,9 @@ def _rediriger_candidatures_vers_tmp(tmp_path, monkeypatch):
 def test_sans_candidature_affiche_un_message(qtbot):
     vue = VueCandidatures()
     qtbot.addWidget(vue)
-    assert vue.liste.count() == 1
-    assert "Aucune candidature" in vue.liste.item(0).text()
+    assert vue.modele.rowCount() == 0
+    assert vue._pile.currentWidget() is vue.label_vide
+    assert "Aucune candidature" in vue.label_vide.text()
 
 
 def test_liste_les_candidatures_suivies(qtbot):
@@ -33,9 +34,9 @@ def test_liste_les_candidatures_suivies(qtbot):
     )
     vue = VueCandidatures()
     qtbot.addWidget(vue)
-    assert vue.liste.count() == 1
-    ligne = vue.liste.itemWidget(vue.liste.item(0))
-    texte = _texte_complet(ligne)
+    assert vue.modele.rowCount() == 1
+    assert vue._pile.currentWidget() is vue.liste
+    texte = _texte_ligne(vue)
     assert "Attaché" in texte
     assert "DGFiP" in texte
     # Pas d'événement préinséré à la création : le statut par défaut
@@ -181,8 +182,7 @@ def test_badge_relance_suggeree_affiche_si_ancienne(qtbot, monkeypatch):
     candidatures.ajouter_evenement("ref-1", "candidature_envoyee", "2020-01-01")
     vue = VueCandidatures()
     qtbot.addWidget(vue)
-    ligne = vue.liste.itemWidget(vue.liste.item(0))
-    assert "Relance suggérée" in _texte_complet(ligne)
+    assert "Relance suggérée" in _texte_ligne(vue)
 
 
 def test_historique_affiche_dans_lordre_chronologique(qtbot):
@@ -201,8 +201,7 @@ def test_historique_affiche_dans_lordre_chronologique(qtbot):
 
     vue = VueCandidatures()
     qtbot.addWidget(vue)
-    ligne = vue.liste.itemWidget(vue.liste.item(0))
-    texte = _texte_complet(ligne)
+    texte = _texte_ligne(vue)
 
     assert "Historique" in texte
     # ordre chronologique : envoyée (01/01) avant accusé (10/01) avant
@@ -212,3 +211,107 @@ def test_historique_affiche_dans_lordre_chronologique(qtbot):
     pos_entretien = texte.find("20/01/2026")
     assert -1 < pos_envoyee < pos_accuse < pos_entretien
     assert "RDV visio" in texte
+
+
+def _vue_affichee(qtbot) -> VueCandidatures:
+    vue = VueCandidatures()
+    qtbot.addWidget(vue)
+    vue.resize(1000, 600)
+    vue.show()
+    qtbot.waitExposed(vue)
+    return vue
+
+
+def _centre_bouton(vue: VueCandidatures, action: str):
+    index = vue.modele.index(0)
+    rect = vue.liste.visualRect(index)
+    return vue.delegue.rectangles_boutons(rect, vue.liste.font())[action].center()
+
+
+@pytest.mark.parametrize("action", ["voir", "detail", "evenement", "supprimer"])
+def test_clic_sur_un_bouton_peint_declenche_son_action(qtbot, monkeypatch, action):
+    candidatures.ajouter_candidature(
+        "ref-1", "Attaché", "DGFiP", "https://example.org/1"
+    )
+    vue = _vue_affichee(qtbot)
+    appels = []
+    monkeypatch.setattr(
+        vue, "_traiter_action", lambda a, ref, c: appels.append((a, ref))
+    )
+    qtbot.mouseClick(
+        vue.liste.viewport(), Qt.MouseButton.LeftButton, pos=_centre_bouton(vue, action)
+    )
+    assert appels == [(action, "ref-1")]
+
+
+def test_clic_hors_des_boutons_ne_declenche_rien(qtbot, monkeypatch):
+    candidatures.ajouter_candidature(
+        "ref-1", "Attaché", "DGFiP", "https://example.org/1"
+    )
+    vue = _vue_affichee(qtbot)
+    appels = []
+    monkeypatch.setattr(
+        vue, "_traiter_action", lambda a, ref, c: appels.append((a, ref))
+    )
+    rect = vue.liste.visualRect(vue.modele.index(0))
+    qtbot.mouseClick(
+        vue.liste.viewport(), Qt.MouseButton.LeftButton, pos=rect.topLeft() + QPoint(4, 4)
+    )
+    assert appels == []
+
+
+@pytest.mark.parametrize(
+    "touche, action",
+    [
+        (Qt.Key.Key_Return, "detail"),
+        (Qt.Key.Key_Delete, "supprimer"),
+    ],
+)
+def test_raccourcis_clavier_sur_la_ligne_courante(qtbot, monkeypatch, touche, action):
+    candidatures.ajouter_candidature(
+        "ref-1", "Attaché", "DGFiP", "https://example.org/1"
+    )
+    vue = _vue_affichee(qtbot)
+    appels = []
+    monkeypatch.setattr(
+        vue, "_traiter_action", lambda a, ref, c: appels.append((a, ref))
+    )
+    vue.liste.setCurrentIndex(vue.modele.index(0))
+    vue.liste.setFocus()
+    qtbot.keyClick(vue.liste, touche)
+    assert appels == [(action, "ref-1")]
+
+
+def test_menu_contextuel_expose_les_quatre_actions(qtbot):
+    vue = VueCandidatures()
+    qtbot.addWidget(vue)
+    assert vue.liste.contextMenuPolicy() == Qt.ContextMenuPolicy.ActionsContextMenu
+    assert [a.text() for a in vue.liste.actions()] == [
+        "Voir l'offre",
+        "Voir le détail",
+        "Ajouter un événement",
+        "Supprimer",
+    ]
+
+
+def test_badge_offre_depubliee(qtbot):
+    candidatures.ajouter_candidature(
+        "ref-1", "Attaché", "DGFiP", "https://example.org/1"
+    )
+    candidatures.marquer_disponibilite("ref-1", False)
+    vue = VueCandidatures()
+    qtbot.addWidget(vue)
+    contenu = vue.modele.index(0).data(ROLE_CONTENU)
+    assert ("Offre dépubliée", "neutre") in contenu.badges
+    assert contenu.disponible is False
+
+
+def test_candidatures_triees_de_la_plus_recente_a_la_plus_ancienne(qtbot):
+    for reference, date in [("ancienne", "2026-01-01"), ("recente", "2026-03-01")]:
+        candidatures.ajouter_candidature(
+            reference, reference, "DGFiP", "https://example.org/1", date_candidature=date
+        )
+    vue = VueCandidatures()
+    qtbot.addWidget(vue)
+    assert vue.modele.index(0).data(ROLE_CONTENU).reference == "recente"
+    assert vue.modele.index(1).data(ROLE_CONTENU).reference == "ancienne"
