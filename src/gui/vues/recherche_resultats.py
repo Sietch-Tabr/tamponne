@@ -191,7 +191,9 @@ class VueRechercheResultats(QWidget):
         self._dernier_nb_pages = 1
         self._thread: QThread | None = None
         self._travailleur: TravailleurRecherche | None = None
-        self._source_en_cours_nom = ""
+        self._pages_par_source: dict[str, tuple[int, int]] = {}
+        self._nb_sources_lancees = 0
+        self._nb_sources_terminees = 0
         self._avertissements: list[str] = []
 
         self._construire_ui()
@@ -604,7 +606,9 @@ class VueRechercheResultats(QWidget):
         self.barre_progression.setRange(0, 0)
         self.barre_progression.setVisible(True)
 
-        self._source_en_cours_nom = ""
+        self._pages_par_source = {}
+        self._nb_sources_lancees = 0
+        self._nb_sources_terminees = 0
         self._avertissements = []
 
         self._thread = QThread()
@@ -616,30 +620,47 @@ class VueRechercheResultats(QWidget):
         self._travailleur.erreur.connect(self._on_erreur)
         self._travailleur.avertissement.connect(self._on_avertissement)
         self._travailleur.source_en_cours.connect(self._on_source_en_cours)
+        self._travailleur.source_terminee.connect(self._on_source_terminee)
         self._travailleur.resultat.connect(self._thread.quit)
         self._travailleur.erreur.connect(self._thread.quit)
         self._thread.finished.connect(self._on_thread_termine)
         self._thread.start()
 
-    def _on_source_en_cours(self, nom: str) -> None:
-        self._source_en_cours_nom = nom
-        self._definir_statut_recherche(f"Recherche en cours… ({nom})")
+    def _on_source_en_cours(self, _nom: str) -> None:
+        self._nb_sources_lancees += 1
+        self._maj_statut_progression()
+
+    def _on_source_terminee(self, _nom: str) -> None:
+        self._nb_sources_terminees += 1
+        self._maj_statut_progression()
 
     def _on_avertissement(self, message: str) -> None:
         self._avertissements.append(message)
 
-    def _on_progression(self, page: int, total: int) -> None:
+    def _on_progression(self, nom: str, page: int, total: int) -> None:
+        self._pages_par_source[nom] = (page, total)
+        self._maj_statut_progression()
+
+    def _maj_statut_progression(self) -> None:
+        """Statut agrégé des sources interrogées en parallèle : pages
+        chargées sur pages annoncées (toutes sources confondues) et
+        nombre de sources terminées."""
+        pages = sum(page for page, _ in self._pages_par_source.values())
+        total = sum(total for _, total in self._pages_par_source.values())
+        morceaux = []
         if total > 1:
-            suffixe = (
-                f" ({self._source_en_cours_nom})" if self._source_en_cours_nom else ""
-            )
-            self.bouton_lancer.setText(f"Page {page}/{total}…")
-            self._definir_statut_recherche(
-                f"Recherche en cours… page {page}/{total}{suffixe}"
-            )
+            morceaux.append(f"page {pages}/{total}")
+            self.bouton_lancer.setText(f"Page {pages}/{total}…")
             # Nombre de pages connu : bascule en mode déterminé.
             self.barre_progression.setRange(0, total)
-            self.barre_progression.setValue(page)
+            self.barre_progression.setValue(pages)
+        if self._nb_sources_lancees > 1:
+            morceaux.append(
+                f"{self._nb_sources_terminees}/{self._nb_sources_lancees} "
+                "sources terminées"
+            )
+        suffixe = f" {' · '.join(morceaux)}" if morceaux else ""
+        self._definir_statut_recherche(f"Recherche en cours…{suffixe}")
 
     def _definir_statut_recherche(self, texte: str) -> None:
         """Affiche un texte de statut bien visible (accent, gras) pendant
@@ -734,8 +755,9 @@ class VueRechercheResultats(QWidget):
         pendant qu'il tourne encore (vérifié en pratique : abandon
         natif avec `QThread::~QThread` dans la pile d'appel).
 
-        Bloque le thread principal jusqu'à la fin du thread réseau en
-        cours — borné par le timeout HTTP (30 s, `api.py`). Rare en
+        Bloque le thread principal jusqu'à la fin des sources en cours
+        d'interrogation (en parallèle) — borné par le timeout HTTP
+        (30 s, `api.py`) de la requête en cours de chaque source. Rare en
         pratique (il faut naviguer ailleurs pendant qu'une recherche
         tourne) ; accepté comme compromis plutôt que de laisser un
         thread orphelin continuer en arrière-plan sur une vue détruite.

@@ -1,6 +1,10 @@
 """Tests des utilitaires GUI de recherche réseau (src/gui/travailleurs.py)."""
 
+import threading
+from functools import partialmethod
+
 import pytest
+from PySide6.QtCore import QCoreApplication
 
 from src import parametres_sources
 from src.gui.travailleurs import (
@@ -375,6 +379,96 @@ def test_executer_fhf_dedoublonnee_contre_les_autres_sources(monkeypatch):
     resultats, _, _ = _executer(TravailleurRecherche({}, {}))
     offres = resultats[0][0]
     assert {o["reference"] for o in offres} == {"O1"}
+
+
+def test_executer_interroge_les_sources_en_parallele(monkeypatch):
+    # La barrière ne se franchit que si les deux sources tournent en même
+    # temps : en série, la première attendrait indéfiniment (timeout).
+    barriere = threading.Barrier(2, timeout=5)
+
+    def _rechercher(self, filtres, on_page=None, ref=""):
+        barriere.wait()
+        return [_offre(ref)], 1, False
+
+    monkeypatch.setattr(
+        ChoisirLeServicePublic, "rechercher", partialmethod(_rechercher, ref="O1")
+    )
+    monkeypatch.setattr(
+        EmploiTerritorial, "rechercher", partialmethod(_rechercher, ref="O2")
+    )
+    resultats, avertissements, erreurs = _executer(TravailleurRecherche({}, {}))
+    assert avertissements == [] and erreurs == []
+    assert {o["reference"] for o in resultats[0][0]} == {"O1", "O2"}
+
+
+def test_executer_fusion_dans_lordre_des_sources_meme_si_csp_finit_derniere(
+    monkeypatch,
+):
+    # Même référence des deux côtés : la version choisirleservicepublic doit
+    # gagner au dédoublonnage, même si elle arrive après la territoriale.
+    territoriale_finie = threading.Event()
+
+    def _csp(self, filtres, on_page=None):
+        territoriale_finie.wait(timeout=5)
+        return [_offre("REF", "CSP")], 1, False
+
+    def _territorial(self, filtres, on_page=None):
+        territoriale_finie.set()
+        return [_offre("REF", "Territorial")], 1, False
+
+    monkeypatch.setattr(ChoisirLeServicePublic, "rechercher", _csp)
+    monkeypatch.setattr(EmploiTerritorial, "rechercher", _territorial)
+    resultats, _, _ = _executer(TravailleurRecherche({}, {}))
+    offres = resultats[0][0]
+    assert [o["source"] for o in offres] == ["CSP"]
+
+
+def test_executer_emet_progression_nommee_et_source_terminee(qtbot, monkeypatch):
+    def _csp(self, filtres, on_page=None):
+        assert on_page is not None
+        on_page(1, 2)
+        on_page(2, 2)
+        return [_offre("O1")], 2, False
+
+    monkeypatch.setattr(ChoisirLeServicePublic, "rechercher", _csp)
+    monkeypatch.setattr(
+        EmploiTerritorial,
+        "rechercher",
+        lambda self, filtres, on_page=None: ([], 1, False),
+    )
+    travailleur = TravailleurRecherche({}, {})
+    progressions, terminees = [], []
+    travailleur.progression.connect(lambda *a: progressions.append(a))
+    travailleur.source_terminee.connect(terminees.append)
+    travailleur.executer()
+    # Émis depuis les threads du pool : livrés via la boucle d'événements.
+    QCoreApplication.processEvents()
+
+    nom_csp = parametres_sources.SOURCES_DISPONIBLES["choisirleservicepublic"]
+    assert progressions == [(nom_csp, 1, 2), (nom_csp, 2, 2)]
+    assert sorted(terminees) == sorted(
+        [nom_csp, parametres_sources.SOURCES_DISPONIBLES["emploiterritorial"]]
+    )
+
+
+def test_executer_source_en_echec_est_aussi_signalee_terminee(qtbot, monkeypatch):
+    def _echec(self, filtres, on_page=None):
+        raise RuntimeError("HTTP 503")
+
+    monkeypatch.setattr(ChoisirLeServicePublic, "rechercher", _echec)
+    monkeypatch.setattr(
+        EmploiTerritorial,
+        "rechercher",
+        lambda self, filtres, on_page=None: ([_offre("O2")], 1, False),
+    )
+    travailleur = TravailleurRecherche({}, {})
+    terminees = []
+    travailleur.source_terminee.connect(terminees.append)
+    resultats, avertissements, _ = _executer(travailleur)
+    QCoreApplication.processEvents()
+    assert len(terminees) == 2
+    assert len(avertissements) == 1
+    assert {o["reference"] for o in resultats[0][0]} == {"O2"}
 
 
 _INFO_MAJ_TEST: InfoMaj = {

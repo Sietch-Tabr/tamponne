@@ -342,6 +342,21 @@ def test_barre_progression_visible_pendant_recherche_puis_cachee(qtbot, monkeypa
     assert vue.barre_progression.isVisible() is False
 
 
+def test_progression_agregee_sur_les_sources_en_parallele(qtbot):
+    vue = VueRechercheResultats()
+    qtbot.addWidget(vue)
+    vue._on_source_en_cours("Source A")
+    vue._on_source_en_cours("Source B")
+    vue._on_progression("Source A", 2, 5)
+    vue._on_progression("Source B", 1, 3)
+    vue._on_source_terminee("Source B")
+
+    assert vue.barre_progression.maximum() == 8
+    assert vue.barre_progression.value() == 3
+    assert "page 3/8" in vue.label_entete.text()
+    assert "1/2 sources terminées" in vue.label_entete.text()
+
+
 def test_statut_recherche_visible_puis_retabli_apres_resultat(qtbot, monkeypatch):
     """Le texte « Recherche en cours… » doit être visuellement marqué
     (role="statut", accent) pendant la recherche, pas confondu avec le
