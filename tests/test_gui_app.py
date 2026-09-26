@@ -268,7 +268,7 @@ def test_point_maj_est_un_badge_du_bouton_parametres(qtbot: QtBot) -> None:
 
     bouton = fenetre.bouton_nav_parametres
     assert fenetre.point_maj.parentWidget() is bouton
-    # Dans le coin haut-droit du bouton, y compris après redimensionnement.
+    # La largeur du bouton varie (police, libellé) : le badge doit la suivre.
     bouton.resize(bouton.width() + 40, bouton.height())
     geometrie = fenetre.point_maj.geometry()
     assert bouton.rect().contains(geometrie)

@@ -66,12 +66,15 @@ class _DialogueEvenement(QDialog):
         disposition.addRow(boutons)
 
     def type_choisi(self) -> str:
+        """Clé du type d'événement choisi (voir `TYPES_EVENEMENT`)."""
         return str(self.type_combo.currentData())
 
     def date_choisie(self) -> str:
+        """Date choisie au format ISO `YYYY-MM-DD`, celui de l'historique."""
         return self.date_edit.date().toString("yyyy-MM-dd")
 
     def note_saisie(self) -> str:
+        """Note libre saisie, sans espaces de début et de fin (vide si aucune)."""
         return self.note_champ.text().strip()
 
 
@@ -132,8 +135,8 @@ class VueCandidatures(QWidget):
         self.liste = QListView()
         self.liste.setModel(self.modele)
         self.liste.setMouseTracking(True)
-        # Adjust : relance la mise en page (hauteur des lignes, historique
-        # replié) quand la largeur change.
+        # La hauteur d'une ligne dépend de la largeur (historique replié à la
+        # ligne) : Adjust force son recalcul à chaque redimensionnement.
         self.liste.setResizeMode(QListView.ResizeMode.Adjust)
         self.liste.setVerticalScrollMode(
             QAbstractItemView.ScrollMode.ScrollPerPixel

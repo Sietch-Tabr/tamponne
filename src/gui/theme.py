@@ -2,8 +2,10 @@
 
 Dérivée des mêmes tokens de couleur que la maquette validée
 (« Vigie Carrière », 2026-08-31) — voir REFONTE.md §5bis pour la
-chronologie du passage TUI → GUI. La palette suit le réglage clair/sombre
-du système (`palette_systeme`) et se réapplique à chaud (`appliquer_theme`).
+chronologie du passage TUI → GUI. La palette dépend du mode choisi dans
+les Paramètres (`palette_pour_mode`) : imposée (sombre, clair) ou, en mode
+automatique, dérivée du réglage système (`palette_systeme`) et réappliquée
+à chaud quand il change (`appliquer_theme`).
 
 Les variantes de widgets (`QPushButton[variant="primaire"]`, etc.) se
 sélectionnent via une propriété Qt dynamique, à poser avec

@@ -9,6 +9,15 @@ from PySide6.QtWidgets import QBoxLayout, QHBoxLayout, QVBoxLayout, QWidget
 
 
 class LigneResponsive(QWidget):
+    """Conteneur qui aligne `enfants` en ligne tant que la largeur le
+    permet, et bascule en colonne sinon (et inversement).
+
+    Args:
+        *enfants: Widgets à disposer, dans l'ordre d'affichage.
+        espacement: Espace entre deux enfants, en pixels.
+        parent: Widget parent Qt.
+    """
+
     def __init__(
         self, *enfants: QWidget, espacement: int = 16, parent: QWidget | None = None
     ) -> None:
