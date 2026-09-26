@@ -35,9 +35,7 @@ def _offre(reference: str) -> Offre:
     }
 
 
-# ---------------------------------------------------------------------------
-# _organisations_expirees
-# ---------------------------------------------------------------------------
+# --- _organisations_expirees ---
 
 
 def test_organisations_expirees_cache_absent() -> None:
@@ -70,9 +68,7 @@ def test_organisations_expirees_cle_manquante() -> None:
     assert cache._organisations_expirees(entree) is True
 
 
-# ---------------------------------------------------------------------------
-# age_cache_organisations
-# ---------------------------------------------------------------------------
+# --- age_cache_organisations ---
 
 
 def test_age_cache_organisations_absent() -> None:
@@ -98,9 +94,7 @@ def test_age_cache_organisations_type_invalide_retourne_none() -> None:
     assert cache.age_cache_organisations() is None
 
 
-# ---------------------------------------------------------------------------
-# _charger_cache / _charger_offres : JSON corrompu
-# ---------------------------------------------------------------------------
+# --- _charger_cache / _charger_offres : JSON corrompu ---
 
 
 def test_charger_cache_corrompu_retourne_dict_vide() -> None:
@@ -115,9 +109,7 @@ def test_charger_offres_corrompu_retourne_dict_vide() -> None:
     assert cache._charger_offres() == {}
 
 
-# ---------------------------------------------------------------------------
-# maj_cache_offres
-# ---------------------------------------------------------------------------
+# --- maj_cache_offres ---
 
 
 def test_maj_cache_offres_toutes_nouvelles_au_premier_passage() -> None:

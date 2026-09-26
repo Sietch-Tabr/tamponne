@@ -44,10 +44,9 @@ class LigneResponsive(QWidget):
         )
 
     def minimumSizeHint(self) -> QSize:
-        # Toujours le mini vertical (le plus petit), jamais celui du
-        # layout horizontal courant — sinon le parent ne peut jamais nous
-        # offrir une largeur assez étroite pour déclencher la bascule
-        # (piège de l'œuf et la poule).
+        """Toujours le minimum vertical (le plus petit), jamais celui de la
+        disposition horizontale courante : sinon le parent ne pourrait jamais
+        offrir une largeur assez étroite pour déclencher la bascule."""
         largeur = max(self._largeur_min(e) for e in self._enfants)
         hauteur = sum(e.minimumSizeHint().height() for e in self._enfants)
         hauteur += self._espacement * (len(self._enfants) - 1)
@@ -78,9 +77,8 @@ class LigneResponsive(QWidget):
         for enfant in self._enfants:
             nouveau.addWidget(enfant)
         if self._horizontal:
-            # Sans ça, un QHBoxLayout sans concurrence étire les boutons
-            # bien au-delà de leur sizeHint (vérifié) — en vertical, remplir
-            # la colonne étroite est normal, pas besoin de stretch.
+            # Sans ressort, les boutons s'étirent bien au-delà de leur sizeHint
+            # (vérifié) ; inutile en vertical, où remplir la colonne est voulu.
             nouveau.addStretch()
         self.setLayout(nouveau)
         self._disposition = nouveau

@@ -15,16 +15,15 @@ SOURCES_DISPONIBLES: dict[str, str] = {
     "fhf": "Fonction publique hospitalière (emploi.fhf.fr)",
 }
 
-# Versant fixe des sources mono-versant — absente de ce mapping = source
-# multi-versant (choisirleservicepublic), qui applique déjà le filtre
-# "versants" côté serveur. Sert à ne pas interroger une source dont le
-# versant est exclu par le filtre (ex. emploi-territorial.fr si seul
-# "État" est coché).
 VERSANT_SOURCE: dict[str, str] = {
     "emploiterritorial": "territorial",
     "passerellesmef": "etat",
     "fhf": "hospitalier",
 }
+"""Versant fixe des sources mono-versant, pour ne pas interroger une source
+dont le versant est exclu par le filtre (ex. emploi-territorial.fr si seul
+« État » est coché). Une source absente est multi-versant
+(choisirleservicepublic) et applique déjà le filtre côté serveur."""
 
 
 def charger_sources_actives() -> dict[str, bool]:
@@ -35,7 +34,7 @@ def charger_sources_actives() -> dict[str, bool]:
     if CHEMIN_SOURCES.exists():
         try:
             etats = json.loads(CHEMIN_SOURCES.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError):
+        except json.JSONDecodeError, OSError:
             print(
                 f"Avertissement : {CHEMIN_SOURCES.name} illisible ou corrompu, "
                 "toutes les sources sont réactivées.",

@@ -128,9 +128,8 @@ def appliquer_maj(info: InfoMaj) -> None:
                 f"Impossible de télécharger ou d'extraire la mise à jour : {e}"
             ) from e
 
-        # L'archive Gitea/Forgejo contient un unique dossier racine
-        # (ex. "tamponne-abc1234/") — on en déduit le préfixe à ignorer
-        # plutôt que de le deviner, au cas où la convention de nommage change.
+        # Dossier racine unique de l'archive (ex. « tamponne-abc1234/ ») déduit
+        # plutôt que deviné : la convention de nommage Forgejo peut changer.
         racines = [p for p in Path(dossier_tmp).iterdir() if p.is_dir()]
         if len(racines) != 1:
             raise RuntimeError(

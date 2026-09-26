@@ -3,8 +3,7 @@
 import os
 from pathlib import Path
 
-# Force un rendu Qt hors écran pour que les tests GUI (pytest-qt) tournent
-# sans display réel — cohérent, que la machine en ait un ou non. Doit être
+# Rendu Qt hors écran, identique avec ou sans affichage réel ; doit être
 # posé avant tout import de PySide6.
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 

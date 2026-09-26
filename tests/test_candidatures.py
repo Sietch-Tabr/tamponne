@@ -34,10 +34,9 @@ def test_charger_candidatures_corrompu_retourne_dict_vide(
 
 
 def test_ajouter_candidature_ne_prerempli_pas_lhistorique() -> None:
-    # Démarrer le suivi (ex. depuis « Suivre cette offre » en
-    # Recherche) ne veut pas dire que la candidature a réellement été
-    # envoyée — l'historique reste vide tant que l'utilisateur n'a rien
-    # confirmé via « Ajouter un événement ».
+    """Démarrer le suivi (« Suivre cette offre ») ne signifie pas que la
+    candidature a été envoyée : l'historique reste vide tant que
+    l'utilisateur n'a rien confirmé via « Ajouter un événement »."""
     candidatures.ajouter_candidature(
         "ref-1", "Attaché", "DGFiP", "https://example.org/1"
     )

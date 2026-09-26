@@ -18,7 +18,7 @@ def charger_profils() -> dict[str, Profil]:
         return {}
     try:
         return json.loads(CHEMIN_PROFILS.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
+    except json.JSONDecodeError, OSError:
         # stderr, pas de bibliothèque d'UI : ce module n'est lié à
         # aucune interface particulière.
         print(

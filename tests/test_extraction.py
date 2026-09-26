@@ -12,11 +12,8 @@ from src.sources.choisirleservicepublic.extraction import (
 )
 from src.types import Offre
 
-# HTML volontairement sur une seule ligne par <p> (sans indentation
-# entre les <br/>) : reflète le HTML minifié réel du site, où seuls les
-# <br/> portent une intention de saut de ligne — une indentation de test
-# introduirait des sauts de ligne parasites purement liés au formatage
-# du fixture, absents du HTML réel.
+# Une ligne par <p>, sans indentation, comme le HTML minifié du site : seuls
+# les <br/> doivent produire des sauts de ligne, pas la mise en forme du test.
 _DESCRIPTION_AVEC_BR = (
     '<div class="fr-col-lg-6 col-left rte"><h2>Vos missions en quelques mots</h2>'
     '<div><div class="fr-mb-3w"><p>Première phrase du poste.<br/>'
@@ -48,9 +45,7 @@ _CARTE_MINIMALE = """
 """
 
 
-# ---------------------------------------------------------------------------
-# _valider_url
-# ---------------------------------------------------------------------------
+# --- _valider_url ---
 
 
 def test_valider_url_relative_est_prefixee() -> None:
@@ -78,9 +73,7 @@ def test_valider_url_vide_rejetee() -> None:
     assert _valider_url("") == ""
 
 
-# ---------------------------------------------------------------------------
-# extraire_offres
-# ---------------------------------------------------------------------------
+# --- extraire_offres ---
 
 
 def test_extraire_offres_carte_minimale() -> None:
@@ -129,9 +122,7 @@ def test_extraire_offres_html_vide() -> None:
     assert extraire_offres("") == []
 
 
-# ---------------------------------------------------------------------------
-# filtrer_grades_superieurs / est_grade_superieur
-# ---------------------------------------------------------------------------
+# --- filtrer_grades_superieurs / est_grade_superieur ---
 
 
 def _offre(titre: str) -> Offre:
@@ -182,9 +173,7 @@ def test_filtrer_grades_superieurs_liste_vide() -> None:
     assert filtrer_grades_superieurs([]) == ([], 0)
 
 
-# ---------------------------------------------------------------------------
-# extraire_pagination
-# ---------------------------------------------------------------------------
+# --- extraire_pagination ---
 
 
 def test_extraire_pagination_present() -> None:
@@ -199,9 +188,7 @@ def test_extraire_pagination_titre_vide() -> None:
     assert extraire_pagination("") == (1, 1)
 
 
-# ---------------------------------------------------------------------------
-# extraire_detail_offre
-# ---------------------------------------------------------------------------
+# --- extraire_detail_offre ---
 
 _JSON_LD_COMPLET = """
 <script type="application/ld+json">

@@ -117,7 +117,11 @@ class TravailleurRecherche(QObject):
             for cle, nom_affiche, source in sources:
                 self.source_en_cours.emit(nom_affiche)
                 futurs.append(
-                    (cle, nom_affiche, pool.submit(self._interroger, nom_affiche, source))
+                    (
+                        cle,
+                        nom_affiche,
+                        pool.submit(self._interroger, nom_affiche, source),
+                    )
                 )
 
             toutes_offres: list[Offre] = []

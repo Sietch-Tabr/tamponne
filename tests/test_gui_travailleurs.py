@@ -245,9 +245,9 @@ def test_executer_source_desactivee_nest_pas_interrogee(
 def test_executer_versant_etat_seul_exclut_territorial_et_hospitaliere(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    # Régression : emploi-territorial.fr (FPT) et emploi.fhf.fr (FPH) sont
-    # mono-versant et étaient interrogées quel que soit le filtre Versant —
-    # une recherche restreinte à l'État renvoyait quand même de la FPT/FPH.
+    """Régression : emploi-territorial.fr (FPT) et emploi.fhf.fr (FPH),
+    mono-versant, étaient interrogées quel que soit le filtre Versant — une
+    recherche restreinte à l'État renvoyait quand même de la FPT/FPH."""
     parametres_sources.sauvegarder_sources_actives(
         {"passerellesmef": True, "fhf": True}
     )

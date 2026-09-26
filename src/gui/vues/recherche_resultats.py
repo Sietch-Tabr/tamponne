@@ -225,9 +225,8 @@ class VueRechercheResultats(QWidget):
     def _construire_ui(self) -> None:
         splitter = QSplitter(Qt.Orientation.Horizontal)
         panneau_filtres = self._construire_panneau_filtres()
-        # Garde-fou : jamais écrasé au redimensionnement. 280 (pas 260) car
-        # le cadre + la barre de défilement verticale du QScrollArea
-        # mangent ~12px de la largeur allouée (vérifié empiriquement).
+        # Jamais écrasé au redimensionnement ; 280 et non 260 : cadre et barre
+        # de défilement du QScrollArea prennent ~12 px (mesuré).
         panneau_filtres.setMinimumWidth(280)
         splitter.addWidget(panneau_filtres)
         splitter.addWidget(self._construire_panneau_resultats())
@@ -304,18 +303,16 @@ class VueRechercheResultats(QWidget):
 
         disposition.addWidget(_titre_section("Poste"))
 
-        # Bouton résumé + dialogue modal (recherche) plutôt que liste embarquée :
-        # jusqu'à ~2400 sous-organisations côté Organisation(s), inutilisable en
-        # défilement imbriqué — même motif appliqué par cohérence ici.
+        # Bouton + dialogue modal plutôt que liste embarquée : ~2400 organisations
+        # rendent le défilement imbriqué inutilisable ; même motif partout.
         self.bouton_domaines = _bouton_selection()
         self.bouton_domaines.clicked.connect(self._ouvrir_selection_domaines)
         disposition.addLayout(_ligne_solo(self.bouton_domaines))
 
         types_poste_existant = self._filtres_existants.get("types_poste")
         self._type_poste_combo = QComboBox()
-        # Largeur bornée plutôt qu'ajustée au libellé le plus long (66
-        # caractères) : sinon ce combo impose sa largeur à tout le panneau.
-        # Qt affiche « … » nativement pour le texte tronqué.
+        # Largeur bornée (Qt tronque avec « … ») : ajustée au plus long libellé
+        # (66 caractères), ce combo imposerait sa largeur à tout le panneau.
         self._type_poste_combo.setSizeAdjustPolicy(
             QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
         )

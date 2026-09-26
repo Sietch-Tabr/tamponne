@@ -299,10 +299,8 @@ def main() -> int:
     app.setApplicationName("Tamponné")
     app.setApplicationDisplayName("Tamponné")
     app.setOrganizationName("Tamponné")
-    # Capturée avant setStyleSheet : QApplication.font() reflète déjà la
-    # police par défaut du système (donc, sur Linux/KDE notamment, les
-    # préférences d'accessibilité de taille de texte) — ne pas l'écraser
-    # par une valeur fixe (voir src/gui/theme.py::construire_feuille_style).
+    # Police système (dont les préférences d'accessibilité, ex. KDE) capturée
+    # avant la QSS, pour en dériver les tailles au lieu de les imposer.
     taille_base_pt = app.font().pointSizeF()
     # Base Fusion : rendu identique sur toutes les plateformes, là où la QSS
     # posée sur le style natif (macOS, Windows) donne des résultats inégaux.

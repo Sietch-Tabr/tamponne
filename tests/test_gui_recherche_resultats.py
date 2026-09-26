@@ -509,9 +509,8 @@ def test_fenetre_reste_reactive_pendant_une_recherche_lente(
     qtbot.mouseClick(vue.bouton_lancer, Qt.MouseButton.LeftButton)
     assert vue._thread is not None and vue._thread.isRunning()
 
-    # La recherche tourne encore (délai de 0.3s) : le clic sur RAZ doit
-    # être traité immédiatement par le thread principal, sans attendre
-    # la fin de la recherche.
+    # Recherche encore en cours (délai de 0,3 s) : le clic sur RAZ doit être
+    # traité aussitôt par le thread principal.
     qtbot.mouseClick(vue.bouton_raz, Qt.MouseButton.LeftButton)
     assert vue._mot_cle_champ.text() == ""
     assert vue._thread is not None and vue._thread.isRunning()  # toujours en cours
@@ -727,9 +726,8 @@ def test_avertissement_source_en_echec_affiche_sans_bloquer_les_autres(
     monkeypatch.setattr(ChoisirLeServicePublic, "rechercher", _rechercher_factice)
     monkeypatch.setattr(EmploiTerritorial, "rechercher", _echec)
 
-    # "versants": [] (tous les versants) — sinon le filtre Versant par
-    # défaut (État seul) exclurait emploi-territorial.fr avant même
-    # l'appel, et ne testerait plus la résilience à un échec partiel.
+    # Tous les versants : avec le défaut (État seul), emploi-territorial.fr
+    # serait exclu avant l'appel et l'échec partiel ne serait pas testé.
     vue = VueRechercheResultats(filtres_existants={"versants": []})
     qtbot.addWidget(vue)
     qtbot.mouseClick(vue.bouton_lancer, Qt.MouseButton.LeftButton)
@@ -858,9 +856,8 @@ def test_badge_nouvelles_offres_pour_une_recherche_liee_a_un_profil(
     qtbot.addWidget(vue)
     qtbot.mouseClick(vue.bouton_lancer, Qt.MouseButton.LeftButton)
     qtbot.waitUntil(lambda: vue.table_resultats.model().rowCount() == 1, timeout=2000)
-    # attend la fin réelle du thread (pas juste le résultat affiché) avant
-    # de relancer une recherche — détruire un QThread encore en cours fait
-    # planter Qt, cf. `arreter_recherche_en_cours`.
+    # Fin réelle du thread avant de relancer : détruire un QThread encore
+    # actif fait planter Qt (cf. `arreter_recherche_en_cours`).
     qtbot.waitUntil(lambda: vue._thread is None, timeout=2000)
 
     assert vue._nouvelles == {"O1"}
@@ -870,10 +867,8 @@ def test_badge_nouvelles_offres_pour_une_recherche_liee_a_un_profil(
     # cachée (même règle que le CLI historique).
     assert vue.case_nouvelles_seulement.isVisible() is False
 
-    # deuxième lancement, quelques instants après : l'offre reste
-    # "nouvelle" pendant TTL_NOUVELLES (24h, cf. CLAUDE.md) — un badge
-    # qui disparaîtrait au lancement suivant serait une régression, pas
-    # le comportement voulu.
+    # Relancée aussitôt, l'offre reste « nouvelle » pendant TTL_NOUVELLES
+    # (24 h) : un badge qui disparaîtrait serait une régression.
     qtbot.mouseClick(vue.bouton_lancer, Qt.MouseButton.LeftButton)
     qtbot.waitUntil(lambda: vue.table_resultats.model().rowCount() == 1, timeout=2000)
     qtbot.waitUntil(lambda: vue._thread is None, timeout=2000)

@@ -151,9 +151,8 @@ def test_extraire_detail_offre_sans_description_narrative() -> None:
 
 def test_extraire_detail_offre_sections_complementaires_sans_doublon() -> None:
     detail = extraire_detail_offre(_FICHE_DETAIL)
-    # "Contact" reste en section complémentaire ; les champs dédiés
-    # (Rémunération, Experience, Famille de métiers, Lien de candidature,
-    # Date limite) ne sont pas dupliqués ici.
+    # « Contact » reste ici ; les champs ayant un emplacement dédié
+    # (rémunération, expérience, lien, date limite…) ne sont pas dupliqués.
     assert detail["sections_complementaires"] == {
         "Employeur": "Region Hauts-de-France",
         "Contact": "0374270000",

@@ -63,9 +63,8 @@ class EmploiTerritorial:
             if loc in DEPARTEMENTS
         ]
         experience = EXPERIENCES.get(filtres.get("experience") or "", "")
-        # Seul le cas net « titulaire uniquement » a un équivalent côté ET
-        # (Emploi permanent) — le reste (défaut, contractuel, tous) ne
-        # correspond à aucun code unique, laissé non filtré.
+        # Seul « titulaire uniquement » a un équivalent net côté ET (Emploi
+        # permanent) ; les autres choix n'ont pas de code unique : non filtrés.
         type_contrat = (
             TYPE_CONTRAT_TITULAIRE
             if filtres.get("types_poste") == ["titulaire"]

@@ -5,11 +5,6 @@ Valeurs vérifiées empiriquement contre le formulaire réel du site (segments
 qui sert choisirleservicepublic.gouv.fr.
 """
 
-# Département → code INSEE 3 caractères zero-paddé attendu par
-# `search_offre_form[searchdept][]` (ex. "034" = Hérault). Couvre les clés
-# de `src.filtres.LOCALISATIONS` qui sont des départements — les entrées
-# région/le groupement DOM n'ont pas d'équivalent département unique côté
-# ET et restent volontairement absentes (non câblées).
 DEPARTEMENTS: dict[str, str] = {
     "Ain": "001",
     "Aisne": "002",
@@ -113,10 +108,16 @@ DEPARTEMENTS: dict[str, str] = {
     "Yvelines": "078",
     "Yonne": "089",
 }
+"""Département → code INSEE sur 3 caractères attendu par
+`search_offre_form[searchdept][]` (ex. « 034 » = Hérault).
 
-# search_offre_form[searchcat][] — les deux variantes A+ de src.filtres
-# (direction / autres emplois fonctionnels) n'existent pas côté ET, qui n'a
-# qu'une seule catégorie "A+".
+Couvre les clés de `src.filtres.LOCALISATIONS` qui sont des départements ;
+régions et groupement DOM n'ont pas d'équivalent unique côté ET et restent
+volontairement absents.
+"""
+
+# search_offre_form[searchcat][] — ET n'a qu'une catégorie « A+ » : les
+# deux variantes A+ de src.filtres y sont confondues.
 CATEGORIES: dict[str, str] = {
     "A+ (direction)": "A+",
     "A+ (autres emplois fonctionnels)": "A+",
@@ -136,9 +137,11 @@ EXPERIENCES: dict[str, str] = {
 # absents de l'URL si indifférent (comme management/teletravail=False).
 VALEUR_OUI = "2"
 
-# search_offre_form[searchtypecontrat][] — ET n'a pas de notion
-# titulaire/contractuel, seulement un type de contrat. Seul le cas
-# « Titulaire uniquement » a un équivalent net (Emploi permanent) ; les
-# autres choix (défaut titulaire-éligible, contractuel, tous) ne filtrent
-# rien côté ET plutôt que d'être mappés à l'aveugle sur plusieurs codes.
 TYPE_CONTRAT_TITULAIRE = "99"
+"""Code `search_offre_form[searchtypecontrat][]` d'Emploi permanent.
+
+ET n'a pas de notion titulaire/contractuel, seulement un type de contrat :
+seul « Titulaire uniquement » y a un équivalent net. Les autres choix
+(défaut, contractuel, tous) ne filtrent rien côté ET plutôt que d'être
+mappés à l'aveugle sur plusieurs codes.
+"""

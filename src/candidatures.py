@@ -101,7 +101,7 @@ def charger_candidatures() -> dict[str, Candidature]:
         return {}
     try:
         return json.loads(CHEMIN_CANDIDATURES.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
+    except json.JSONDecodeError, OSError:
         print(
             f"Avertissement : {CHEMIN_CANDIDATURES.name} illisible ou corrompu, "
             "aucune candidature chargée.",

@@ -115,9 +115,9 @@ def _offre(titre: str, employeur: str, reference: str = "X") -> Offre:
 
 
 def test_filtrer_doublons_fhf_meme_titre_employeur_lie_est_retire() -> None:
-    # Cas réel vérifié cette session : "EPSYLAN (Établissement Psychiatrique
-    # de Loire-Atlantique Nord)" / "Centre Hospitalier Epsylan" — même
-    # établissement, un mot distinctif partagé ("epsylan").
+    """Cas réel observé sur les sites : « EPSYLAN (Établissement Psychiatrique
+    de Loire-Atlantique Nord) » et « Centre Hospitalier Epsylan » désignent le
+    même établissement (mot distinctif partagé : « epsylan »)."""
     fhf = [
         _offre(
             "Cadre de santé - EHPAD",
@@ -129,8 +129,8 @@ def test_filtrer_doublons_fhf_meme_titre_employeur_lie_est_retire() -> None:
 
 
 def test_filtrer_doublons_fhf_titre_generique_employeurs_distincts_conserve() -> None:
-    # Cas réel vérifié cette session (faux positif évité) : titre générique
-    # "Un(e) Infirmier(ère)" mais employeurs sans rapport.
+    # Cas réel observé sur les sites (faux positif évité) : titre générique
+    # « Un(e) Infirmier(ère) » mais employeurs sans rapport.
     fhf = [_offre("Un(e) Infirmier(ère)", "SESSAD L'Elan Antenne de Liévin")]
     existantes = [_offre("Un(e) Infirmier(ère)", "E.P.D.A.H.A.A")]
     assert filtrer_doublons_fhf(fhf, existantes) == fhf

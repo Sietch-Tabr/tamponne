@@ -287,9 +287,7 @@ class DelegueCandidature(QStyledItemDelegate):
             x += largeur + _ESPACE_BOUTONS
         return rectangles
 
-    def _action_sous(
-        self, rect: QRect, police: QFont, position: QPoint
-    ) -> str | None:
+    def _action_sous(self, rect: QRect, police: QFont, position: QPoint) -> str | None:
         for action, rect_bouton in self.rectangles_boutons(rect, police).items():
             if rect_bouton.contains(position):
                 return action

@@ -138,9 +138,7 @@ class VueCandidatures(QWidget):
         # La hauteur d'une ligne dépend de la largeur (historique replié à la
         # ligne) : Adjust force son recalcul à chaque redimensionnement.
         self.liste.setResizeMode(QListView.ResizeMode.Adjust)
-        self.liste.setVerticalScrollMode(
-            QAbstractItemView.ScrollMode.ScrollPerPixel
-        )
+        self.liste.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
         self.liste.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.delegue = DelegueCandidature(self.liste)
         self.liste.setItemDelegate(self.delegue)
