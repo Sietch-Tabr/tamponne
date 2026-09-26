@@ -13,11 +13,15 @@ widget (ou en forçant un repolish avec
 si posée après coup).
 """
 
+import tempfile
 from dataclasses import dataclass
+from pathlib import Path
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QGuiApplication, QPalette
 from PySide6.QtWidgets import QApplication
+
+from src.parametres_affichage import MODE_THEME_DEFAUT, ModeTheme
 
 
 @dataclass(frozen=True)
@@ -76,6 +80,7 @@ PALETTE_CLAIRE = Palette(
 
 _palette_active = PALETTE_SOMBRE
 _taille_base_pt = 13.0
+_mode_theme: ModeTheme = MODE_THEME_DEFAUT
 
 
 def palette_systeme() -> Palette:
@@ -86,10 +91,46 @@ def palette_systeme() -> Palette:
     return PALETTE_CLAIRE if schema == Qt.ColorScheme.Light else PALETTE_SOMBRE
 
 
+def palette_pour_mode(mode: ModeTheme) -> Palette:
+    """Palette à appliquer pour `mode` : imposée (« sombre », « clair »)
+    ou dérivée du réglage système (« auto », voir `palette_systeme`)."""
+    if mode == "sombre":
+        return PALETTE_SOMBRE
+    if mode == "clair":
+        return PALETTE_CLAIRE
+    return palette_systeme()
+
+
 def palette_active() -> Palette:
     """Palette appliquée en dernier par `appliquer_theme` — à lire au
     moment du dessin (`paintEvent`) par les widgets peints à la main."""
     return _palette_active
+
+
+_SVG_FLECHE_BAS = (
+    '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="6" '
+    'viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" fill="none" stroke="{couleur}" '
+    'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+)
+
+
+def chemin_fleche_bas(couleur: str) -> str:
+    """Chemin d'une flèche SVG de liste déroulante dans la couleur donnée,
+    générée au besoin dans le dossier temporaire (la QSS n'accepte que des
+    fichiers ou ressources comme image, pas de SVG en ligne).
+
+    Args:
+        couleur: Couleur `#RRGGBB` du trait.
+
+    Returns:
+        Chemin absolu, avec des « / » comme l'exige la QSS sur tout système.
+    """
+    dossier = Path(tempfile.gettempdir()) / "tamponne"
+    dossier.mkdir(exist_ok=True)
+    chemin = dossier / f"fleche_bas_{couleur.lstrip('#').lower()}.svg"
+    if not chemin.exists():
+        chemin.write_text(_SVG_FLECHE_BAS.format(couleur=couleur), encoding="utf-8")
+    return chemin.as_posix()
 
 
 def construire_qpalette(palette: Palette) -> QPalette:
@@ -121,20 +162,28 @@ def construire_qpalette(palette: Palette) -> QPalette:
     return qpalette
 
 
-def appliquer_theme(app: QApplication, taille_base_pt: float | None = None) -> None:
-    """Applique à `app` la palette et la feuille de style correspondant au
-    réglage clair/sombre du système.
+def appliquer_theme(
+    app: QApplication,
+    taille_base_pt: float | None = None,
+    mode: ModeTheme | None = None,
+) -> None:
+    """Applique à `app` la palette et la feuille de style du mode de thème.
 
     Args:
         app: Application Qt.
         taille_base_pt: Taille de police de base, voir
             `construire_feuille_style` ; ``None`` reprend celle du dernier
-            appel (réapplication à chaud au changement de réglage système).
+            appel.
+        mode: Mode de thème (« auto », « sombre », « clair ») ; ``None``
+            reprend celui du dernier appel — cas de la réapplication à
+            chaud quand le réglage clair/sombre du système change.
     """
-    global _palette_active, _taille_base_pt
+    global _palette_active, _taille_base_pt, _mode_theme
     if taille_base_pt is not None:
         _taille_base_pt = taille_base_pt
-    _palette_active = palette_systeme()
+    if mode is not None:
+        _mode_theme = mode
+    _palette_active = palette_pour_mode(_mode_theme)
     app.setPalette(construire_qpalette(_palette_active))
     app.setStyleSheet(construire_feuille_style(_taille_base_pt, _palette_active))
 
@@ -154,6 +203,7 @@ def construire_feuille_style(
         palette: Tokens de couleur à utiliser (sombre par défaut).
     """
     p = palette
+    fleche_bas = chemin_fleche_bas(p.texte_dim)
     pt_base = taille_base_pt
     pt_titre = taille_base_pt * (18 / 13)
     pt_nom = taille_base_pt * (14 / 13)
@@ -295,6 +345,16 @@ QLineEdit, QComboBox {{
 QLineEdit:focus, QComboBox:focus {{
     border-color: {p.accent};
 }}
+QComboBox::drop-down {{
+    border: none;
+    width: 22px;
+}}
+/* Styler ::drop-down fait disparaître la flèche native : image fournie. */
+QComboBox::down-arrow {{
+    image: url({fleche_bas});
+    width: 10px;
+    height: 6px;
+}}
 
 QCheckBox {{
     background: transparent;
@@ -352,15 +412,16 @@ QSplitter::handle {{
 QGroupBox {{
     border: 1px solid {p.bordure};
     border-radius: 8px;
-    margin-top: 12px;
+    /* Marge en em : le titre loge entièrement au-dessus du cadre, quelle
+       que soit la taille de police (un décalage négatif le rognait). */
+    margin-top: 1.6em;
     padding-top: 10px;
     background-color: {p.surface};
 }}
 QGroupBox::title {{
     subcontrol-origin: margin;
     subcontrol-position: top left;
-    left: 10px;
-    top: -7px;
+    left: 4px;
     padding: 0 6px;
     color: {p.texte_dim};
     font-weight: bold;

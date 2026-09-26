@@ -7,7 +7,7 @@ navigation de `FenetrePrincipale`, testé dans `test_gui_app.py`.
 import pytest
 from PySide6.QtWidgets import QGroupBox, QLabel
 
-from src import cache, parametres_sources
+from src import cache, parametres_affichage, parametres_sources
 from src.gui.vues.aide import VueAide
 from src.gui.vues.parametres import VueParametres
 from src.types import InfoMaj
@@ -131,3 +131,22 @@ def test_parametres_bouton_maj_emet_demande_maj_immediate(qtbot):
     vue.bouton_maj.click()
 
     assert recus == [True]
+
+
+def test_parametres_theme_preselectionne_le_mode_enregistre(qtbot):
+    parametres_affichage.sauvegarder_mode_theme("clair")
+    vue = VueParametres()
+    qtbot.addWidget(vue)
+    assert vue.combo_theme.currentData() == "clair"
+
+
+def test_parametres_changer_de_theme_enregistre_et_emet(qtbot):
+    vue = VueParametres()
+    qtbot.addWidget(vue)
+    assert vue.combo_theme.currentData() == "auto"
+
+    with qtbot.waitSignal(vue.mode_theme_change) as signal:
+        vue.combo_theme.setCurrentIndex(vue.combo_theme.findData("sombre"))
+
+    assert signal.args == ["sombre"]
+    assert parametres_affichage.charger_mode_theme() == "sombre"

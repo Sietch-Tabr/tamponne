@@ -1,4 +1,4 @@
-"""Écran Paramètres : cache organisations, accessible depuis l'Accueil.
+"""Écran Paramètres : sources, apparence, mise à jour, cache organisations.
 
 Pas de bouton retour propre : couvert par le bandeau de navigation
 persistant de `FenetrePrincipale` (« Accueil »), pas de double
@@ -7,6 +7,8 @@ affordance pour la même action.
 
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
+    QComboBox,
+    QFormLayout,
     QGroupBox,
     QLabel,
     QMessageBox,
@@ -18,16 +20,25 @@ from PySide6.QtWidgets import (
 from src.cache import age_cache_organisations, obtenir_organisations
 from src.gui.vues.sources import VueSources
 from src.maj import version_locale
+from src.parametres_affichage import (
+    MODES_THEME,
+    charger_mode_theme,
+    sauvegarder_mode_theme,
+)
 from src.types import InfoMaj, Organisations
 
 
 class VueParametres(QWidget):
-    """Écran Paramètres — cache organisations, mise à jour disponible."""
+    """Écran Paramètres — sources, thème, mise à jour disponible, cache
+    organisations."""
 
     cache_rafraichi = Signal(dict)
     demande_maj_immediate = Signal()
     """Émis par le clic sur « Mettre à jour maintenant » — la fenêtre
     principale décide de la fermeture propre (voir `FenetrePrincipale`)."""
+    mode_theme_change = Signal(str)
+    """Émis avec le nouveau mode (« auto », « sombre », « clair ») une fois
+    enregistré — la fenêtre principale l'applique aussitôt."""
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -44,6 +55,18 @@ class VueParametres(QWidget):
         self.vue_sources = VueSources(afficher_titre=False)
         pile_sources.addWidget(self.vue_sources)
         disposition.addWidget(self.groupe_sources)
+
+        self.carte_apparence = QGroupBox("Apparence")
+        formulaire_apparence = QFormLayout(self.carte_apparence)
+        self.combo_theme = QComboBox()
+        for mode, libelle in MODES_THEME.items():
+            self.combo_theme.addItem(libelle, mode)
+        self.combo_theme.setCurrentIndex(
+            self.combo_theme.findData(charger_mode_theme())
+        )
+        self.combo_theme.currentIndexChanged.connect(self._on_theme_choisi)
+        formulaire_apparence.addRow("Thème", self.combo_theme)
+        disposition.addWidget(self.carte_apparence)
 
         self.carte_maj = QGroupBox("Mise à jour")
         pile_maj = QVBoxLayout(self.carte_maj)
@@ -86,6 +109,11 @@ class VueParametres(QWidget):
         self.label_maj_version.setText(f"Version {info['version']} disponible")
         self.label_maj_notes.setText(info["notes"] or "Pas de notes de version.")
         self.bouton_maj.setEnabled(True)
+
+    def _on_theme_choisi(self, _index: int) -> None:
+        mode = self.combo_theme.currentData()
+        sauvegarder_mode_theme(mode)
+        self.mode_theme_change.emit(mode)
 
     def rafraichir(self) -> None:
         """Met à jour l'affichage de l'âge du cache (pas de scraping)."""

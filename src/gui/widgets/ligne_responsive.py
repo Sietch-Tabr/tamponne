@@ -4,7 +4,8 @@ minimale — pas de wrap multi-colonnes (QFlowLayout complet), seulement
 une bascule horizontal/vertical, suffisante pour 2-3 widgets."""
 
 from PySide6.QtCore import QSize
-from PySide6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
+from PySide6.QtGui import QResizeEvent
+from PySide6.QtWidgets import QBoxLayout, QHBoxLayout, QVBoxLayout, QWidget
 
 
 class LigneResponsive(QWidget):
@@ -15,7 +16,8 @@ class LigneResponsive(QWidget):
         self._enfants = list(enfants)
         self._espacement = espacement
         self._horizontal = True
-        self._disposition = QHBoxLayout(self)
+        # Typé QBoxLayout : bascule entre QHBoxLayout et QVBoxLayout.
+        self._disposition: QBoxLayout = QHBoxLayout(self)
         self._disposition.setContentsMargins(0, 0, 0, 0)
         self._disposition.setSpacing(espacement)
         for enfant in self._enfants:
@@ -48,7 +50,7 @@ class LigneResponsive(QWidget):
             return QSize(self._largeur_horizontale_requise(), hauteur)
         return self.minimumSizeHint()
 
-    def resizeEvent(self, event) -> None:
+    def resizeEvent(self, event: QResizeEvent) -> None:
         super().resizeEvent(event)
         veut_horizontal = self.width() >= self._largeur_horizontale_requise()
         if veut_horizontal != self._horizontal:
@@ -61,7 +63,7 @@ class LigneResponsive(QWidget):
             for enfant in self._enfants:
                 ancien.removeWidget(enfant)  # détache sans détruire
             QWidget().setLayout(ancien)  # jette l'ancien layout, désormais vide
-        nouveau = QHBoxLayout() if self._horizontal else QVBoxLayout()
+        nouveau: QBoxLayout = QHBoxLayout() if self._horizontal else QVBoxLayout()
         nouveau.setContentsMargins(0, 0, 0, 0)
         nouveau.setSpacing(self._espacement)
         for enfant in self._enfants:

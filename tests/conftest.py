@@ -9,6 +9,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pytest  # noqa: E402
 
+from src import parametres_affichage  # noqa: E402
 from src.gui import travailleurs  # noqa: E402
 
 
@@ -19,3 +20,12 @@ def _pas_de_verification_maj_reseau(monkeypatch):
     les tests (même logique que la désactivation des sources réseau,
     voir CLAUDE.md)."""
     monkeypatch.setattr(travailleurs, "verifier_derniere_publication", lambda: None)
+
+
+@pytest.fixture(autouse=True)
+def _rediriger_affichage_vers_tmp(tmp_path, monkeypatch):
+    """Le choix de thème (écran Paramètres) ne doit jamais toucher le vrai
+    data/affichage.json pendant les tests."""
+    monkeypatch.setattr(
+        parametres_affichage, "CHEMIN_AFFICHAGE", tmp_path / "affichage.json"
+    )

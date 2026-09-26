@@ -1,8 +1,11 @@
 """Tests de la fenêtre principale (src/gui/app.py) — navigation entre écrans."""
 
 import pytest
+from PySide6.QtGui import QPalette
+from PySide6.QtWidgets import QApplication
 
 from src import parametres_sources, profils
+from src.gui import theme
 from src.gui.app import FenetrePrincipale
 from src.gui.vues.accueil import VueAccueil
 from src.gui.vues.aide import VueAide
@@ -231,3 +234,37 @@ def test_main_retourne_zero_si_fermeture_normale(_main_prepare, monkeypatch):
     monkeypatch.setattr(classe_qapp_reelle, "exec", lambda self: None)
 
     assert app_module.main() == 0
+
+
+def test_point_maj_est_un_badge_du_bouton_parametres(qtbot):
+    fenetre = FenetrePrincipale()
+    qtbot.addWidget(fenetre)
+    fenetre.show()
+    fenetre._on_maj_verifiee(_INFO_MAJ_TEST)
+
+    bouton = fenetre.bouton_nav_parametres
+    assert fenetre.point_maj.parentWidget() is bouton
+    # Dans le coin haut-droit du bouton, y compris après redimensionnement.
+    bouton.resize(bouton.width() + 40, bouton.height())
+    geometrie = fenetre.point_maj.geometry()
+    assert bouton.rect().contains(geometrie)
+    assert geometrie.right() > bouton.width() - 12
+    assert geometrie.top() < bouton.height() // 2
+
+
+def test_changer_de_theme_dans_les_parametres_lapplique_aussitot(qtbot, monkeypatch):
+    app = QApplication.instance()
+    assert isinstance(app, QApplication)
+    feuille_origine = app.styleSheet()
+    monkeypatch.setattr(theme, "_palette_active", theme.PALETTE_SOMBRE)
+    monkeypatch.setattr(theme, "_mode_theme", "auto")
+    fenetre = FenetrePrincipale()
+    qtbot.addWidget(fenetre)
+    combo = fenetre._vue_parametres.combo_theme
+    try:
+        combo.setCurrentIndex(combo.findData("clair"))
+        assert theme.palette_active() is theme.PALETTE_CLAIRE
+        assert f"background-color: {theme.PALETTE_CLAIRE.bg};" in app.styleSheet()
+    finally:
+        app.setStyleSheet(feuille_origine)
+        app.setPalette(QPalette())

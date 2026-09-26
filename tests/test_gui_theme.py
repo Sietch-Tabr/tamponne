@@ -6,6 +6,8 @@ s'applique sans erreur et que le mécanisme de variante par propriété
 Qt fonctionne, pas le rendu pixel par pixel.
 """
 
+from pathlib import Path
+
 import pytest
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QPalette
@@ -16,14 +18,23 @@ from src.gui.theme import (
     PALETTE_CLAIRE,
     PALETTE_SOMBRE,
     appliquer_theme,
+    chemin_fleche_bas,
     construire_feuille_style,
     palette_active,
+    palette_pour_mode,
     palette_systeme,
 )
 
 
-def test_construire_feuille_style_sapplique_sans_erreur(qtbot):
+def _application() -> QApplication:
+    """Instance QApplication créée par pytest-qt, typée pour l'analyse statique."""
     app = QApplication.instance()
+    assert isinstance(app, QApplication)
+    return app
+
+
+def test_construire_feuille_style_sapplique_sans_erreur(qtbot):
+    app = _application()
     feuille = construire_feuille_style(13.0)
     app.setStyleSheet(feuille)
     bouton = QPushButton("Test")
@@ -128,7 +139,7 @@ def test_appliquer_theme_memorise_la_taille_pour_la_reapplication(
     monkeypatch.setattr(theme, "_palette_active", PALETTE_SOMBRE)
     monkeypatch.setattr(theme, "_taille_base_pt", 13.0)
     monkeypatch.setattr(theme, "palette_systeme", lambda: PALETTE_CLAIRE)
-    app = QApplication.instance()
+    app = _application()
     feuille_origine = app.styleSheet()
     try:
         appliquer_theme(app, 20.0)
@@ -141,3 +152,47 @@ def test_appliquer_theme_memorise_la_taille_pour_la_reapplication(
     finally:
         app.setStyleSheet(feuille_origine)
         app.setPalette(QPalette())
+
+
+@pytest.mark.parametrize(
+    "mode, schema, attendue",
+    [
+        ("sombre", Qt.ColorScheme.Light, PALETTE_SOMBRE),
+        ("clair", Qt.ColorScheme.Dark, PALETTE_CLAIRE),
+        ("auto", Qt.ColorScheme.Light, PALETTE_CLAIRE),
+        ("auto", Qt.ColorScheme.Dark, PALETTE_SOMBRE),
+    ],
+)
+def test_palette_pour_mode_impose_ou_suit_le_systeme(
+    monkeypatch, mode, schema, attendue
+):
+    monkeypatch.setattr(
+        theme.QGuiApplication,
+        "styleHints",
+        staticmethod(lambda: _StyleHintsFactices(schema)),
+    )
+    assert palette_pour_mode(mode) is attendue
+
+
+def test_appliquer_theme_memorise_le_mode_pour_la_reapplication(qtbot, monkeypatch):
+    monkeypatch.setattr(theme, "_palette_active", PALETTE_SOMBRE)
+    monkeypatch.setattr(theme, "_mode_theme", "auto")
+    # Système en sombre : un mode « clair » imposé doit tenir à la réapplication.
+    monkeypatch.setattr(theme, "palette_systeme", lambda: PALETTE_SOMBRE)
+    app = _application()
+    feuille_origine = app.styleSheet()
+    try:
+        appliquer_theme(app, mode="clair")
+        appliquer_theme(app)  # changement de réglage système simulé
+        assert palette_active() is PALETTE_CLAIRE
+    finally:
+        app.setStyleSheet(feuille_origine)
+        app.setPalette(QPalette())
+
+
+@pytest.mark.parametrize("palette", [PALETTE_SOMBRE, PALETTE_CLAIRE])
+def test_fleche_liste_deroulante_generee_dans_la_couleur_de_la_palette(palette):
+    feuille = construire_feuille_style(13.0, palette)
+    chemin = chemin_fleche_bas(palette.texte_dim)
+    assert f"image: url({chemin});" in feuille
+    assert palette.texte_dim in Path(chemin).read_text(encoding="utf-8")
