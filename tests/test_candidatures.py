@@ -1,10 +1,12 @@
 """Tests du suivi de candidature (src/candidatures.py)."""
 
 from datetime import date, timedelta
+from typing import cast
 
 import pytest
 
 from src import candidatures
+from src.types import Candidature
 
 
 @pytest.fixture(autouse=True)
@@ -166,28 +168,37 @@ def test_generer_archive_pdf_echec_reseau_echoue_sans_lever(monkeypatch, capsys)
 
 
 def test_dernier_evenement_retourne_le_plus_recent_par_date():
-    candidature = {
-        "offre_titre": "x",
-        "offre_employeur": "x",
-        "offre_url": "x",
-        "date_candidature": "2026-01-01",
-        "historique": [
-            {"date": "2026-01-01", "type": "candidature_envoyee", "note": ""},
-            {"date": "2026-01-20", "type": "entretien_passe", "note": ""},
-            {"date": "2026-01-10", "type": "accuse_reception", "note": ""},
-        ],
-    }
-    assert candidatures.dernier_evenement(candidature)["type"] == "entretien_passe"
+    # Candidature partielle : seuls les champs lus par dernier_evenement.
+    candidature = cast(
+        Candidature,
+        {
+            "offre_titre": "x",
+            "offre_employeur": "x",
+            "offre_url": "x",
+            "date_candidature": "2026-01-01",
+            "historique": [
+                {"date": "2026-01-01", "type": "candidature_envoyee", "note": ""},
+                {"date": "2026-01-20", "type": "entretien_passe", "note": ""},
+                {"date": "2026-01-10", "type": "accuse_reception", "note": ""},
+            ],
+        },
+    )
+    dernier = candidatures.dernier_evenement(candidature)
+    assert dernier is not None
+    assert dernier["type"] == "entretien_passe"
 
 
 def test_dernier_evenement_historique_vide_retourne_none():
-    candidature = {
-        "offre_titre": "x",
-        "offre_employeur": "x",
-        "offre_url": "x",
-        "date_candidature": "2026-01-01",
-        "historique": [],
-    }
+    candidature = cast(
+        Candidature,
+        {
+            "offre_titre": "x",
+            "offre_employeur": "x",
+            "offre_url": "x",
+            "date_candidature": "2026-01-01",
+            "historique": [],
+        },
+    )
     assert candidatures.dernier_evenement(candidature) is None
 
 

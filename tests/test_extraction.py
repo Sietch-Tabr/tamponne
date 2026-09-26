@@ -142,6 +142,7 @@ def _offre(titre: str) -> Offre:
         "localisation": "",
         "versant": "",
         "date": "",
+        "source": "",
     }
 
 

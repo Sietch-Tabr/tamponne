@@ -36,8 +36,9 @@ def test_nouvelle_recherche_ouvre_une_vue_recherche_vierge(qtbot):
     fenetre = FenetrePrincipale()
     qtbot.addWidget(fenetre)
     fenetre.bouton_nav_recherche.click()
-    assert isinstance(fenetre._pile.currentWidget(), VueRechercheResultats)
-    assert fenetre._pile.currentWidget().construire_filtres()["query"] == ""
+    vue = fenetre._pile.currentWidget()
+    assert isinstance(vue, VueRechercheResultats)
+    assert vue.construire_filtres().get("query") == ""
 
 
 def test_lancer_profil_ouvre_une_vue_prereplie_et_lance_seul_la_recherche(
@@ -56,7 +57,7 @@ def test_lancer_profil_ouvre_une_vue_prereplie_et_lance_seul_la_recherche(
     vue = fenetre._pile.currentWidget()
     assert isinstance(vue, VueRechercheResultats)
     assert vue.mode_edition is False
-    assert vue.construire_filtres()["query"] == "IDIV"
+    assert vue.construire_filtres().get("query") == "IDIV"
 
     # Ouvrir depuis un profil lance la recherche seul, sans clic
     # supplémentaire sur le bouton.
@@ -82,6 +83,7 @@ def test_retour_depuis_recherche_revient_a_laccueil(qtbot):
     qtbot.addWidget(fenetre)
     fenetre.bouton_nav_recherche.click()
     vue_recherche = fenetre._pile.currentWidget()
+    assert isinstance(vue_recherche, VueRechercheResultats)
     vue_recherche.demande_retour.emit()
     assert isinstance(fenetre._pile.currentWidget(), VueAccueil)
 

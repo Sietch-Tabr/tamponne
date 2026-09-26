@@ -4,10 +4,13 @@ Isolé de `data/profils.json` réel (fixture autouse, même pattern que
 `test_cache.py`/l'ancien `test_tui_accueil.py`).
 """
 
+from typing import cast
+
 import pytest
 from PySide6.QtWidgets import QLabel, QWidget
 
 from src import profils
+from src.types import Profil
 from src.gui.vues.accueil import VueAccueil
 
 
@@ -41,6 +44,12 @@ _PROFIL_TEST: dict = {
 }
 
 
+def _profil_test() -> Profil:
+    """Copie de `_PROFIL_TEST` — format disque d'un profil ancien (clé
+    « versant » au singulier), hors du type `Profil` actuel par nature."""
+    return cast(Profil, dict(_PROFIL_TEST))
+
+
 def test_accueil_sans_profil_affiche_un_message(qtbot):
     vue = VueAccueil()
     qtbot.addWidget(vue)
@@ -49,7 +58,7 @@ def test_accueil_sans_profil_affiche_un_message(qtbot):
 
 
 def test_accueil_liste_les_profils_sauvegardes(qtbot):
-    profils.ajouter_profil("test-idiv", dict(_PROFIL_TEST))
+    profils.ajouter_profil("test-idiv", _profil_test())
     vue = VueAccueil()
     qtbot.addWidget(vue)
     assert vue.liste_profils.count() == 1
@@ -59,7 +68,7 @@ def test_accueil_liste_les_profils_sauvegardes(qtbot):
 
 
 def test_action_lancer_emet_le_signal_avec_le_profil(qtbot):
-    profils.ajouter_profil("test-idiv", dict(_PROFIL_TEST))
+    profils.ajouter_profil("test-idiv", _profil_test())
     vue = VueAccueil()
     qtbot.addWidget(vue)
 
@@ -69,7 +78,7 @@ def test_action_lancer_emet_le_signal_avec_le_profil(qtbot):
 
 
 def test_double_clic_sur_un_profil_emet_demande_lancer_profil(qtbot):
-    profils.ajouter_profil("test-idiv", dict(_PROFIL_TEST))
+    profils.ajouter_profil("test-idiv", _profil_test())
     vue = VueAccueil()
     qtbot.addWidget(vue)
 
@@ -79,7 +88,7 @@ def test_double_clic_sur_un_profil_emet_demande_lancer_profil(qtbot):
 
 
 def test_action_modifier_emet_le_signal(qtbot):
-    profils.ajouter_profil("test-idiv", dict(_PROFIL_TEST))
+    profils.ajouter_profil("test-idiv", _profil_test())
     vue = VueAccueil()
     qtbot.addWidget(vue)
 
@@ -89,7 +98,7 @@ def test_action_modifier_emet_le_signal(qtbot):
 
 
 def test_action_dupliquer_avec_nom_duplique_le_profil(qtbot, monkeypatch):
-    profils.ajouter_profil("test-idiv", dict(_PROFIL_TEST))
+    profils.ajouter_profil("test-idiv", _profil_test())
     vue = VueAccueil()
     qtbot.addWidget(vue)
 
@@ -102,7 +111,7 @@ def test_action_dupliquer_avec_nom_duplique_le_profil(qtbot, monkeypatch):
 
 
 def test_action_supprimer_avec_confirmation_supprime(qtbot, monkeypatch):
-    profils.ajouter_profil("test-idiv", dict(_PROFIL_TEST))
+    profils.ajouter_profil("test-idiv", _profil_test())
     vue = VueAccueil()
     qtbot.addWidget(vue)
 
@@ -112,7 +121,7 @@ def test_action_supprimer_avec_confirmation_supprime(qtbot, monkeypatch):
 
 
 def test_action_supprimer_sans_confirmation_ne_supprime_pas(qtbot, monkeypatch):
-    profils.ajouter_profil("test-idiv", dict(_PROFIL_TEST))
+    profils.ajouter_profil("test-idiv", _profil_test())
     vue = VueAccueil()
     qtbot.addWidget(vue)
 

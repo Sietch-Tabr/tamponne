@@ -6,6 +6,7 @@ from PySide6.QtWidgets import QGroupBox, QLabel
 
 from src.gui.widgets.dialogue_detail_offre import DialogueDetailOffre
 from src.sources.choisirleservicepublic.extraction import DETAIL_VIDE
+from src.types import DetailOffre
 
 
 def _texte_complet(dialogue: DialogueDetailOffre) -> str:
@@ -17,7 +18,7 @@ def _texte_complet(dialogue: DialogueDetailOffre) -> str:
 def test_dialogue_detail_affiche_toutes_les_sections_renseignees(
     qtbot, tmp_path, monkeypatch
 ):
-    detail = {
+    detail: DetailOffre = {
         "description": "Missions principales : piloter le projet X.",
         "salaire": "Non renseigné",
         "experience_requise": "Confirmé",
@@ -103,7 +104,7 @@ def test_bouton_en_ligne_ouvre_lurl_dans_le_navigateur(qtbot, monkeypatch):
 def test_bouton_postuler_ouvre_le_lien_de_candidature(qtbot, monkeypatch):
     ouvertes = []
     monkeypatch.setattr("webbrowser.open", lambda url: ouvertes.append(url))
-    detail = dict(DETAIL_VIDE)
+    detail = DETAIL_VIDE.copy()
     detail["lien_postuler"] = "https://talent-soft.com/candidature/123"
     dialogue = DialogueDetailOffre("Poste", "Employeur", detail)
     qtbot.addWidget(dialogue)

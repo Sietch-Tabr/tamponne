@@ -1,11 +1,12 @@
 """Tests pour src/cache.py — logique TTL et purge des caches."""
 
 from datetime import datetime, timedelta, timezone
+from typing import cast
 
 import pytest
 
 from src import cache
-from src.types import Offre
+from src.types import Offre, OffreCache
 
 
 @pytest.fixture(autouse=True)
@@ -29,6 +30,7 @@ def _offre(reference: str) -> Offre:
         "localisation": "",
         "versant": "",
         "date": "",
+        "source": "",
     }
 
 
@@ -130,7 +132,7 @@ def test_maj_cache_offres_pas_nouvelle_au_second_passage_immediat():
 
 
 def test_maj_cache_offres_plus_nouvelle_apres_ttl_nouvelles():
-    toutes = {
+    toutes: dict[str, dict[str, OffreCache]] = {
         "mon-profil": {
             "REF1": {
                 **_offre("REF1"),
@@ -145,7 +147,7 @@ def test_maj_cache_offres_plus_nouvelle_apres_ttl_nouvelles():
 
 
 def test_maj_cache_offres_purge_offre_disparue_depuis_longtemps():
-    toutes = {
+    toutes: dict[str, dict[str, OffreCache]] = {
         "mon-profil": {
             "REF1": {
                 **_offre("REF1"),
@@ -160,7 +162,7 @@ def test_maj_cache_offres_purge_offre_disparue_depuis_longtemps():
 
 
 def test_maj_cache_offres_conserve_offre_disparue_recemment():
-    toutes = {
+    toutes: dict[str, dict[str, OffreCache]] = {
         "mon-profil": {
             "REF1": {
                 **_offre("REF1"),
@@ -175,9 +177,13 @@ def test_maj_cache_offres_conserve_offre_disparue_recemment():
 
 
 def test_maj_cache_offres_purge_immediate_si_derniere_vue_non_parsable():
-    toutes = {
+    toutes: dict[str, dict[str, OffreCache]] = {
         "mon-profil": {
-            "REF1": {**_offre("REF1"), "vu_le": _iso_il_y_a(60), "derniere_vue": None}
+            # derniere_vue invalide volontairement : cas d'un cache corrompu.
+            "REF1": cast(
+                OffreCache,
+                {**_offre("REF1"), "vu_le": _iso_il_y_a(60), "derniere_vue": None},
+            )
         }
     }
     cache._sauvegarder_offres(toutes)

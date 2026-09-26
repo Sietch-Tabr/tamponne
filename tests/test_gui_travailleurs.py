@@ -18,7 +18,7 @@ from src.sources.choisirleservicepublic import ChoisirLeServicePublic
 from src.sources.emploiterritorial import EmploiTerritorial
 from src.sources.fhf import Fhf
 from src.sources.passerellesmef import PasserellesMef
-from src.types import InfoMaj, Offre
+from src.types import FiltresRecherche, InfoMaj, Offre
 
 
 @pytest.fixture(autouse=True)
@@ -75,12 +75,12 @@ def test_offre_vers_ligne_reformate_la_date():
 
 
 def test_offre_vers_ligne_date_absente():
-    offre = {**_OFFRE_TEST, "date": ""}
+    offre: Offre = {**_OFFRE_TEST, "date": ""}
     assert offre_vers_ligne(offre)[3] == "—"
 
 
 def test_offre_vers_ligne_source_territoriale():
-    offre = {**_OFFRE_TEST, "source": "Fonction publique territoriale"}
+    offre: Offre = {**_OFFRE_TEST, "source": "Fonction publique territoriale"}
     assert offre_vers_ligne(offre)[4] == "Fonction publique territoriale"
 
 
@@ -296,7 +296,7 @@ def test_executer_traduit_categorie_et_departement_vers_emploiterritorial(
         _obtenir_page_recherche_factice,
     )
 
-    filtres = {"categories": ["A"], "localisations": ["Hérault"]}
+    filtres: FiltresRecherche = {"categories": ["A"], "localisations": ["Hérault"]}
     _executer(TravailleurRecherche(filtres, {}))
 
     assert len(urls_appelees) == 1

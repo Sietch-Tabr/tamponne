@@ -6,6 +6,7 @@ from src.sources.fhf.extraction import (
     extraire_detail_offre,
     extraire_offres,
 )
+from src.types import Offre
 
 _CARTE_MINIMALE = """
 <article class="card card-offer">
@@ -99,7 +100,7 @@ def test_extraire_detail_offre_sans_champs():
     assert detail["page_html"] == "<html></html>"
 
 
-def _offre(titre: str, employeur: str, reference: str = "X") -> dict:
+def _offre(titre: str, employeur: str, reference: str = "X") -> Offre:
     return {
         "titre": titre,
         "url": "",

@@ -3,6 +3,7 @@
 import json
 import time
 from datetime import datetime, timedelta, timezone
+from typing import cast
 
 import pytest
 from PySide6.QtCore import Qt
@@ -12,7 +13,7 @@ from src import cache, candidatures, export, parametres_sources
 from src.gui.vues.recherche_resultats import VueRechercheResultats
 from src.sources.choisirleservicepublic import ChoisirLeServicePublic
 from src.sources.emploiterritorial import EmploiTerritorial
-from src.types import Offre
+from src.types import FiltresRecherche, Offre
 
 
 @pytest.fixture(autouse=True)
@@ -43,6 +44,7 @@ _OFFRE_TEST: Offre = {
     "localisation": "Montpellier (34)",
     "versant": "Fonction publique de l'État",
     "date": "il y a 6 j",
+    "source": "",
 }
 
 _OFFRE_GRADE_SUPERIEUR: Offre = {
@@ -54,6 +56,7 @@ _OFFRE_GRADE_SUPERIEUR: Offre = {
     "localisation": "Montpellier (34)",
     "versant": "Fonction publique de l'État",
     "date": "il y a 6 j",
+    "source": "",
 }
 
 
@@ -89,16 +92,16 @@ def test_construire_filtres_reflete_les_selections(qtbot):
     vue._mot_cle_champ.setText("  IDIV  ")
 
     filtres = vue.construire_filtres()
-    assert filtres["categories"] == ["A"]
-    assert filtres["management"] is True
-    assert filtres["query"] == "IDIV"
+    assert filtres.get("categories") == ["A"]
+    assert filtres.get("management") is True
+    assert filtres.get("query") == "IDIV"
     assert vue.afficher_grades_superieurs() is True
 
 
 def test_versant_fpe_seul_par_defaut(qtbot):
     vue = VueRechercheResultats()
     qtbot.addWidget(vue)
-    assert vue.construire_filtres()["versants"] == ["etat"]
+    assert vue.construire_filtres().get("versants") == ["etat"]
     valeurs = {cle: case.isChecked() for case, cle in vue._versants_cases}
     assert valeurs == {"etat": True, "hospitalier": False, "territorial": False}
 
@@ -116,22 +119,30 @@ def test_versant_multi_selection(qtbot):
     qtbot.addWidget(vue)
     for case, cle in vue._versants_cases:
         case.setChecked(cle in ("hospitalier", "territorial"))
-    assert set(vue.construire_filtres()["versants"]) == {"hospitalier", "territorial"}
+    assert set(vue.construire_filtres().get("versants") or []) == {
+        "hospitalier",
+        "territorial",
+    }
 
 
 def test_versant_compat_ancien_format_singulier(qtbot):
     """Anciens profils sauvegardés avant le passage aux cases à cocher
     (`"versant": "territorial"`, singulier) — la sélection initiale doit
     quand même refléter la valeur, pas retomber sur le défaut FPE."""
-    vue = VueRechercheResultats(filtres_existants={"versant": "territorial"})
+    vue = VueRechercheResultats(
+        filtres_existants=cast(FiltresRecherche, {"versant": "territorial"})
+    )
     qtbot.addWidget(vue)
-    assert vue.construire_filtres()["versants"] == ["territorial"]
+    assert vue.construire_filtres().get("versants") == ["territorial"]
 
 
 def test_versant_compat_ancien_tous_devient_liste_vide(qtbot):
-    vue = VueRechercheResultats(filtres_existants={"versant": "__tous__"})
+    # Clé « versant » (singulier) hors du type actuel : format historique.
+    vue = VueRechercheResultats(
+        filtres_existants=cast(FiltresRecherche, {"versant": "__tous__"})
+    )
     qtbot.addWidget(vue)
-    assert vue.construire_filtres()["versants"] == []
+    assert vue.construire_filtres().get("versants") == []
 
 
 def test_raz_reinitialise_versant_a_fpe_seul(qtbot):
@@ -142,7 +153,7 @@ def test_raz_reinitialise_versant_a_fpe_seul(qtbot):
 
     vue._reinitialiser_filtres()
 
-    assert vue.construire_filtres()["versants"] == ["etat"]
+    assert vue.construire_filtres().get("versants") == ["etat"]
 
 
 def test_bouton_domaines_affiche_tous_par_defaut(qtbot):
@@ -181,7 +192,7 @@ def test_selection_domaines_via_dialogue_met_a_jour_le_bouton(qtbot, monkeypatch
 
     assert vue._domaines_selection == ["Numérique"]
     assert vue.bouton_domaines.text() == "Domaine(s)\n1 sélectionné"
-    assert vue.construire_filtres()["domaines"] == ["Numérique"]
+    assert vue.construire_filtres().get("domaines") == ["Numérique"]
 
 
 def test_selection_domaines_annulee_ne_change_rien(qtbot, monkeypatch):
@@ -219,7 +230,7 @@ def test_selection_grades_via_dialogue_met_a_jour_le_bouton(qtbot, monkeypatch):
 
     assert vue._grades_selection == ["Attaché principal"]
     assert vue.bouton_grades.text() == "Corps / Grade\n1 sélectionné"
-    assert vue.construire_filtres()["grades"] == ["Attaché principal"]
+    assert vue.construire_filtres().get("grades") == ["Attaché principal"]
 
 
 def test_selection_organisations_via_dialogue(qtbot, monkeypatch):
@@ -278,7 +289,7 @@ def test_bouton_porte_le_bon_libelle_selon_le_mode(qtbot):
 
 def test_filtres_existants_prerempliss_les_widgets(qtbot):
     orgas_cache = {"Ministère de test": {"Sous-org A": 1, "Sous-org B": 2}}
-    filtres: dict = {
+    filtres: FiltresRecherche = {
         "categories": ["A"],
         "domaines": ["Numérique"],
         "localisations": ["Hérault"],
@@ -295,17 +306,17 @@ def test_filtres_existants_prerempliss_les_widgets(qtbot):
     qtbot.addWidget(vue)
 
     reconstruits = vue.construire_filtres()
-    assert reconstruits["categories"] == ["A"]
-    assert reconstruits["domaines"] == ["Numérique"]
-    assert reconstruits["localisations"] == ["Hérault"]
-    assert reconstruits["organisations"] == ["Ministère de test - Sous-org A"]
-    assert reconstruits["versants"] == ["territorial"]
-    assert reconstruits["types_poste"] == ["titulaire"]
-    assert reconstruits["experience"] == "Confirmé"
-    assert reconstruits["date_publication"] == "7 derniers jours"
-    assert reconstruits["management"] is True
-    assert reconstruits["teletravail"] is True
-    assert reconstruits["query"] == "IDIV"
+    assert reconstruits.get("categories") == ["A"]
+    assert reconstruits.get("domaines") == ["Numérique"]
+    assert reconstruits.get("localisations") == ["Hérault"]
+    assert reconstruits.get("organisations") == ["Ministère de test - Sous-org A"]
+    assert reconstruits.get("versants") == ["territorial"]
+    assert reconstruits.get("types_poste") == ["titulaire"]
+    assert reconstruits.get("experience") == "Confirmé"
+    assert reconstruits.get("date_publication") == "7 derniers jours"
+    assert reconstruits.get("management") is True
+    assert reconstruits.get("teletravail") is True
+    assert reconstruits.get("query") == "IDIV"
 
 
 def test_lancer_recherche_peuple_la_table(qtbot, monkeypatch):

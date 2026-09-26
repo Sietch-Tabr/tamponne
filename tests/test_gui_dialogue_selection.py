@@ -1,13 +1,25 @@
 """Tests des dialogues modaux de sélection (src/gui/widgets/dialogue_selection.py)."""
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QPushButton
+from PySide6.QtWidgets import QPushButton, QTreeWidget, QTreeWidgetItem
 
 from src.gui.widgets.dialogue_selection import (
     DialogueSelectionGrades,
     DialogueSelectionListe,
     DialogueSelectionOrganisations,
 )
+
+
+def _racine(arbre: QTreeWidget, index: int) -> QTreeWidgetItem:
+    element = arbre.topLevelItem(index)
+    assert element is not None
+    return element
+
+
+def _enfant(parent: QTreeWidgetItem, index: int) -> QTreeWidgetItem:
+    element = parent.child(index)
+    assert element is not None
+    return element
 
 
 def test_selection_liste_preremplie_avec_deja_selectionnes(qtbot):
@@ -66,8 +78,8 @@ def test_selection_organisations_recherche_cache_ministere_sans_correspondance(q
     qtbot.addWidget(dialogue)
 
     dialogue._recherche.setText("sous-org 3")
-    racine_alpha = dialogue._arbre.topLevelItem(0)
-    racine_beta = dialogue._arbre.topLevelItem(1)
+    racine_alpha = _racine(dialogue._arbre, 0)
+    racine_beta = _racine(dialogue._arbre, 1)
     assert racine_alpha.isHidden() is True
     assert racine_beta.isHidden() is False
     assert racine_beta.isExpanded() is True
@@ -76,8 +88,8 @@ def test_selection_organisations_recherche_cache_ministere_sans_correspondance(q
 def test_selection_organisations_cocher_une_sous_org(qtbot):
     dialogue = DialogueSelectionOrganisations(_ORGAS_TEST, [])
     qtbot.addWidget(dialogue)
-    racine = dialogue._arbre.topLevelItem(0)
-    enfant = racine.child(0)
+    racine = _racine(dialogue._arbre, 0)
+    enfant = _enfant(racine, 0)
     enfant.setCheckState(0, Qt.CheckState.Checked)
     assert dialogue.selection() == ["Ministère Alpha - Sous-org 1"]
 
@@ -102,7 +114,7 @@ def test_selection_grades_corps_toujours_deplies_par_defaut(qtbot):
     dialogue = DialogueSelectionGrades(_CORPS_GRADES_TEST, [])
     qtbot.addWidget(dialogue)
     for i in range(dialogue._arbre.topLevelItemCount()):
-        assert dialogue._arbre.topLevelItem(i).isExpanded() is True
+        assert _racine(dialogue._arbre, i).isExpanded() is True
 
 
 def test_selection_grades_recherche_cache_corps_sans_correspondance(qtbot):
@@ -110,8 +122,8 @@ def test_selection_grades_recherche_cache_corps_sans_correspondance(qtbot):
     qtbot.addWidget(dialogue)
 
     dialogue._recherche.setText("hors classe")
-    racine_attache = dialogue._arbre.topLevelItem(0)
-    racine_adjoint = dialogue._arbre.topLevelItem(1)
+    racine_attache = _racine(dialogue._arbre, 0)
+    racine_adjoint = _racine(dialogue._arbre, 1)
     assert racine_attache.isHidden() is False
     assert racine_adjoint.isHidden() is True
 
@@ -123,7 +135,7 @@ def test_selection_grades_recherche_cache_corps_sans_correspondance(qtbot):
 def test_selection_grades_cocher_un_grade(qtbot):
     dialogue = DialogueSelectionGrades(_CORPS_GRADES_TEST, [])
     qtbot.addWidget(dialogue)
-    racine = dialogue._arbre.topLevelItem(0)
-    enfant = racine.child(1)  # Attaché principal
+    racine = _racine(dialogue._arbre, 0)
+    enfant = _enfant(racine, 1)  # Attaché principal
     enfant.setCheckState(0, Qt.CheckState.Checked)
     assert dialogue.selection() == ["Attaché principal"]

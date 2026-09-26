@@ -6,6 +6,7 @@ from PySide6.QtCore import QPoint, Qt
 from src import candidatures
 from src.gui.vues.candidatures import VueCandidatures, _DialogueEvenement
 from src.gui.widgets.delegue_candidature import ROLE_CONTENU
+from src.types import DetailOffre
 
 
 def _texte_ligne(vue: VueCandidatures, ligne: int = 0) -> str:
@@ -58,7 +59,7 @@ def test_action_voir_ouvre_le_navigateur(qtbot, monkeypatch):
 
 
 def test_action_detail_ouvre_la_dialogue_avec_le_detail_archive(qtbot, monkeypatch):
-    detail_factice = {
+    detail_factice: DetailOffre = {
         "description": "Missions du poste",
         "salaire": "",
         "experience_requise": "",
@@ -68,6 +69,8 @@ def test_action_detail_ouvre_la_dialogue_avec_le_detail_archive(qtbot, monkeypat
         "a_propos_employeur": "",
         "sections_complementaires": {},
         "page_html": "",
+        "lien_postuler": "",
+        "date_limite": "",
     }
     candidatures.ajouter_candidature(
         "ref-1", "Attaché", "DGFiP", "https://example.org/1", detail=detail_factice
