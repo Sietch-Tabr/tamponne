@@ -3,6 +3,9 @@
 import json
 import shutil
 import zipfile
+from collections.abc import Callable
+from pathlib import Path
+from typing import Literal, Self
 from urllib.error import URLError
 
 import pytest
@@ -12,7 +15,7 @@ from src.types import InfoMaj
 
 
 @pytest.fixture(autouse=True)
-def _rediriger_maj_vers_tmp(tmp_path, monkeypatch):
+def _rediriger_maj_vers_tmp(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Redirige marqueur, pyproject et racine du projet vers un répertoire
     temporaire isolé — jamais de vrai appel réseau ni d'écriture dans le
     vrai dépôt pendant les tests."""
@@ -35,59 +38,61 @@ def _info(version: str = "1.1.0") -> InfoMaj:
 # --- version_plus_recente ---
 
 
-def test_version_plus_recente_patch_superieur():
+def test_version_plus_recente_patch_superieur() -> None:
     assert maj.version_plus_recente("1.0.1", "1.0.0")
 
 
-def test_version_plus_recente_egale_nest_pas_plus_recente():
+def test_version_plus_recente_egale_nest_pas_plus_recente() -> None:
     assert not maj.version_plus_recente("1.0.0", "1.0.0")
 
 
-def test_version_plus_recente_inferieure():
+def test_version_plus_recente_inferieure() -> None:
     assert not maj.version_plus_recente("0.9.0", "1.0.0")
 
 
-def test_version_plus_recente_tolere_prefixe_v():
+def test_version_plus_recente_tolere_prefixe_v() -> None:
     assert maj.version_plus_recente("v2.0.0", "1.0.0")
 
 
-def test_version_plus_recente_major_superieur():
+def test_version_plus_recente_major_superieur() -> None:
     assert maj.version_plus_recente("2.0.0", "1.9.9")
 
 
 # --- version_locale ---
 
 
-def test_version_locale_lit_pyproject():
+def test_version_locale_lit_pyproject() -> None:
     assert maj.version_locale() == "1.0.0"
 
 
 # --- marqueur ---
 
 
-def test_marqueur_absent_par_defaut():
+def test_marqueur_absent_par_defaut() -> None:
     assert maj.lire_maj_disponible() is None
 
 
-def test_marqueur_ecriture_puis_lecture():
+def test_marqueur_ecriture_puis_lecture() -> None:
     maj.ecrire_maj_disponible(_info())
     assert maj.lire_maj_disponible() == _info()
 
 
-def test_marqueur_effacement():
+def test_marqueur_effacement() -> None:
     maj.ecrire_maj_disponible(_info())
     maj.effacer_maj_disponible()
     assert maj.lire_maj_disponible() is None
 
 
-def test_marqueur_effacement_sans_marqueur_ne_leve_pas():
+def test_marqueur_effacement_sans_marqueur_ne_leve_pas() -> None:
     maj.effacer_maj_disponible()  # ne doit pas lever
 
 
 # --- verifier_derniere_publication ---
 
 
-def test_verifier_derniere_publication_version_plus_recente(monkeypatch):
+def test_verifier_derniere_publication_version_plus_recente(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     reponse = json.dumps(
         {
             "tag_name": "v1.1.0",
@@ -106,7 +111,9 @@ def test_verifier_derniere_publication_version_plus_recente(monkeypatch):
     }
 
 
-def test_verifier_derniere_publication_deja_a_jour_retourne_none(monkeypatch):
+def test_verifier_derniere_publication_deja_a_jour_retourne_none(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     reponse = json.dumps({"tag_name": "v1.0.0", "body": "", "zipball_url": ""}).encode(
         "utf-8"
     )
@@ -114,28 +121,32 @@ def test_verifier_derniere_publication_deja_a_jour_retourne_none(monkeypatch):
     assert maj.verifier_derniere_publication() is None
 
 
-def test_verifier_derniere_publication_erreur_reseau_retourne_none(monkeypatch):
-    def _leve(*args, **kwargs):
+def test_verifier_derniere_publication_erreur_reseau_retourne_none(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def _leve(*args: object, **kwargs: object) -> None:
         raise URLError("hors ligne")
 
     monkeypatch.setattr(maj.urllib.request, "urlopen", _leve)
     assert maj.verifier_derniere_publication() is None
 
 
-def test_verifier_derniere_publication_json_invalide_retourne_none(monkeypatch):
+def test_verifier_derniere_publication_json_invalide_retourne_none(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(maj.urllib.request, "urlopen", _urlopen_factice(b"pas du json"))
     assert maj.verifier_derniere_publication() is None
 
 
-def _urlopen_factice(contenu: bytes):
+def _urlopen_factice(contenu: bytes) -> Callable[..., object]:
     class _ReponseFactice:
-        def __enter__(self):
+        def __enter__(self) -> Self:
             return self
 
-        def __exit__(self, *a):
+        def __exit__(self, *a: object) -> Literal[False]:
             return False
 
-        def read(self):
+        def read(self) -> bytes:
             return contenu
 
     return lambda *args, **kwargs: _ReponseFactice()
@@ -144,7 +155,7 @@ def _urlopen_factice(contenu: bytes):
 # --- appliquer_maj ---
 
 
-def _construire_zip_test(tmp_path) -> str:
+def _construire_zip_test(tmp_path: Path) -> str:
     """Zip avec un unique dossier racine (comme les archives Gitea/Forgejo)
     contenant un fichier modifié et un fichier nouveau."""
     chemin_zip = tmp_path / "source.zip"
@@ -156,7 +167,9 @@ def _construire_zip_test(tmp_path) -> str:
     return str(chemin_zip)
 
 
-def test_appliquer_maj_copie_les_fichiers_de_larchive(tmp_path, monkeypatch):
+def test_appliquer_maj_copie_les_fichiers_de_larchive(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     chemin_zip = _construire_zip_test(tmp_path)
     monkeypatch.setattr(
         maj.urllib.request,
@@ -172,7 +185,7 @@ def test_appliquer_maj_copie_les_fichiers_de_larchive(tmp_path, monkeypatch):
     assert (maj.CHEMIN_RACINE / "src" / "nouveau.py").exists()
 
 
-def _construire_zip_test_avec_executable(tmp_path) -> str:
+def _construire_zip_test_avec_executable(tmp_path: Path) -> str:
     """Zip avec un fichier marqué exécutable dans `external_attr` (bit Unix
     rwxr-xr-x), comme le produit `git archive --format=zip` pour lancer.sh."""
     chemin_zip = tmp_path / "source_executable.zip"
@@ -184,8 +197,8 @@ def _construire_zip_test_avec_executable(tmp_path) -> str:
 
 
 def test_appliquer_maj_fichier_executable_dans_larchive_reste_executable(
-    tmp_path, monkeypatch
-):
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """extractall() n'applique pas les bits Unix de l'archive : sans
     restauration manuelle, lancer.sh perdrait son +x à chaque mise à jour."""
     chemin_zip = _construire_zip_test_avec_executable(tmp_path)
@@ -200,7 +213,9 @@ def test_appliquer_maj_fichier_executable_dans_larchive_reste_executable(
     assert (maj.CHEMIN_RACINE / "lancer.sh").stat().st_mode & 0o111
 
 
-def test_appliquer_maj_ne_touche_pas_data(tmp_path, monkeypatch):
+def test_appliquer_maj_ne_touche_pas_data(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """data/ n'est jamais dans l'archive (gitignore) — doit survivre intact."""
     dossier_data = maj.CHEMIN_RACINE / "data"
     dossier_data.mkdir()
@@ -219,13 +234,15 @@ def test_appliquer_maj_ne_touche_pas_data(tmp_path, monkeypatch):
     assert fichier_utilisateur.read_text(encoding="utf-8") == '{"conserve": true}'
 
 
-def test_appliquer_maj_url_manquante_leve_erreur_explicite():
+def test_appliquer_maj_url_manquante_leve_erreur_explicite() -> None:
     with pytest.raises(RuntimeError):
         maj.appliquer_maj(_info(""))
 
 
-def test_appliquer_maj_echec_telechargement_leve_runtime_error(monkeypatch):
-    def _leve(url, filename):
+def test_appliquer_maj_echec_telechargement_leve_runtime_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def _leve(url: str, filename: str) -> None:
         raise URLError("hors ligne")
 
     monkeypatch.setattr(maj.urllib.request, "urlretrieve", _leve)

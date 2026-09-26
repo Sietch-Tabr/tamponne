@@ -7,9 +7,10 @@ chronologie du revirement TUI → GUI).
 import json
 import urllib.error
 from collections.abc import Callable
+from typing import cast
 
 from PySide6.QtCore import QThread
-from PySide6.QtGui import QCloseEvent, QKeySequence
+from PySide6.QtGui import QCloseEvent, QGuiApplication, QKeySequence
 from PySide6.QtWidgets import (
     QApplication,
     QButtonGroup,
@@ -22,7 +23,7 @@ from PySide6.QtWidgets import (
 )
 
 from src.cache import obtenir_organisations
-from src.gui.theme import construire_feuille_style
+from src.gui.theme import appliquer_theme
 from src.gui.travailleurs import VerificateurMiseAJour
 from src.gui.vues.accueil import VueAccueil
 from src.gui.vues.aide import VueAide
@@ -30,6 +31,7 @@ from src.gui.vues.candidatures import VueCandidatures
 from src.gui.vues.parametres import VueParametres
 from src.gui.vues.recherche_resultats import VueRechercheResultats
 from src.gui.widgets.point_statut import PointStatut
+from src.parametres_affichage import ModeTheme, charger_mode_theme
 from src.types import FiltresRecherche, InfoMaj, Organisations, Profil
 
 CODE_RETOUR_MAJ = 42
@@ -83,6 +85,7 @@ class FenetrePrincipale(QMainWindow):
         self._vue_parametres = VueParametres()
         self._vue_parametres.cache_rafraichi.connect(self._on_cache_rafraichi)
         self._vue_parametres.demande_maj_immediate.connect(self._demander_maj_immediate)
+        self._vue_parametres.mode_theme_change.connect(self._on_mode_theme_change)
         self._pile.addWidget(self._vue_parametres)
 
         self._pile.setCurrentWidget(self._vue_accueil)
@@ -90,6 +93,24 @@ class FenetrePrincipale(QMainWindow):
             720, 480
         )  # garde-fou : en dessous, formulaires/tableau illisibles
         self.resize(1100, 750)
+
+        QGuiApplication.styleHints().colorSchemeChanged.connect(
+            self._on_schema_couleurs_change
+        )
+
+    def _on_schema_couleurs_change(self) -> None:
+        """Réapplique le thème quand le système bascule entre clair et
+        sombre, sans redémarrer l'application (sans effet visible si un
+        thème sombre ou clair est imposé dans les Paramètres)."""
+        app = QApplication.instance()
+        if isinstance(app, QApplication):
+            appliquer_theme(app)
+
+    def _on_mode_theme_change(self, mode: str) -> None:
+        """Applique aussitôt le thème choisi dans les Paramètres."""
+        app = QApplication.instance()
+        if isinstance(app, QApplication):
+            appliquer_theme(app, mode=cast(ModeTheme, mode))
 
     def _construire_barre_navigation(self) -> QWidget:
         barre = QWidget()
@@ -114,12 +135,13 @@ class FenetrePrincipale(QMainWindow):
         self.bouton_nav_parametres = self._ajouter_bouton_nav(
             disposition, "Paramètres", self._ouvrir_parametres
         )
+        # Badge sur « Paramètres » : c'est là qu'est la carte Mise à jour.
+        self.point_maj = PointStatut()
+        self.point_maj.setToolTip("Mise à jour disponible")
+        self.point_maj.ancrer_sur(self.bouton_nav_parametres)
         self.bouton_nav_aide = self._ajouter_bouton_nav(
             disposition, "Aide", self._ouvrir_aide
         )
-        self.point_maj = PointStatut()
-        self.point_maj.setToolTip("Mise à jour disponible")
-        disposition.addWidget(self.point_maj)
         self.bouton_nav_accueil.setChecked(True)
 
         disposition.addStretch()
@@ -277,12 +299,13 @@ def main() -> int:
     app.setApplicationName("Tamponné")
     app.setApplicationDisplayName("Tamponné")
     app.setOrganizationName("Tamponné")
-    # Capturée avant setStyleSheet : QApplication.font() reflète déjà la
-    # police par défaut du système (donc, sur Linux/KDE notamment, les
-    # préférences d'accessibilité de taille de texte) — ne pas l'écraser
-    # par une valeur fixe (voir src/gui/theme.py::construire_feuille_style).
+    # Police système (dont les préférences d'accessibilité, ex. KDE) capturée
+    # avant la QSS, pour en dériver les tailles au lieu de les imposer.
     taille_base_pt = app.font().pointSizeF()
-    app.setStyleSheet(construire_feuille_style(taille_base_pt))
+    # Base Fusion : rendu identique sur toutes les plateformes, là où la QSS
+    # posée sur le style natif (macOS, Windows) donne des résultats inégaux.
+    app.setStyle("Fusion")
+    appliquer_theme(app, taille_base_pt, charger_mode_theme())
 
     try:
         orgas_cache = obtenir_organisations()

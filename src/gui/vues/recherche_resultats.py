@@ -13,8 +13,9 @@ classe, jamais de fonctions/lambdas (règle vérifiée §8, étape 2).
 import webbrowser
 from typing import cast
 
-from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtCore import QModelIndex, Qt, QThread, Signal
 from PySide6.QtWidgets import (
+    QAbstractItemView,
     QApplication,
     QComboBox,
     QDialog,
@@ -28,8 +29,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QScrollArea,
     QSplitter,
-    QTableWidget,
-    QTableWidgetItem,
+    QTableView,
     QVBoxLayout,
     QWidget,
 )
@@ -46,7 +46,8 @@ from src.filtres import (
     filtrer_par_grades,
     resumer_filtres,
 )
-from src.gui.travailleurs import TravailleurRecherche, offre_vers_ligne
+from src.gui.modele_offres import ROLE_OFFRE, ModeleOffres, ProxyOffres
+from src.gui.travailleurs import TravailleurRecherche
 from src.gui.widgets.case_a_cocher import CaseACocher
 from src.gui.widgets.dialogue_detail_offre import DialogueDetailOffre
 from src.gui.widgets.dialogue_selection import (
@@ -178,7 +179,8 @@ class VueRechercheResultats(QWidget):
         self.bouton_raz: QPushButton
         self.bouton_suivre: QPushButton
         self.bouton_voir_detail: QPushButton
-        self.table_resultats: QTableWidget
+        self.table_resultats: QTableView
+        self.champ_filtre_resultats: QLineEdit
         self.label_entete: QLabel
         self.barre_progression: QProgressBar
         self.case_nouvelles_seulement: CaseACocher
@@ -186,12 +188,16 @@ class VueRechercheResultats(QWidget):
         self._afficher_tout = False
         self._grades_filtrage: list[str] = []
         self._offres_affichees: list[Offre] = []
-        self._offres_visibles: list[Offre] = []
+        self._modele_offres = ModeleOffres(self)
+        self._proxy_offres = ProxyOffres(self)
+        self._proxy_offres.setSourceModel(self._modele_offres)
         self._nouvelles: set[str] = set()
         self._dernier_nb_pages = 1
         self._thread: QThread | None = None
         self._travailleur: TravailleurRecherche | None = None
-        self._source_en_cours_nom = ""
+        self._pages_par_source: dict[str, tuple[int, int]] = {}
+        self._nb_sources_lancees = 0
+        self._nb_sources_terminees = 0
         self._avertissements: list[str] = []
 
         self._construire_ui()
@@ -204,17 +210,23 @@ class VueRechercheResultats(QWidget):
         self.case_nouvelles_seulement.toggled.connect(
             self._on_toggle_nouvelles_seulement
         )
-        self.table_resultats.itemDoubleClicked.connect(self._ouvrir_offre)
-        self.table_resultats.itemSelectionChanged.connect(self._maj_boutons_selection)
+        self.champ_filtre_resultats.textChanged.connect(
+            self._proxy_offres.setFilterFixedString
+        )
+        self.table_resultats.doubleClicked.connect(self._ouvrir_offre)
+        self.table_resultats.selectionModel().selectionChanged.connect(
+            self._maj_boutons_selection
+        )
+        # Un reset du modèle vide la sélection sans émettre selectionChanged.
+        self._proxy_offres.modelReset.connect(self._maj_boutons_selection)
 
     # --- Construction ---
 
     def _construire_ui(self) -> None:
         splitter = QSplitter(Qt.Orientation.Horizontal)
         panneau_filtres = self._construire_panneau_filtres()
-        # Garde-fou : jamais écrasé au redimensionnement. 280 (pas 260) car
-        # le cadre + la barre de défilement verticale du QScrollArea
-        # mangent ~12px de la largeur allouée (vérifié empiriquement).
+        # Jamais écrasé au redimensionnement ; 280 et non 260 : cadre et barre
+        # de défilement du QScrollArea prennent ~12 px (mesuré).
         panneau_filtres.setMinimumWidth(280)
         splitter.addWidget(panneau_filtres)
         splitter.addWidget(self._construire_panneau_resultats())
@@ -291,18 +303,16 @@ class VueRechercheResultats(QWidget):
 
         disposition.addWidget(_titre_section("Poste"))
 
-        # Bouton résumé + dialogue modal (recherche) plutôt que liste embarquée :
-        # jusqu'à ~2400 sous-organisations côté Organisation(s), inutilisable en
-        # défilement imbriqué — même motif appliqué par cohérence ici.
+        # Bouton + dialogue modal plutôt que liste embarquée : ~2400 organisations
+        # rendent le défilement imbriqué inutilisable ; même motif partout.
         self.bouton_domaines = _bouton_selection()
         self.bouton_domaines.clicked.connect(self._ouvrir_selection_domaines)
         disposition.addLayout(_ligne_solo(self.bouton_domaines))
 
         types_poste_existant = self._filtres_existants.get("types_poste")
         self._type_poste_combo = QComboBox()
-        # Largeur bornée plutôt qu'ajustée au libellé le plus long (66
-        # caractères) : sinon ce combo impose sa largeur à tout le panneau.
-        # Qt affiche « … » nativement pour le texte tronqué.
+        # Largeur bornée (Qt tronque avec « … ») : ajustée au plus long libellé
+        # (66 caractères), ce combo imposerait sa largeur à tout le panneau.
         self._type_poste_combo.setSizeAdjustPolicy(
             QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
         )
@@ -473,11 +483,22 @@ class VueRechercheResultats(QWidget):
         self.case_nouvelles_seulement.setVisible(False)
         disposition.addWidget(self.case_nouvelles_seulement)
 
-        self.table_resultats = QTableWidget(0, 5)
-        self.table_resultats.setHorizontalHeaderLabels(
-            ["Titre", "Employeur", "Localisation", "Publiée le", "Source"]
+        self.champ_filtre_resultats = QLineEdit()
+        self.champ_filtre_resultats.setPlaceholderText("Filtrer les résultats…")
+        self.champ_filtre_resultats.setClearButtonEnabled(True)
+        self.champ_filtre_resultats.setToolTip(
+            "Filtre les offres affichées sur toutes les colonnes, sans relancer "
+            "de recherche"
         )
+        disposition.addWidget(self.champ_filtre_resultats)
+
+        self.table_resultats = QTableView()
+        self.table_resultats.setModel(self._proxy_offres)
         entete = self.table_resultats.horizontalHeader()
+        # Aucune colonne triée au départ : l'ordre d'origine des sources
+        # est conservé tant que l'utilisateur ne clique pas un en-tête.
+        entete.setSortIndicator(-1, Qt.SortOrder.AscendingOrder)
+        self.table_resultats.setSortingEnabled(True)
         # Titre étiré (colonne la plus lue), date et source compactes.
         entete.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         entete.setSectionResizeMode(3, QHeaderView.ResizeMode.Fixed)
@@ -488,9 +509,15 @@ class VueRechercheResultats(QWidget):
         self.table_resultats.verticalHeader().setSectionResizeMode(
             QHeaderView.ResizeMode.ResizeToContents
         )
-        self.table_resultats.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.table_resultats.verticalHeader().setVisible(False)
+        self.table_resultats.setEditTriggers(
+            QAbstractItemView.EditTrigger.NoEditTriggers
+        )
         self.table_resultats.setSelectionBehavior(
-            QTableWidget.SelectionBehavior.SelectRows
+            QAbstractItemView.SelectionBehavior.SelectRows
+        )
+        self.table_resultats.setSelectionMode(
+            QAbstractItemView.SelectionMode.SingleSelection
         )
         disposition.addWidget(self.table_resultats)
 
@@ -604,7 +631,9 @@ class VueRechercheResultats(QWidget):
         self.barre_progression.setRange(0, 0)
         self.barre_progression.setVisible(True)
 
-        self._source_en_cours_nom = ""
+        self._pages_par_source = {}
+        self._nb_sources_lancees = 0
+        self._nb_sources_terminees = 0
         self._avertissements = []
 
         self._thread = QThread()
@@ -616,30 +645,47 @@ class VueRechercheResultats(QWidget):
         self._travailleur.erreur.connect(self._on_erreur)
         self._travailleur.avertissement.connect(self._on_avertissement)
         self._travailleur.source_en_cours.connect(self._on_source_en_cours)
+        self._travailleur.source_terminee.connect(self._on_source_terminee)
         self._travailleur.resultat.connect(self._thread.quit)
         self._travailleur.erreur.connect(self._thread.quit)
         self._thread.finished.connect(self._on_thread_termine)
         self._thread.start()
 
-    def _on_source_en_cours(self, nom: str) -> None:
-        self._source_en_cours_nom = nom
-        self._definir_statut_recherche(f"Recherche en cours… ({nom})")
+    def _on_source_en_cours(self, _nom: str) -> None:
+        self._nb_sources_lancees += 1
+        self._maj_statut_progression()
+
+    def _on_source_terminee(self, _nom: str) -> None:
+        self._nb_sources_terminees += 1
+        self._maj_statut_progression()
 
     def _on_avertissement(self, message: str) -> None:
         self._avertissements.append(message)
 
-    def _on_progression(self, page: int, total: int) -> None:
+    def _on_progression(self, nom: str, page: int, total: int) -> None:
+        self._pages_par_source[nom] = (page, total)
+        self._maj_statut_progression()
+
+    def _maj_statut_progression(self) -> None:
+        """Statut agrégé des sources interrogées en parallèle : pages
+        chargées sur pages annoncées (toutes sources confondues) et
+        nombre de sources terminées."""
+        pages = sum(page for page, _ in self._pages_par_source.values())
+        total = sum(total for _, total in self._pages_par_source.values())
+        morceaux = []
         if total > 1:
-            suffixe = (
-                f" ({self._source_en_cours_nom})" if self._source_en_cours_nom else ""
-            )
-            self.bouton_lancer.setText(f"Page {page}/{total}…")
-            self._definir_statut_recherche(
-                f"Recherche en cours… page {page}/{total}{suffixe}"
-            )
+            morceaux.append(f"page {pages}/{total}")
+            self.bouton_lancer.setText(f"Page {pages}/{total}…")
             # Nombre de pages connu : bascule en mode déterminé.
             self.barre_progression.setRange(0, total)
-            self.barre_progression.setValue(page)
+            self.barre_progression.setValue(pages)
+        if self._nb_sources_lancees > 1:
+            morceaux.append(
+                f"{self._nb_sources_terminees}/{self._nb_sources_lancees} "
+                "sources terminées"
+            )
+        suffixe = f" {' · '.join(morceaux)}" if morceaux else ""
+        self._definir_statut_recherche(f"Recherche en cours…{suffixe}")
 
     def _definir_statut_recherche(self, texte: str) -> None:
         """Affiche un texte de statut bien visible (accent, gras) pendant
@@ -734,8 +780,9 @@ class VueRechercheResultats(QWidget):
         pendant qu'il tourne encore (vérifié en pratique : abandon
         natif avec `QThread::~QThread` dans la pile d'appel).
 
-        Bloque le thread principal jusqu'à la fin du thread réseau en
-        cours — borné par le timeout HTTP (30 s, `api.py`). Rare en
+        Bloque le thread principal jusqu'à la fin des sources en cours
+        d'interrogation (en parallèle) — borné par le timeout HTTP
+        (30 s, `api.py`) de la requête en cours de chaque source. Rare en
         pratique (il faut naviguer ailleurs pendant qu'une recherche
         tourne) ; accepté comme compromis plutôt que de laisser un
         thread orphelin continuer en arrière-plan sur une vue détruite.
@@ -748,55 +795,40 @@ class VueRechercheResultats(QWidget):
         """Filtre le tableau sur les seules offres nouvelles, sans relancer
         de recherche — équivalent du choix « Afficher nouvelles seulement »
         du CLI historique (`_construire_choices_navigation`)."""
-        if coche:
-            offres = [
-                o
-                for o in self._offres_affichees
-                if o.get("reference") in self._nouvelles
-            ]
-        else:
-            offres = self._offres_affichees
-        self._peupler_table(offres)
-
-    def _peupler_table(self, offres: list[Offre]) -> None:
-        self._offres_visibles = offres
-        self.bouton_suivre.setEnabled(False)
-        self.bouton_voir_detail.setEnabled(False)
-        self.table_resultats.setRowCount(len(offres))
-        for ligne, offre in enumerate(offres):
-            colonnes = list(offre_vers_ligne(offre))
-            titre_complet = colonnes[0]
-            if offre.get("reference") in self._nouvelles:
-                colonnes[0] = f"★ {colonnes[0]}"
-            for colonne, valeur in enumerate(colonnes):
-                item = QTableWidgetItem(valeur)
-                if colonne == 0:
-                    # infobulle avec le titre complet : filet de sécurité
-                    # si même 2 lignes ne suffisent pas à tout afficher.
-                    item.setToolTip(titre_complet)
-                self.table_resultats.setItem(ligne, colonne, item)
+        self._proxy_offres.definir_nouvelles_seulement(coche)
         self.table_resultats.resizeRowsToContents()
 
-    def _ouvrir_offre(self, item: QTableWidgetItem) -> None:
-        ligne = item.row()
-        if 0 <= ligne < len(self._offres_visibles):
-            url = self._offres_visibles[ligne]["url"]
-            if url.startswith("https://"):
-                webbrowser.open(url)
+    def _peupler_table(self, offres: list[Offre]) -> None:
+        self._proxy_offres.definir_nouvelles_seulement(False)
+        self._modele_offres.definir_offres(offres, self._nouvelles)
+        self.table_resultats.resizeRowsToContents()
+
+    @property
+    def _offres_visibles(self) -> list[Offre]:
+        """Offres affichées dans l'ordre courant du tableau (tri, filtre
+        texte et « nouvelles seulement » compris)."""
+        return self._proxy_offres.offres_visibles()
+
+    def _offre_selectionnee(self) -> Offre | None:
+        lignes = self.table_resultats.selectionModel().selectedRows()
+        if not lignes:
+            return None
+        return lignes[0].data(ROLE_OFFRE)
+
+    def _ouvrir_offre(self, index: QModelIndex) -> None:
+        offre = index.data(ROLE_OFFRE) if index.isValid() else None
+        if offre is not None and offre["url"].startswith("https://"):
+            webbrowser.open(offre["url"])
 
     def _maj_boutons_selection(self) -> None:
-        selection = bool(self.table_resultats.selectedItems())
+        selection = self.table_resultats.selectionModel().hasSelection()
         self.bouton_suivre.setEnabled(selection)
         self.bouton_voir_detail.setEnabled(selection)
 
     def _voir_detail_offre(self) -> None:
-        lignes = self.table_resultats.selectionModel().selectedRows()
-        if not lignes:
+        offre = self._offre_selectionnee()
+        if offre is None:
             return
-        ligne = lignes[0].row()
-        if not (0 <= ligne < len(self._offres_visibles)):
-            return
-        offre = self._offres_visibles[ligne]
 
         # GET synchrone ponctuel, pas besoin d'un QThread dédié.
         QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
@@ -816,13 +848,9 @@ class VueRechercheResultats(QWidget):
         dialogue.exec()
 
     def _suivre_candidature(self) -> None:
-        lignes = self.table_resultats.selectionModel().selectedRows()
-        if not lignes:
+        offre = self._offre_selectionnee()
+        if offre is None:
             return
-        ligne = lignes[0].row()
-        if not (0 <= ligne < len(self._offres_visibles)):
-            return
-        offre = self._offres_visibles[ligne]
 
         # GET synchrone ponctuel, même compromis que le rafraîchissement du cache.
         QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)

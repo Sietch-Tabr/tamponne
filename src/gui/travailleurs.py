@@ -7,6 +7,8 @@ connexion à une fonction/lambda ordinaire ne garantit pas l'exécution
 sur le bon thread.
 """
 
+from concurrent.futures import Future, ThreadPoolExecutor
+
 from PySide6.QtCore import QObject, Signal
 
 from src.candidatures import verifier_disponibilite
@@ -26,17 +28,25 @@ from src.types import Candidature, FiltresRecherche, Offre, Organisations
 
 
 class TravailleurRecherche(QObject):
-    """Interroge les sources actives (`parametres_sources`), fusionne et
-    dédoublonne les résultats — à déplacer dans un `QThread` avant de
-    démarrer (`moveToThread`)."""
+    """Interroge les sources actives (`parametres_sources`) en parallèle,
+    fusionne et dédoublonne les résultats — à déplacer dans un `QThread`
+    avant de démarrer (`moveToThread`).
 
-    progression = Signal(int, int)
+    Chaque source tourne dans un thread du pool : les signaux peuvent
+    donc être émis depuis ces threads, d'où l'obligation de ne les
+    connecter qu'à des méthodes liées de `QObject` (connexion en file).
+    """
+
+    progression = Signal(str, int, int)
+    """(nom affiché de la source, page chargée, nb pages à charger)."""
     resultat = Signal(list, int, bool)
     erreur = Signal(str)
     avertissement = Signal(str)
     """Émis pour chaque source active en échec, sans interrompre les autres."""
     source_en_cours = Signal(str)
-    """Nom affiché de la source en cours d'interrogation."""
+    """Nom affiché d'une source dont l'interrogation démarre."""
+    source_terminee = Signal(str)
+    """Nom affiché d'une source dont l'interrogation est finie (succès ou échec)."""
 
     def __init__(self, filtres: FiltresRecherche, orgas_cache: Organisations) -> None:
         super().__init__()
@@ -54,20 +64,12 @@ class TravailleurRecherche(QObject):
             return Fhf()
         return None
 
-    def executer(self) -> None:
-        """Slot à connecter à `QThread.started` — tourne dans le thread
-        du worker une fois `moveToThread` appelé."""
+    def _sources_a_interroger(self) -> list[tuple[str, str, SourceOffres]]:
+        """(clé, nom affiché, source) des sources actives et compatibles
+        avec le filtre Versant, dans l'ordre de `SOURCES_DISPONIBLES`."""
         sources_actives = charger_sources_actives()
         versants_filtres = self._filtres.get("versants") or []
-        toutes_offres: list[Offre] = []
-        nb_pages_reference = 1
-        arret_anticipe_reference = False
-        nb_interrogees = 0
-        nb_echecs = 0
-
-        def _on_page(page: int, total: int) -> None:
-            self.progression.emit(page, total)
-
+        resultat: list[tuple[str, str, SourceOffres]] = []
         for cle, nom_affiche in SOURCES_DISPONIBLES.items():
             if not sources_actives.get(cle, True):
                 continue
@@ -79,30 +81,68 @@ class TravailleurRecherche(QObject):
             ):
                 continue  # source mono-versant exclue par le filtre Versant
             source = self._construire_source(cle)
-            if source is None:
-                continue
-            nb_interrogees += 1
-            self.source_en_cours.emit(nom_affiche)
-            try:
-                offres, nb_pages, arret_anticipe = source.rechercher(
-                    self._filtres, on_page=_on_page
-                )
-            except RuntimeError as erreur:
-                nb_echecs += 1
-                self.avertissement.emit(f"{nom_affiche} indisponible : {erreur}")
-                continue
+            if source is not None:
+                resultat.append((cle, nom_affiche, source))
+        return resultat
 
-            if cle == "fhf":
-                offres = filtrer_doublons_fhf(offres, toutes_offres)
-            toutes_offres.extend(offres)
-            if cle == "choisirleservicepublic":
-                nb_pages_reference = nb_pages
-                arret_anticipe_reference = arret_anticipe
+    def _interroger(
+        self, nom_affiche: str, source: SourceOffres
+    ) -> tuple[list[Offre], int, bool]:
+        """Exécuté dans un thread du pool : une source, toutes ses pages."""
 
-        if nb_interrogees == 0:
+        def _on_page(page: int, total: int) -> None:
+            self.progression.emit(nom_affiche, page, total)
+
+        try:
+            return source.rechercher(self._filtres, on_page=_on_page)
+        finally:
+            self.source_terminee.emit(nom_affiche)
+
+    def executer(self) -> None:
+        """Slot à connecter à `QThread.started` — tourne dans le thread
+        du worker une fois `moveToThread` appelé.
+
+        Les sources sont interrogées simultanément (une par thread), mais
+        fusionnées dans l'ordre de `SOURCES_DISPONIBLES` : le
+        dédoublonnage garde la première occurrence (choisirleservicepublic)
+        et FHF est comparée aux offres des sources qui la précèdent.
+        """
+        sources = self._sources_a_interroger()
+        if not sources:
             self.erreur.emit("Aucune source active — voir l'onglet Sources.")
             return
-        if nb_echecs == nb_interrogees:
+
+        with ThreadPoolExecutor(max_workers=len(sources)) as pool:
+            futurs: list[tuple[str, str, Future[tuple[list[Offre], int, bool]]]] = []
+            for cle, nom_affiche, source in sources:
+                self.source_en_cours.emit(nom_affiche)
+                futurs.append(
+                    (
+                        cle,
+                        nom_affiche,
+                        pool.submit(self._interroger, nom_affiche, source),
+                    )
+                )
+
+            toutes_offres: list[Offre] = []
+            nb_pages_reference = 1
+            arret_anticipe_reference = False
+            nb_echecs = 0
+            for cle, nom_affiche, futur in futurs:
+                try:
+                    offres, nb_pages, arret_anticipe = futur.result()
+                except RuntimeError as erreur:
+                    nb_echecs += 1
+                    self.avertissement.emit(f"{nom_affiche} indisponible : {erreur}")
+                    continue
+                if cle == "fhf":
+                    offres = filtrer_doublons_fhf(offres, toutes_offres)
+                toutes_offres.extend(offres)
+                if cle == "choisirleservicepublic":
+                    nb_pages_reference = nb_pages
+                    arret_anticipe_reference = arret_anticipe
+
+        if nb_echecs == len(sources):
             self.erreur.emit("Toutes les sources actives sont indisponibles.")
             return
 

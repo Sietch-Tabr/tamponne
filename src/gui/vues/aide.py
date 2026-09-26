@@ -206,4 +206,11 @@ class VueAide(QWidget):
             "L'essentiel de la fiche de poste reste consultable même "
             "après dépublication.",
         )
+        _entree(
+            disposition,
+            "Clavier",
+            "Entrée (ou double-clic) ouvre le détail de la candidature "
+            "sélectionnée, Suppr arrête son suivi ; clic droit pour toutes "
+            "les actions.",
+        )
         return groupe

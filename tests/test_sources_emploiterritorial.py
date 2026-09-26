@@ -1,10 +1,10 @@
 """Tests du module source emploiterritorial (extraction, pas de réseau)."""
 
 from src.sources.emploiterritorial.extraction import (
-    SOURCE_LABEL,
     extraire_detail_offre,
     extraire_offres,
     extraire_totaux,
+    SOURCE_LABEL,
 )
 
 _LIGNE_MINIMALE = """
@@ -42,15 +42,15 @@ _PAGE_RECHERCHE = f"""
 """
 
 
-def test_extraire_totaux():
+def test_extraire_totaux() -> None:
     assert extraire_totaux(_PAGE_RECHERCHE) == (585, 20)
 
 
-def test_extraire_totaux_champs_absents():
+def test_extraire_totaux_champs_absents() -> None:
     assert extraire_totaux("<html></html>") == (0, 20)
 
 
-def test_extraire_offres_ligne_minimale():
+def test_extraire_offres_ligne_minimale() -> None:
     offres = extraire_offres(_PAGE_RECHERCHE)
     assert len(offres) == 1
     offre = offres[0]
@@ -67,19 +67,19 @@ def test_extraire_offres_ligne_minimale():
     assert offre["source"] == SOURCE_LABEL
 
 
-def test_extraire_offres_ignore_le_bloc_desktop_duplique():
+def test_extraire_offres_ignore_le_bloc_desktop_duplique() -> None:
     # Un seul lien "lien-details-offre" extrait par offre malgré les deux
     # blocs responsive (mobile/desktop) présents dans le DOM.
     offres = extraire_offres(_PAGE_RECHERCHE)
     assert len(offres) == 1
 
 
-def test_extraire_offres_sans_lien_ignoree():
+def test_extraire_offres_sans_lien_ignoree() -> None:
     html = '<tr id="O1"><td><div class="detail-offres"></div></td></tr>'
     assert extraire_offres(html) == []
 
 
-def test_extraire_offres_url_domaine_invalide_ignoree():
+def test_extraire_offres_url_domaine_invalide_ignoree() -> None:
     html = """
     <tr id="O1"><td><div class="detail-offres">
       <a class="lien-details-offre" href="https://evil.example.com/x">Titre</a>
@@ -88,7 +88,7 @@ def test_extraire_offres_url_domaine_invalide_ignoree():
     assert extraire_offres(html) == []
 
 
-def test_extraire_offres_html_vide():
+def test_extraire_offres_html_vide() -> None:
     assert extraire_offres("") == []
 
 
@@ -118,7 +118,7 @@ _FICHE_DETAIL = """
 """
 
 
-def test_extraire_detail_offre_champs_dedies():
+def test_extraire_detail_offre_champs_dedies() -> None:
     detail = extraire_detail_offre(_FICHE_DETAIL)
     assert detail["salaire"] == "Non renseigné"
     assert detail["experience_requise"] == "Confirmé"
@@ -128,19 +128,19 @@ def test_extraire_detail_offre_champs_dedies():
     assert detail["lien_postuler"] == "https://www.hautsdefrance.fr/offres/123"
 
 
-def test_extraire_detail_offre_description_narrative_optionnelle():
+def test_extraire_detail_offre_description_narrative_optionnelle() -> None:
     detail = extraire_detail_offre(_FICHE_DETAIL)
     assert "direction des systèmes d'information" in detail["description"]
 
 
-def test_extraire_detail_offre_titre_h2_non_capture_dans_description():
+def test_extraire_detail_offre_titre_h2_non_capture_dans_description() -> None:
     # Régression : le titre <h2> de l'offre ne doit jamais se retrouver
     # dans description (piège vérifié sur une offre réelle).
     detail = extraire_detail_offre(_FICHE_DETAIL)
     assert "Ingénieur systèmes et réseau" not in detail["description"]
 
 
-def test_extraire_detail_offre_sans_description_narrative():
+def test_extraire_detail_offre_sans_description_narrative() -> None:
     html = """
     <h2>Poste sans texte libre</h2>
     <div class="offre-item"><div class="offre-item-label">Employeur</div>
@@ -149,18 +149,17 @@ def test_extraire_detail_offre_sans_description_narrative():
     assert extraire_detail_offre(html)["description"] == ""
 
 
-def test_extraire_detail_offre_sections_complementaires_sans_doublon():
+def test_extraire_detail_offre_sections_complementaires_sans_doublon() -> None:
     detail = extraire_detail_offre(_FICHE_DETAIL)
-    # "Contact" reste en section complémentaire ; les champs dédiés
-    # (Rémunération, Experience, Famille de métiers, Lien de candidature,
-    # Date limite) ne sont pas dupliqués ici.
+    # « Contact » reste ici ; les champs ayant un emplacement dédié
+    # (rémunération, expérience, lien, date limite…) ne sont pas dupliqués.
     assert detail["sections_complementaires"] == {
         "Employeur": "Region Hauts-de-France",
         "Contact": "0374270000",
     }
 
 
-def test_extraire_detail_offre_sans_champs():
+def test_extraire_detail_offre_sans_champs() -> None:
     detail = extraire_detail_offre("<html></html>")
     assert detail["salaire"] == ""
     assert detail["sections_complementaires"] == {}

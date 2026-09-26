@@ -25,7 +25,7 @@ def _charger_cache() -> dict[str, Any]:
         return {}
     try:
         return json.loads(CHEMIN_CACHE.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
+    except json.JSONDecodeError, OSError:
         # stderr, pas de bibliothèque d'UI : ce module n'est lié à
         # aucune interface particulière.
         print(
@@ -50,7 +50,7 @@ def _organisations_expirees(cache: dict[str, Any]) -> bool:
         cached_at = datetime.fromisoformat(entree["cached_at"])
         age = (datetime.now(timezone.utc) - cached_at).total_seconds()
         return age > TTL_ORGANISATIONS
-    except (KeyError, ValueError, TypeError):
+    except KeyError, ValueError, TypeError:
         return True
 
 
@@ -103,9 +103,7 @@ def obtenir_organisations(forcer: bool = False) -> Organisations:
     return cache["organisations"]["data"]
 
 
-# ---------------------------------------------------------------------------
-# Cache des offres par profil
-# ---------------------------------------------------------------------------
+# --- Cache des offres par profil ---
 
 
 def _charger_offres() -> dict[str, dict[str, OffreCache]]:
@@ -114,7 +112,7 @@ def _charger_offres() -> dict[str, dict[str, OffreCache]]:
         return {}
     try:
         return json.loads(CHEMIN_OFFRES.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
+    except json.JSONDecodeError, OSError:
         print(
             f"Avertissement : {CHEMIN_OFFRES.name} illisible ou corrompu, "
             "cache réinitialisé.",
@@ -171,7 +169,7 @@ def maj_cache_offres(nom_profil: str, offres_fraiches: list[Offre]) -> set[str]:
                 vu_le = datetime.fromisoformat(cache_profil[ref]["vu_le"])
                 if (maintenant - vu_le).total_seconds() <= TTL_NOUVELLES:
                     nouvelles.add(ref)
-            except (KeyError, ValueError, TypeError):
+            except KeyError, ValueError, TypeError:
                 pass
             cache_profil[ref].update({**offre, "derniere_vue": maintenant_iso})
 
@@ -186,7 +184,7 @@ def maj_cache_offres(nom_profil: str, offres_fraiches: list[Offre]) -> set[str]:
                 age = (maintenant - derniere).total_seconds()
                 if age > TTL_OFFRES:
                     a_purger.append(ref)
-            except (ValueError, TypeError):
+            except ValueError, TypeError:
                 a_purger.append(ref)
     for ref in a_purger:
         del cache_profil[ref]
@@ -201,9 +199,7 @@ def obtenir_offres_cachetees(nom_profil: str) -> dict[str, OffreCache]:
     return _charger_offres().get(nom_profil, {})
 
 
-# ---------------------------------------------------------------------------
-# Cache des organisations
-# ---------------------------------------------------------------------------
+# --- Cache des organisations ---
 
 
 def age_cache_organisations() -> str | None:
@@ -220,5 +216,5 @@ def age_cache_organisations() -> str | None:
         if age_s < 86400:
             return f"il y a {int(age_s // 3600)} h"
         return f"il y a {int(age_s // 86400)} j"
-    except (KeyError, ValueError, TypeError):
+    except KeyError, ValueError, TypeError:
         return None

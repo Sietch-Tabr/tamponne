@@ -2,10 +2,10 @@
 coché — la couleur seule (QSS) n'est pas un indice suffisant."""
 
 from PySide6.QtCore import QPointF, Qt
-from PySide6.QtGui import QPainter, QPaintEvent, QPen
+from PySide6.QtGui import QColor, QPainter, QPaintEvent, QPen
 from PySide6.QtWidgets import QCheckBox, QStyle, QStyleOptionButton, QWidget
 
-from src.gui.theme import BG
+from src.gui.theme import palette_active
 
 
 class CaseACocher(QCheckBox):
@@ -28,7 +28,7 @@ class CaseACocher(QCheckBox):
 
         peintre = QPainter(self)
         peintre.setRenderHint(QPainter.RenderHint.Antialiasing)
-        stylo = QPen(BG)
+        stylo = QPen(QColor(palette_active().sur_accent))
         stylo.setWidthF(rect.width() * 0.14)
         stylo.setCapStyle(Qt.PenCapStyle.RoundCap)
         stylo.setJoinStyle(Qt.PenJoinStyle.RoundJoin)

@@ -63,7 +63,7 @@ def filtrer_doublons_fhf(
     Approximatif par nature (pas de référence commune) — biaisé vers
     le faux négatif (un doublon occasionnel peut passer) plutôt que le
     faux positif (masquer une offre réelle) : un match sur le titre
-    seul produirait des faux positifs vérifiés cette session (titres
+    seul produirait des faux positifs observés sur les sites (titres
     génériques comme "Infirmier" correspondant à des employeurs
     complètement différents)."""
     titres_existants: dict[str, list[set[str]]] = {}

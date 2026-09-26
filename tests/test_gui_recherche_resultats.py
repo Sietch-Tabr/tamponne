@@ -2,21 +2,27 @@
 
 import json
 import time
+from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from typing import cast
 
 import pytest
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QSplitter
+from pytestqt.qtbot import QtBot
 
 from src import cache, candidatures, export, parametres_sources
 from src.gui.vues.recherche_resultats import VueRechercheResultats
 from src.sources.choisirleservicepublic import ChoisirLeServicePublic
 from src.sources.emploiterritorial import EmploiTerritorial
-from src.types import Offre
+from src.types import DetailOffre, FiltresRecherche, Offre
 
 
 @pytest.fixture(autouse=True)
-def _rediriger_stockage_vers_tmp(tmp_path, monkeypatch):
+def _rediriger_stockage_vers_tmp(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Isole cache.py, export.py et candidatures.py de data/ réel, même
     pattern que test_cache.py."""
     monkeypatch.setattr(cache, "CHEMIN_CACHE", tmp_path / "cache.json")
@@ -43,6 +49,7 @@ _OFFRE_TEST: Offre = {
     "localisation": "Montpellier (34)",
     "versant": "Fonction publique de l'État",
     "date": "il y a 6 j",
+    "source": "",
 }
 
 _OFFRE_GRADE_SUPERIEUR: Offre = {
@@ -54,10 +61,11 @@ _OFFRE_GRADE_SUPERIEUR: Offre = {
     "localisation": "Montpellier (34)",
     "versant": "Fonction publique de l'État",
     "date": "il y a 6 j",
+    "source": "",
 }
 
 
-def test_construire_filtres_sans_selection_retourne_les_defauts(qtbot):
+def test_construire_filtres_sans_selection_retourne_les_defauts(qtbot: QtBot) -> None:
     vue = VueRechercheResultats()
     qtbot.addWidget(vue)
     filtres = vue.construire_filtres()
@@ -78,7 +86,7 @@ def test_construire_filtres_sans_selection_retourne_les_defauts(qtbot):
     assert vue.afficher_grades_superieurs() is False
 
 
-def test_construire_filtres_reflete_les_selections(qtbot):
+def test_construire_filtres_reflete_les_selections(qtbot: QtBot) -> None:
     vue = VueRechercheResultats()
     qtbot.addWidget(vue)
     vue.show()  # geometrie reelle necessaire pour un clic precis sur la case
@@ -89,21 +97,21 @@ def test_construire_filtres_reflete_les_selections(qtbot):
     vue._mot_cle_champ.setText("  IDIV  ")
 
     filtres = vue.construire_filtres()
-    assert filtres["categories"] == ["A"]
-    assert filtres["management"] is True
-    assert filtres["query"] == "IDIV"
+    assert filtres.get("categories") == ["A"]
+    assert filtres.get("management") is True
+    assert filtres.get("query") == "IDIV"
     assert vue.afficher_grades_superieurs() is True
 
 
-def test_versant_fpe_seul_par_defaut(qtbot):
+def test_versant_fpe_seul_par_defaut(qtbot: QtBot) -> None:
     vue = VueRechercheResultats()
     qtbot.addWidget(vue)
-    assert vue.construire_filtres()["versants"] == ["etat"]
+    assert vue.construire_filtres().get("versants") == ["etat"]
     valeurs = {cle: case.isChecked() for case, cle in vue._versants_cases}
     assert valeurs == {"etat": True, "hospitalier": False, "territorial": False}
 
 
-def test_versant_case_a_une_infobulle_avec_le_nom_complet(qtbot):
+def test_versant_case_a_une_infobulle_avec_le_nom_complet(qtbot: QtBot) -> None:
     vue = VueRechercheResultats()
     qtbot.addWidget(vue)
     for case, cle in vue._versants_cases:
@@ -111,30 +119,38 @@ def test_versant_case_a_une_infobulle_avec_le_nom_complet(qtbot):
         assert case.text() in ("FPE", "FPH", "FPT")
 
 
-def test_versant_multi_selection(qtbot):
+def test_versant_multi_selection(qtbot: QtBot) -> None:
     vue = VueRechercheResultats()
     qtbot.addWidget(vue)
     for case, cle in vue._versants_cases:
         case.setChecked(cle in ("hospitalier", "territorial"))
-    assert set(vue.construire_filtres()["versants"]) == {"hospitalier", "territorial"}
+    assert set(vue.construire_filtres().get("versants") or []) == {
+        "hospitalier",
+        "territorial",
+    }
 
 
-def test_versant_compat_ancien_format_singulier(qtbot):
+def test_versant_compat_ancien_format_singulier(qtbot: QtBot) -> None:
     """Anciens profils sauvegardés avant le passage aux cases à cocher
     (`"versant": "territorial"`, singulier) — la sélection initiale doit
     quand même refléter la valeur, pas retomber sur le défaut FPE."""
-    vue = VueRechercheResultats(filtres_existants={"versant": "territorial"})
+    vue = VueRechercheResultats(
+        filtres_existants=cast(FiltresRecherche, {"versant": "territorial"})
+    )
     qtbot.addWidget(vue)
-    assert vue.construire_filtres()["versants"] == ["territorial"]
+    assert vue.construire_filtres().get("versants") == ["territorial"]
 
 
-def test_versant_compat_ancien_tous_devient_liste_vide(qtbot):
-    vue = VueRechercheResultats(filtres_existants={"versant": "__tous__"})
+def test_versant_compat_ancien_tous_devient_liste_vide(qtbot: QtBot) -> None:
+    # Clé « versant » (singulier) hors du type actuel : format historique.
+    vue = VueRechercheResultats(
+        filtres_existants=cast(FiltresRecherche, {"versant": "__tous__"})
+    )
     qtbot.addWidget(vue)
-    assert vue.construire_filtres()["versants"] == []
+    assert vue.construire_filtres().get("versants") == []
 
 
-def test_raz_reinitialise_versant_a_fpe_seul(qtbot):
+def test_raz_reinitialise_versant_a_fpe_seul(qtbot: QtBot) -> None:
     vue = VueRechercheResultats()
     qtbot.addWidget(vue)
     for case, cle in vue._versants_cases:
@@ -142,10 +158,10 @@ def test_raz_reinitialise_versant_a_fpe_seul(qtbot):
 
     vue._reinitialiser_filtres()
 
-    assert vue.construire_filtres()["versants"] == ["etat"]
+    assert vue.construire_filtres().get("versants") == ["etat"]
 
 
-def test_bouton_domaines_affiche_tous_par_defaut(qtbot):
+def test_bouton_domaines_affiche_tous_par_defaut(qtbot: QtBot) -> None:
     vue = VueRechercheResultats()
     qtbot.addWidget(vue)
     assert vue.bouton_domaines.text() == "Domaine(s)\nTous"
@@ -154,7 +170,7 @@ def test_bouton_domaines_affiche_tous_par_defaut(qtbot):
     assert vue.bouton_grades.text() == "Corps / Grade\nTous"
 
 
-def test_panneau_filtres_ne_peut_pas_etre_reduit_a_zero(qtbot):
+def test_panneau_filtres_ne_peut_pas_etre_reduit_a_zero(qtbot: QtBot) -> None:
     vue = VueRechercheResultats()
     qtbot.addWidget(vue)
     splitter = vue.findChild(QSplitter)
@@ -165,7 +181,9 @@ def test_panneau_filtres_ne_peut_pas_etre_reduit_a_zero(qtbot):
     assert splitter.sizes()[0] >= 280
 
 
-def test_selection_domaines_via_dialogue_met_a_jour_le_bouton(qtbot, monkeypatch):
+def test_selection_domaines_via_dialogue_met_a_jour_le_bouton(
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from PySide6.QtWidgets import QDialog
 
     from src.gui.widgets.dialogue_selection import DialogueSelectionListe
@@ -181,10 +199,12 @@ def test_selection_domaines_via_dialogue_met_a_jour_le_bouton(qtbot, monkeypatch
 
     assert vue._domaines_selection == ["Numérique"]
     assert vue.bouton_domaines.text() == "Domaine(s)\n1 sélectionné"
-    assert vue.construire_filtres()["domaines"] == ["Numérique"]
+    assert vue.construire_filtres().get("domaines") == ["Numérique"]
 
 
-def test_selection_domaines_annulee_ne_change_rien(qtbot, monkeypatch):
+def test_selection_domaines_annulee_ne_change_rien(
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from PySide6.QtWidgets import QDialog
 
     from src.gui.widgets.dialogue_selection import DialogueSelectionListe
@@ -201,7 +221,9 @@ def test_selection_domaines_annulee_ne_change_rien(qtbot, monkeypatch):
     assert vue.bouton_domaines.text() == "Domaine(s)\nTous"
 
 
-def test_selection_grades_via_dialogue_met_a_jour_le_bouton(qtbot, monkeypatch):
+def test_selection_grades_via_dialogue_met_a_jour_le_bouton(
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from PySide6.QtWidgets import QDialog
 
     from src.gui.widgets.dialogue_selection import DialogueSelectionGrades
@@ -219,10 +241,12 @@ def test_selection_grades_via_dialogue_met_a_jour_le_bouton(qtbot, monkeypatch):
 
     assert vue._grades_selection == ["Attaché principal"]
     assert vue.bouton_grades.text() == "Corps / Grade\n1 sélectionné"
-    assert vue.construire_filtres()["grades"] == ["Attaché principal"]
+    assert vue.construire_filtres().get("grades") == ["Attaché principal"]
 
 
-def test_selection_organisations_via_dialogue(qtbot, monkeypatch):
+def test_selection_organisations_via_dialogue(
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from PySide6.QtWidgets import QDialog
 
     from src.gui.widgets.dialogue_selection import DialogueSelectionOrganisations
@@ -247,8 +271,8 @@ def test_selection_organisations_via_dialogue(qtbot, monkeypatch):
 
 
 def test_raz_reinitialise_les_selections_domaines_localisations_organisations_grades(
-    qtbot,
-):
+    qtbot: QtBot,
+) -> None:
     vue = VueRechercheResultats()
     qtbot.addWidget(vue)
     vue._domaines_selection = ["Numérique"]
@@ -266,7 +290,7 @@ def test_raz_reinitialise_les_selections_domaines_localisations_organisations_gr
     assert vue.bouton_grades.text() == "Corps / Grade\nTous"
 
 
-def test_bouton_porte_le_bon_libelle_selon_le_mode(qtbot):
+def test_bouton_porte_le_bon_libelle_selon_le_mode(qtbot: QtBot) -> None:
     vue_recherche = VueRechercheResultats()
     qtbot.addWidget(vue_recherche)
     assert vue_recherche.bouton_lancer.text() == "Lancer la recherche"
@@ -276,9 +300,9 @@ def test_bouton_porte_le_bon_libelle_selon_le_mode(qtbot):
     assert vue_edition.bouton_lancer.text() == "Enregistrer les modifications"
 
 
-def test_filtres_existants_prerempliss_les_widgets(qtbot):
+def test_filtres_existants_prerempliss_les_widgets(qtbot: QtBot) -> None:
     orgas_cache = {"Ministère de test": {"Sous-org A": 1, "Sous-org B": 2}}
-    filtres: dict = {
+    filtres: FiltresRecherche = {
         "categories": ["A"],
         "domaines": ["Numérique"],
         "localisations": ["Hérault"],
@@ -295,24 +319,30 @@ def test_filtres_existants_prerempliss_les_widgets(qtbot):
     qtbot.addWidget(vue)
 
     reconstruits = vue.construire_filtres()
-    assert reconstruits["categories"] == ["A"]
-    assert reconstruits["domaines"] == ["Numérique"]
-    assert reconstruits["localisations"] == ["Hérault"]
-    assert reconstruits["organisations"] == ["Ministère de test - Sous-org A"]
-    assert reconstruits["versants"] == ["territorial"]
-    assert reconstruits["types_poste"] == ["titulaire"]
-    assert reconstruits["experience"] == "Confirmé"
-    assert reconstruits["date_publication"] == "7 derniers jours"
-    assert reconstruits["management"] is True
-    assert reconstruits["teletravail"] is True
-    assert reconstruits["query"] == "IDIV"
+    assert reconstruits.get("categories") == ["A"]
+    assert reconstruits.get("domaines") == ["Numérique"]
+    assert reconstruits.get("localisations") == ["Hérault"]
+    assert reconstruits.get("organisations") == ["Ministère de test - Sous-org A"]
+    assert reconstruits.get("versants") == ["territorial"]
+    assert reconstruits.get("types_poste") == ["titulaire"]
+    assert reconstruits.get("experience") == "Confirmé"
+    assert reconstruits.get("date_publication") == "7 derniers jours"
+    assert reconstruits.get("management") is True
+    assert reconstruits.get("teletravail") is True
+    assert reconstruits.get("query") == "IDIV"
 
 
-def test_lancer_recherche_peuple_la_table(qtbot, monkeypatch):
+def test_lancer_recherche_peuple_la_table(
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Le bouton déclenche la recherche (mockée, pas d'appel réseau réel)
     dans un QThread, et peuple le tableau une fois le résultat reçu."""
 
-    def _rechercher_factice(self, filtres, on_page=None):
+    def _rechercher_factice(
+        self: object,
+        filtres: FiltresRecherche,
+        on_page: Callable[[int, int], None] | None = None,
+    ) -> tuple[list[Offre], int, bool]:
         if on_page:
             on_page(1, 1)
         return [_OFFRE_TEST], 1, False
@@ -322,11 +352,17 @@ def test_lancer_recherche_peuple_la_table(qtbot, monkeypatch):
     vue = VueRechercheResultats()
     qtbot.addWidget(vue)
     qtbot.mouseClick(vue.bouton_lancer, Qt.MouseButton.LeftButton)
-    qtbot.waitUntil(lambda: vue.table_resultats.rowCount() == 1, timeout=2000)
+    qtbot.waitUntil(lambda: vue.table_resultats.model().rowCount() == 1, timeout=2000)
 
 
-def test_barre_progression_visible_pendant_recherche_puis_cachee(qtbot, monkeypatch):
-    def _rechercher_factice(self, filtres, on_page=None):
+def test_barre_progression_visible_pendant_recherche_puis_cachee(
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def _rechercher_factice(
+        self: object,
+        filtres: FiltresRecherche,
+        on_page: Callable[[int, int], None] | None = None,
+    ) -> tuple[list[Offre], int, bool]:
         return [_OFFRE_TEST], 1, False
 
     monkeypatch.setattr(ChoisirLeServicePublic, "rechercher", _rechercher_factice)
@@ -336,19 +372,103 @@ def test_barre_progression_visible_pendant_recherche_puis_cachee(qtbot, monkeypa
     assert vue.barre_progression.isVisible() is False
 
     qtbot.mouseClick(vue.bouton_lancer, Qt.MouseButton.LeftButton)
-    qtbot.waitUntil(lambda: vue.table_resultats.rowCount() == 1, timeout=2000)
+    qtbot.waitUntil(lambda: vue.table_resultats.model().rowCount() == 1, timeout=2000)
     qtbot.waitUntil(lambda: vue._thread is None, timeout=2000)
 
     assert vue.barre_progression.isVisible() is False
 
 
-def test_statut_recherche_visible_puis_retabli_apres_resultat(qtbot, monkeypatch):
+def test_progression_agregee_sur_les_sources_en_parallele(qtbot: QtBot) -> None:
+    vue = VueRechercheResultats()
+    qtbot.addWidget(vue)
+    vue._on_source_en_cours("Source A")
+    vue._on_source_en_cours("Source B")
+    vue._on_progression("Source A", 2, 5)
+    vue._on_progression("Source B", 1, 3)
+    vue._on_source_terminee("Source B")
+
+    assert vue.barre_progression.maximum() == 8
+    assert vue.barre_progression.value() == 3
+    assert "page 3/8" in vue.label_entete.text()
+    assert "1/2 sources terminées" in vue.label_entete.text()
+
+
+def test_filtre_texte_restreint_le_tableau_et_lexport(
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    offre_autre: Offre = {
+        **_OFFRE_TEST,
+        "reference": "O9",
+        "titre": "Juriste contentieux",
+        "employeur": "Préfecture",
+    }
+
+    def _rechercher_factice(
+        self: object,
+        filtres: FiltresRecherche,
+        on_page: Callable[[int, int], None] | None = None,
+    ) -> tuple[list[Offre], int, bool]:
+        return [_OFFRE_TEST, offre_autre], 1, False
+
+    monkeypatch.setattr(ChoisirLeServicePublic, "rechercher", _rechercher_factice)
+    monkeypatch.setattr(
+        "src.gui.vues.recherche_resultats.question_oui_non",
+        lambda *a, **k: False,
+    )
+
+    vue = VueRechercheResultats()
+    qtbot.addWidget(vue)
+    qtbot.mouseClick(vue.bouton_lancer, Qt.MouseButton.LeftButton)
+    qtbot.waitUntil(lambda: vue.table_resultats.model().rowCount() == 2, timeout=2000)
+
+    vue.champ_filtre_resultats.setText("juriste")
+    assert vue.table_resultats.model().rowCount() == 1
+    assert vue._offres_visibles == [offre_autre]
+
+    vue._exporter_html()
+    html = next(export.DOSSIER_EXPORTS.glob("*.html")).read_text(encoding="utf-8")
+    assert "Juriste contentieux" in html
+    assert _OFFRE_TEST["titre"] not in html
+
+
+def test_clic_entete_trie_le_tableau(
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    offre_z: Offre = {**_OFFRE_TEST, "reference": "OZ", "titre": "Zoologiste"}
+    offre_a: Offre = {**_OFFRE_TEST, "reference": "OA", "titre": "Archiviste"}
+
+    def _rechercher_factice(
+        self: object,
+        filtres: FiltresRecherche,
+        on_page: Callable[[int, int], None] | None = None,
+    ) -> tuple[list[Offre], int, bool]:
+        return [offre_z, offre_a], 1, False
+
+    monkeypatch.setattr(ChoisirLeServicePublic, "rechercher", _rechercher_factice)
+
+    vue = VueRechercheResultats()
+    qtbot.addWidget(vue)
+    qtbot.mouseClick(vue.bouton_lancer, Qt.MouseButton.LeftButton)
+    qtbot.waitUntil(lambda: vue.table_resultats.model().rowCount() == 2, timeout=2000)
+    assert vue._offres_visibles == [offre_z, offre_a]  # ordre d'origine
+
+    vue.table_resultats.sortByColumn(0, Qt.SortOrder.AscendingOrder)
+    assert vue._offres_visibles == [offre_a, offre_z]
+
+
+def test_statut_recherche_visible_puis_retabli_apres_resultat(
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Le texte « Recherche en cours… » doit être visuellement marqué
     (role="statut", accent) pendant la recherche, pas confondu avec le
     role="sousTexte" discret utilisé au repos — signalé par l'utilisateur
     comme donnant une impression de blocage sans aucun indice visuel."""
 
-    def _rechercher_factice(self, filtres, on_page=None):
+    def _rechercher_factice(
+        self: object,
+        filtres: FiltresRecherche,
+        on_page: Callable[[int, int], None] | None = None,
+    ) -> tuple[list[Offre], int, bool]:
         return [_OFFRE_TEST], 1, False
 
     monkeypatch.setattr(ChoisirLeServicePublic, "rechercher", _rechercher_factice)
@@ -363,14 +483,20 @@ def test_statut_recherche_visible_puis_retabli_apres_resultat(qtbot, monkeypatch
     assert vue.label_entete.property("role") == "sousTexte"
 
 
-def test_fenetre_reste_reactive_pendant_une_recherche_lente(qtbot, monkeypatch):
+def test_fenetre_reste_reactive_pendant_une_recherche_lente(
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Vérifie noir sur blanc que la fenêtre n'est pas bloquée pendant
     une recherche (le QThread ne bloque que le worker, pas le thread
     principal) : un autre widget doit rester cliquable et réagir
     immédiatement pendant que le réseau (mocké ici par un délai) tourne
     encore en arrière-plan."""
 
-    def _rechercher_lente(self, filtres, on_page=None):
+    def _rechercher_lente(
+        self: object,
+        filtres: FiltresRecherche,
+        on_page: Callable[[int, int], None] | None = None,
+    ) -> tuple[list[Offre], int, bool]:
         time.sleep(0.3)
         return [_OFFRE_TEST], 1, False
 
@@ -383,24 +509,29 @@ def test_fenetre_reste_reactive_pendant_une_recherche_lente(qtbot, monkeypatch):
     qtbot.mouseClick(vue.bouton_lancer, Qt.MouseButton.LeftButton)
     assert vue._thread is not None and vue._thread.isRunning()
 
-    # La recherche tourne encore (délai de 0.3s) : le clic sur RAZ doit
-    # être traité immédiatement par le thread principal, sans attendre
-    # la fin de la recherche.
+    # Recherche encore en cours (délai de 0,3 s) : le clic sur RAZ doit être
+    # traité aussitôt par le thread principal.
     qtbot.mouseClick(vue.bouton_raz, Qt.MouseButton.LeftButton)
     assert vue._mot_cle_champ.text() == ""
     assert vue._thread is not None and vue._thread.isRunning()  # toujours en cours
 
     qtbot.waitUntil(lambda: vue._thread is None, timeout=2000)
 
-    assert vue.table_resultats.item(0, 0).text() == _OFFRE_TEST["titre"]
-    assert vue.table_resultats.item(0, 1).text() == "DGFiP Hérault"
+    assert vue.table_resultats.model().index(0, 0).data() == _OFFRE_TEST["titre"]
+    assert vue.table_resultats.model().index(0, 1).data() == "DGFiP Hérault"
     assert "1 offre(s)" in vue.label_entete.text()
     assert vue.bouton_lancer.text() == "Lancer la recherche"
     assert vue.bouton_lancer.isEnabled()
 
 
-def test_bouton_suivre_desactive_sans_selection_puis_active(qtbot, monkeypatch):
-    def _rechercher_factice(self, filtres, on_page=None):
+def test_bouton_suivre_desactive_sans_selection_puis_active(
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def _rechercher_factice(
+        self: object,
+        filtres: FiltresRecherche,
+        on_page: Callable[[int, int], None] | None = None,
+    ) -> tuple[list[Offre], int, bool]:
         return [_OFFRE_TEST], 1, False
 
     monkeypatch.setattr(ChoisirLeServicePublic, "rechercher", _rechercher_factice)
@@ -408,15 +539,21 @@ def test_bouton_suivre_desactive_sans_selection_puis_active(qtbot, monkeypatch):
     vue = VueRechercheResultats()
     qtbot.addWidget(vue)
     qtbot.mouseClick(vue.bouton_lancer, Qt.MouseButton.LeftButton)
-    qtbot.waitUntil(lambda: vue.table_resultats.rowCount() == 1, timeout=2000)
+    qtbot.waitUntil(lambda: vue.table_resultats.model().rowCount() == 1, timeout=2000)
     assert vue.bouton_suivre.isEnabled() is False
 
     vue.table_resultats.selectRow(0)
     assert vue.bouton_suivre.isEnabled() is True
 
 
-def test_bouton_voir_detail_desactive_sans_selection_puis_active(qtbot, monkeypatch):
-    def _rechercher_factice(self, filtres, on_page=None):
+def test_bouton_voir_detail_desactive_sans_selection_puis_active(
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def _rechercher_factice(
+        self: object,
+        filtres: FiltresRecherche,
+        on_page: Callable[[int, int], None] | None = None,
+    ) -> tuple[list[Offre], int, bool]:
         return [_OFFRE_TEST], 1, False
 
     monkeypatch.setattr(ChoisirLeServicePublic, "rechercher", _rechercher_factice)
@@ -424,15 +561,21 @@ def test_bouton_voir_detail_desactive_sans_selection_puis_active(qtbot, monkeypa
     vue = VueRechercheResultats()
     qtbot.addWidget(vue)
     qtbot.mouseClick(vue.bouton_lancer, Qt.MouseButton.LeftButton)
-    qtbot.waitUntil(lambda: vue.table_resultats.rowCount() == 1, timeout=2000)
+    qtbot.waitUntil(lambda: vue.table_resultats.model().rowCount() == 1, timeout=2000)
     assert vue.bouton_voir_detail.isEnabled() is False
 
     vue.table_resultats.selectRow(0)
     assert vue.bouton_voir_detail.isEnabled() is True
 
 
-def test_voir_detail_offre_ouvre_la_dialogue_avec_le_detail(qtbot, monkeypatch):
-    def _rechercher_factice(self, filtres, on_page=None):
+def test_voir_detail_offre_ouvre_la_dialogue_avec_le_detail(
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def _rechercher_factice(
+        self: object,
+        filtres: FiltresRecherche,
+        on_page: Callable[[int, int], None] | None = None,
+    ) -> tuple[list[Offre], int, bool]:
         return [_OFFRE_TEST], 1, False
 
     monkeypatch.setattr(ChoisirLeServicePublic, "rechercher", _rechercher_factice)
@@ -452,13 +595,21 @@ def test_voir_detail_offre_ouvre_la_dialogue_avec_le_detail(qtbot, monkeypatch):
         lambda url: detail_factice,
     )
 
-    appels = []
+    appels: list[tuple[str, str, DetailOffre, str, str]] = []
 
     class _DialogueFactice:
-        def __init__(self, titre_offre, employeur, detail, url, reference, parent=None):
+        def __init__(
+            self,
+            titre_offre: str,
+            employeur: str,
+            detail: DetailOffre,
+            url: str,
+            reference: str,
+            parent: object = None,
+        ) -> None:
             appels.append((titre_offre, employeur, detail, url, reference))
 
-        def exec(self):
+        def exec(self) -> None:
             return None
 
     monkeypatch.setattr(
@@ -468,7 +619,7 @@ def test_voir_detail_offre_ouvre_la_dialogue_avec_le_detail(qtbot, monkeypatch):
     vue = VueRechercheResultats()
     qtbot.addWidget(vue)
     qtbot.mouseClick(vue.bouton_lancer, Qt.MouseButton.LeftButton)
-    qtbot.waitUntil(lambda: vue.table_resultats.rowCount() == 1, timeout=2000)
+    qtbot.waitUntil(lambda: vue.table_resultats.model().rowCount() == 1, timeout=2000)
 
     vue.table_resultats.selectRow(0)
     qtbot.mouseClick(vue.bouton_voir_detail, Qt.MouseButton.LeftButton)
@@ -484,8 +635,14 @@ def test_voir_detail_offre_ouvre_la_dialogue_avec_le_detail(qtbot, monkeypatch):
     ]
 
 
-def test_suivre_cette_offre_demarre_le_suivi_de_candidature(qtbot, monkeypatch):
-    def _rechercher_factice(self, filtres, on_page=None):
+def test_suivre_cette_offre_demarre_le_suivi_de_candidature(
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def _rechercher_factice(
+        self: object,
+        filtres: FiltresRecherche,
+        on_page: Callable[[int, int], None] | None = None,
+    ) -> tuple[list[Offre], int, bool]:
         return [_OFFRE_TEST], 1, False
 
     monkeypatch.setattr(ChoisirLeServicePublic, "rechercher", _rechercher_factice)
@@ -512,7 +669,7 @@ def test_suivre_cette_offre_demarre_le_suivi_de_candidature(qtbot, monkeypatch):
     vue = VueRechercheResultats()
     qtbot.addWidget(vue)
     qtbot.mouseClick(vue.bouton_lancer, Qt.MouseButton.LeftButton)
-    qtbot.waitUntil(lambda: vue.table_resultats.rowCount() == 1, timeout=2000)
+    qtbot.waitUntil(lambda: vue.table_resultats.model().rowCount() == 1, timeout=2000)
 
     vue.table_resultats.selectRow(0)
     qtbot.mouseClick(vue.bouton_suivre, Qt.MouseButton.LeftButton)
@@ -525,8 +682,14 @@ def test_suivre_cette_offre_demarre_le_suivi_de_candidature(qtbot, monkeypatch):
     assert toutes["O1"]["offre_employeur"] == "DGFiP Hérault"
 
 
-def test_erreur_reseau_affichee_sans_planter(qtbot, monkeypatch):
-    def _rechercher_en_erreur(self, filtres, on_page=None):
+def test_erreur_reseau_affichee_sans_planter(
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def _rechercher_en_erreur(
+        self: object,
+        filtres: FiltresRecherche,
+        on_page: Callable[[int, int], None] | None = None,
+    ) -> None:
         raise RuntimeError("Erreur réseau lors du chargement")
 
     monkeypatch.setattr(ChoisirLeServicePublic, "rechercher", _rechercher_en_erreur)
@@ -540,36 +703,45 @@ def test_erreur_reseau_affichee_sans_planter(qtbot, monkeypatch):
 
 
 def test_avertissement_source_en_echec_affiche_sans_bloquer_les_autres(
-    qtbot, monkeypatch
-):
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
     parametres_sources.sauvegarder_sources_actives(
         {"emploiterritorial": True, "passerellesmef": False, "fhf": False}
     )
 
-    def _rechercher_factice(self, filtres, on_page=None):
+    def _rechercher_factice(
+        self: object,
+        filtres: FiltresRecherche,
+        on_page: Callable[[int, int], None] | None = None,
+    ) -> tuple[list[Offre], int, bool]:
         return [_OFFRE_TEST], 1, False
 
-    def _echec(self, filtres, on_page=None):
+    def _echec(
+        self: object,
+        filtres: FiltresRecherche,
+        on_page: Callable[[int, int], None] | None = None,
+    ) -> None:
         raise RuntimeError("Erreur réseau")
 
     monkeypatch.setattr(ChoisirLeServicePublic, "rechercher", _rechercher_factice)
     monkeypatch.setattr(EmploiTerritorial, "rechercher", _echec)
 
-    # "versants": [] (tous les versants) — sinon le filtre Versant par
-    # défaut (État seul) exclurait emploi-territorial.fr avant même
-    # l'appel, et ne testerait plus la résilience à un échec partiel.
+    # Tous les versants : avec le défaut (État seul), emploi-territorial.fr
+    # serait exclu avant l'appel et l'échec partiel ne serait pas testé.
     vue = VueRechercheResultats(filtres_existants={"versants": []})
     qtbot.addWidget(vue)
     qtbot.mouseClick(vue.bouton_lancer, Qt.MouseButton.LeftButton)
-    qtbot.waitUntil(lambda: vue.table_resultats.rowCount() == 1, timeout=2000)
+    qtbot.waitUntil(lambda: vue.table_resultats.model().rowCount() == 1, timeout=2000)
 
     assert "indisponible" in vue.label_entete.text()
 
 
-def test_mode_edition_enregistre_et_emet_demande_retour(qtbot, monkeypatch):
-    profils_enregistres = {}
+def test_mode_edition_enregistre_et_emet_demande_retour(
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    profils_enregistres: dict[str, FiltresRecherche] = {}
 
-    def _modifier_profil_factice(nom, filtres):
+    def _modifier_profil_factice(nom: str, filtres: FiltresRecherche) -> None:
         profils_enregistres[nom] = filtres
 
     monkeypatch.setattr(
@@ -586,14 +758,20 @@ def test_mode_edition_enregistre_et_emet_demande_retour(qtbot, monkeypatch):
     with qtbot.waitSignal(vue.demande_retour, timeout=1000):
         qtbot.mouseClick(vue.bouton_lancer, Qt.MouseButton.LeftButton)
 
-    assert profils_enregistres["mon-profil"]["query"] == "IDIV"
+    assert profils_enregistres["mon-profil"].get("query") == "IDIV"
 
 
-def test_double_clic_ouvre_loffre_dans_le_navigateur(qtbot, monkeypatch):
+def test_double_clic_ouvre_loffre_dans_le_navigateur(
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
     ouvertes = []
     monkeypatch.setattr("webbrowser.open", lambda url: ouvertes.append(url))
 
-    def _rechercher_factice(self, filtres, on_page=None):
+    def _rechercher_factice(
+        self: object,
+        filtres: FiltresRecherche,
+        on_page: Callable[[int, int], None] | None = None,
+    ) -> tuple[list[Offre], int, bool]:
         return [_OFFRE_TEST], 1, False
 
     monkeypatch.setattr(ChoisirLeServicePublic, "rechercher", _rechercher_factice)
@@ -601,16 +779,20 @@ def test_double_clic_ouvre_loffre_dans_le_navigateur(qtbot, monkeypatch):
     vue = VueRechercheResultats()
     qtbot.addWidget(vue)
     qtbot.mouseClick(vue.bouton_lancer, Qt.MouseButton.LeftButton)
-    qtbot.waitUntil(lambda: vue.table_resultats.rowCount() == 1, timeout=2000)
+    qtbot.waitUntil(lambda: vue.table_resultats.model().rowCount() == 1, timeout=2000)
 
-    vue._ouvrir_offre(vue.table_resultats.item(0, 0))
+    vue._ouvrir_offre(vue.table_resultats.model().index(0, 0))
     assert ouvertes == [_OFFRE_TEST["url"]]
 
 
 def test_grades_superieurs_exclus_par_defaut_et_reaffiches_sur_demande(
-    qtbot, monkeypatch
-):
-    def _rechercher_factice(self, filtres, on_page=None):
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def _rechercher_factice(
+        self: object,
+        filtres: FiltresRecherche,
+        on_page: Callable[[int, int], None] | None = None,
+    ) -> tuple[list[Offre], int, bool]:
         return [_OFFRE_TEST, _OFFRE_GRADE_SUPERIEUR], 1, False
 
     monkeypatch.setattr(ChoisirLeServicePublic, "rechercher", _rechercher_factice)
@@ -618,17 +800,23 @@ def test_grades_superieurs_exclus_par_defaut_et_reaffiches_sur_demande(
     vue = VueRechercheResultats()
     qtbot.addWidget(vue)
     qtbot.mouseClick(vue.bouton_lancer, Qt.MouseButton.LeftButton)
-    qtbot.waitUntil(lambda: vue.table_resultats.rowCount() >= 1, timeout=2000)
-    assert vue.table_resultats.rowCount() == 1  # l'offre IDIV est exclue
+    qtbot.waitUntil(lambda: vue.table_resultats.model().rowCount() >= 1, timeout=2000)
+    assert vue.table_resultats.model().rowCount() == 1  # l'offre IDIV est exclue
     assert "1 offre(s) IDiv/IP exclue" in vue.label_entete.text()
 
     vue._grades_superieurs_case.setChecked(True)
     qtbot.mouseClick(vue.bouton_lancer, Qt.MouseButton.LeftButton)
-    qtbot.waitUntil(lambda: vue.table_resultats.rowCount() == 2, timeout=2000)
+    qtbot.waitUntil(lambda: vue.table_resultats.model().rowCount() == 2, timeout=2000)
 
 
-def test_exporter_html_genere_un_fichier(qtbot, monkeypatch):
-    def _rechercher_factice(self, filtres, on_page=None):
+def test_exporter_html_genere_un_fichier(
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def _rechercher_factice(
+        self: object,
+        filtres: FiltresRecherche,
+        on_page: Callable[[int, int], None] | None = None,
+    ) -> tuple[list[Offre], int, bool]:
         return [_OFFRE_TEST], 1, False
 
     monkeypatch.setattr(ChoisirLeServicePublic, "rechercher", _rechercher_factice)
@@ -643,7 +831,7 @@ def test_exporter_html_genere_un_fichier(qtbot, monkeypatch):
     assert vue.bouton_exporter.isEnabled() is False
 
     qtbot.mouseClick(vue.bouton_lancer, Qt.MouseButton.LeftButton)
-    qtbot.waitUntil(lambda: vue.table_resultats.rowCount() == 1, timeout=2000)
+    qtbot.waitUntil(lambda: vue.table_resultats.model().rowCount() == 1, timeout=2000)
     assert vue.bouton_exporter.isEnabled() is True
 
     vue._exporter_html()
@@ -652,8 +840,14 @@ def test_exporter_html_genere_un_fichier(qtbot, monkeypatch):
     assert _OFFRE_TEST["titre"] in fichiers[0].read_text(encoding="utf-8")
 
 
-def test_badge_nouvelles_offres_pour_une_recherche_liee_a_un_profil(qtbot, monkeypatch):
-    def _rechercher_factice(self, filtres, on_page=None):
+def test_badge_nouvelles_offres_pour_une_recherche_liee_a_un_profil(
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def _rechercher_factice(
+        self: object,
+        filtres: FiltresRecherche,
+        on_page: Callable[[int, int], None] | None = None,
+    ) -> tuple[list[Offre], int, bool]:
         return [_OFFRE_TEST], 1, False
 
     monkeypatch.setattr(ChoisirLeServicePublic, "rechercher", _rechercher_factice)
@@ -661,31 +855,30 @@ def test_badge_nouvelles_offres_pour_une_recherche_liee_a_un_profil(qtbot, monke
     vue = VueRechercheResultats(nom_profil="mon-profil")
     qtbot.addWidget(vue)
     qtbot.mouseClick(vue.bouton_lancer, Qt.MouseButton.LeftButton)
-    qtbot.waitUntil(lambda: vue.table_resultats.rowCount() == 1, timeout=2000)
-    # attend la fin réelle du thread (pas juste le résultat affiché) avant
-    # de relancer une recherche — détruire un QThread encore en cours fait
-    # planter Qt, cf. `arreter_recherche_en_cours`.
+    qtbot.waitUntil(lambda: vue.table_resultats.model().rowCount() == 1, timeout=2000)
+    # Fin réelle du thread avant de relancer : détruire un QThread encore
+    # actif fait planter Qt (cf. `arreter_recherche_en_cours`).
     qtbot.waitUntil(lambda: vue._thread is None, timeout=2000)
 
     assert vue._nouvelles == {"O1"}
-    assert "★" in vue.table_resultats.item(0, 0).text()
+    assert "★" in vue.table_resultats.model().index(0, 0).data()
     assert "1 nouvelle(s) offre(s)" in vue.label_entete.text()
     # toutes les offres sont nouvelles : rien à filtrer, la case reste
     # cachée (même règle que le CLI historique).
     assert vue.case_nouvelles_seulement.isVisible() is False
 
-    # deuxième lancement, quelques instants après : l'offre reste
-    # "nouvelle" pendant TTL_NOUVELLES (24h, cf. CLAUDE.md) — un badge
-    # qui disparaîtrait au lancement suivant serait une régression, pas
-    # le comportement voulu.
+    # Relancée aussitôt, l'offre reste « nouvelle » pendant TTL_NOUVELLES
+    # (24 h) : un badge qui disparaîtrait serait une régression.
     qtbot.mouseClick(vue.bouton_lancer, Qt.MouseButton.LeftButton)
-    qtbot.waitUntil(lambda: vue.table_resultats.rowCount() == 1, timeout=2000)
+    qtbot.waitUntil(lambda: vue.table_resultats.model().rowCount() == 1, timeout=2000)
     qtbot.waitUntil(lambda: vue._thread is None, timeout=2000)
     assert vue._nouvelles == {"O1"}
-    assert "★" in vue.table_resultats.item(0, 0).text()
+    assert "★" in vue.table_resultats.model().index(0, 0).data()
 
 
-def test_case_nouvelles_seulement_filtre_le_tableau_sans_relancer(qtbot, monkeypatch):
+def test_case_nouvelles_seulement_filtre_le_tableau_sans_relancer(
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Équivalent du choix « Afficher nouvelles seulement » du CLI
     historique — visible seulement s'il reste des offres à exclure."""
     offre_ancienne: Offre = {**_OFFRE_TEST, "reference": "O3"}
@@ -705,7 +898,11 @@ def test_case_nouvelles_seulement_filtre_le_tableau_sans_relancer(qtbot, monkeyp
         encoding="utf-8",
     )
 
-    def _rechercher_factice(self, filtres, on_page=None):
+    def _rechercher_factice(
+        self: object,
+        filtres: FiltresRecherche,
+        on_page: Callable[[int, int], None] | None = None,
+    ) -> tuple[list[Offre], int, bool]:
         return [_OFFRE_TEST, offre_ancienne], 1, False
 
     monkeypatch.setattr(ChoisirLeServicePublic, "rechercher", _rechercher_factice)
@@ -714,7 +911,7 @@ def test_case_nouvelles_seulement_filtre_le_tableau_sans_relancer(qtbot, monkeyp
     qtbot.addWidget(vue)
     vue.show()  # isVisible() dépend du mappage réel à l'écran, cf. doc Qt
     qtbot.mouseClick(vue.bouton_lancer, Qt.MouseButton.LeftButton)
-    qtbot.waitUntil(lambda: vue.table_resultats.rowCount() == 2, timeout=2000)
+    qtbot.waitUntil(lambda: vue.table_resultats.model().rowCount() == 2, timeout=2000)
     qtbot.waitUntil(lambda: vue._thread is None, timeout=2000)
 
     assert vue._nouvelles == {"O1"}
@@ -722,17 +919,23 @@ def test_case_nouvelles_seulement_filtre_le_tableau_sans_relancer(qtbot, monkeyp
     assert vue.case_nouvelles_seulement.isChecked() is False
 
     vue.case_nouvelles_seulement.setChecked(True)
-    assert vue.table_resultats.rowCount() == 1
-    assert vue.table_resultats.item(0, 0).text() == f"★ {_OFFRE_TEST['titre']}"
+    assert vue.table_resultats.model().rowCount() == 1
+    assert vue.table_resultats.model().index(0, 0).data() == f"★ {_OFFRE_TEST['titre']}"
     assert vue._offres_visibles == [_OFFRE_TEST]
 
     vue.case_nouvelles_seulement.setChecked(False)
-    assert vue.table_resultats.rowCount() == 2
+    assert vue.table_resultats.model().rowCount() == 2
     assert vue._offres_visibles == [_OFFRE_TEST, offre_ancienne]
 
 
-def test_pas_de_badge_nouvelles_offres_pour_une_recherche_vierge(qtbot, monkeypatch):
-    def _rechercher_factice(self, filtres, on_page=None):
+def test_pas_de_badge_nouvelles_offres_pour_une_recherche_vierge(
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def _rechercher_factice(
+        self: object,
+        filtres: FiltresRecherche,
+        on_page: Callable[[int, int], None] | None = None,
+    ) -> tuple[list[Offre], int, bool]:
         return [_OFFRE_TEST], 1, False
 
     monkeypatch.setattr(ChoisirLeServicePublic, "rechercher", _rechercher_factice)
@@ -740,13 +943,15 @@ def test_pas_de_badge_nouvelles_offres_pour_une_recherche_vierge(qtbot, monkeypa
     vue = VueRechercheResultats()  # pas de nom_profil
     qtbot.addWidget(vue)
     qtbot.mouseClick(vue.bouton_lancer, Qt.MouseButton.LeftButton)
-    qtbot.waitUntil(lambda: vue.table_resultats.rowCount() == 1, timeout=2000)
+    qtbot.waitUntil(lambda: vue.table_resultats.model().rowCount() == 1, timeout=2000)
 
     assert vue._nouvelles == set()
     assert "nouvelle(s) offre(s)" not in vue.label_entete.text()
 
 
-def test_arreter_recherche_en_cours_ne_plante_pas_sans_recherche_active(qtbot):
+def test_arreter_recherche_en_cours_ne_plante_pas_sans_recherche_active(
+    qtbot: QtBot,
+) -> None:
     """Ne fait rien si aucun thread n'est en cours — sûr à appeler même
     quand la vue n'a jamais lancé de recherche."""
     vue = VueRechercheResultats()
@@ -754,11 +959,17 @@ def test_arreter_recherche_en_cours_ne_plante_pas_sans_recherche_active(qtbot):
     vue.arreter_recherche_en_cours()  # ne doit pas lever d'exception
 
 
-def test_arreter_recherche_en_cours_attend_la_fin_du_thread(qtbot, monkeypatch):
+def test_arreter_recherche_en_cours_attend_la_fin_du_thread(
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Empêche le crash Qt (QThread détruit alors qu'il tourne encore) —
     régression trouvée en pratique en enchaînant deux recherches vite."""
 
-    def _rechercher_factice(self, filtres, on_page=None):
+    def _rechercher_factice(
+        self: object,
+        filtres: FiltresRecherche,
+        on_page: Callable[[int, int], None] | None = None,
+    ) -> tuple[list[Offre], int, bool]:
         return [_OFFRE_TEST], 1, False
 
     monkeypatch.setattr(ChoisirLeServicePublic, "rechercher", _rechercher_factice)

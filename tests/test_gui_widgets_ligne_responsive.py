@@ -7,12 +7,13 @@ bascule vers l'affichage vertical (le parent n'offrait jamais une largeur
 assez étroite)."""
 
 from PySide6.QtWidgets import QHBoxLayout, QPushButton, QVBoxLayout, QWidget
+from pytestqt.qtbot import QtBot
 
 from src.gui.widgets.ligne_responsive import LigneResponsive
 
 
 def _construire_ligne(
-    qtbot,
+    qtbot: QtBot,
 ) -> tuple[QWidget, LigneResponsive, QPushButton, QPushButton]:
     b1 = QPushButton("Localisation(s)\nTous")
     b2 = QPushButton("Organisation(s)\nTous")
@@ -27,7 +28,7 @@ def _construire_ligne(
     return parent, ligne, b1, b2
 
 
-def test_large_reste_horizontal(qtbot):
+def test_large_reste_horizontal(qtbot: QtBot) -> None:
     parent, ligne, b1, b2 = _construire_ligne(qtbot)
     parent.resize(400, 100)
     qtbot.wait(10)
@@ -35,7 +36,7 @@ def test_large_reste_horizontal(qtbot):
     assert b1.isVisible() and b2.isVisible()
 
 
-def test_etroit_repasse_en_vertical_sans_detruire_les_enfants(qtbot):
+def test_etroit_repasse_en_vertical_sans_detruire_les_enfants(qtbot: QtBot) -> None:
     parent, ligne, b1, b2 = _construire_ligne(qtbot)
     parent.resize(150, 150)
     qtbot.wait(10)
@@ -45,7 +46,7 @@ def test_etroit_repasse_en_vertical_sans_detruire_les_enfants(qtbot):
     assert b2.parent() is ligne
 
 
-def test_plusieurs_allers_retours_ne_plantent_pas(qtbot):
+def test_plusieurs_allers_retours_ne_plantent_pas(qtbot: QtBot) -> None:
     parent, _ligne, b1, b2 = _construire_ligne(qtbot)
     for largeur in [400, 150, 100, 500, 200, 90, 600, 130, 1000]:
         parent.resize(largeur, 150)

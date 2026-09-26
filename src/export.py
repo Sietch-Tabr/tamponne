@@ -8,11 +8,10 @@ from src.types import Offre
 
 DOSSIER_EXPORTS = Path(__file__).parent.parent / "exports"
 
-# Taille de page utilisée par l'appelant pour estimer le nombre total
-# d'offres sur le site à partir du nombre de pages (~N au total,
-# affiché dans l'export) — indépendant de la pagination réelle de
-# l'API, juste une estimation d'affichage.
 NB_PAR_PAGE = 20
+"""Taille de page servant à estimer le nombre total d'offres sur le site
+à partir du nombre de pages (« ~N au total » dans l'export) — estimation
+d'affichage, indépendante de la pagination réelle de l'API."""
 
 _CSS = """
 body { font-family: system-ui, sans-serif; max-width: 1200px; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; }
