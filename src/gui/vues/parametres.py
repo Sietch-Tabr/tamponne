@@ -5,7 +5,7 @@ persistant de `FenetrePrincipale` (« Accueil »), pas de double
 affordance pour la même action.
 """
 
-from PySide6.QtCore import Signal
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QComboBox,
     QFormLayout,
@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QMessageBox,
     QPushButton,
+    QScrollArea,
     QVBoxLayout,
     QWidget,
 )
@@ -50,11 +51,18 @@ class VueParametres(QWidget):
         titre.setProperty("role", "titre")
         disposition.addWidget(titre)
 
+        # Défilement comme l'Aide : des notes de version longues ne doivent
+        # pas écraser les autres cartes quand la fenêtre est basse.
+        contenu = QWidget()
+        pile = QVBoxLayout(contenu)
+        pile.setContentsMargins(0, 0, 0, 0)
+        pile.setSpacing(16)
+
         self.groupe_sources = QGroupBox("Sources")
         pile_sources = QVBoxLayout(self.groupe_sources)
         self.vue_sources = VueSources(afficher_titre=False)
         pile_sources.addWidget(self.vue_sources)
-        disposition.addWidget(self.groupe_sources)
+        pile.addWidget(self.groupe_sources)
 
         self.carte_apparence = QGroupBox("Apparence")
         formulaire_apparence = QFormLayout(self.carte_apparence)
@@ -66,7 +74,7 @@ class VueParametres(QWidget):
         )
         self.combo_theme.currentIndexChanged.connect(self._on_theme_choisi)
         formulaire_apparence.addRow("Thème", self.combo_theme)
-        disposition.addWidget(self.carte_apparence)
+        pile.addWidget(self.carte_apparence)
 
         self.carte_maj = QGroupBox("Mise à jour")
         pile_maj = QVBoxLayout(self.carte_maj)
@@ -76,6 +84,9 @@ class VueParametres(QWidget):
         self.label_maj_notes = QLabel()
         self.label_maj_notes.setProperty("role", "sousTexte")
         self.label_maj_notes.setWordWrap(True)
+        # Notes des releases Codeberg rédigées en Markdown (titres, listes) :
+        # en AutoText, Qt ne le détecte pas et affiche « ### » et « - » bruts.
+        self.label_maj_notes.setTextFormat(Qt.TextFormat.MarkdownText)
         pile_maj.addWidget(self.label_maj_notes)
         self.bouton_maj = QPushButton("Mettre à jour maintenant")
         self.bouton_maj.setToolTip(
@@ -84,16 +95,21 @@ class VueParametres(QWidget):
         )
         self.bouton_maj.clicked.connect(self.demande_maj_immediate.emit)
         pile_maj.addWidget(self.bouton_maj)
-        disposition.addWidget(self.carte_maj)
+        pile.addWidget(self.carte_maj)
 
         self.label_cache = QLabel()
         self.label_cache.setProperty("role", "sousTexte")
-        disposition.addWidget(self.label_cache)
+        pile.addWidget(self.label_cache)
 
         self.bouton_rafraichir = QPushButton("Rafraîchir le cache des organisations")
         self.bouton_rafraichir.clicked.connect(self._rafraichir_cache)
-        disposition.addWidget(self.bouton_rafraichir)
-        disposition.addStretch()
+        pile.addWidget(self.bouton_rafraichir)
+        pile.addStretch()
+
+        defilement = QScrollArea()
+        defilement.setWidgetResizable(True)
+        defilement.setWidget(contenu)
+        disposition.addWidget(defilement, 1)
 
         self.rafraichir()
         self.afficher_maj(None)

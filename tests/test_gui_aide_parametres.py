@@ -7,7 +7,8 @@ navigation de `FenetrePrincipale`, testé dans `test_gui_app.py`.
 from pathlib import Path
 
 import pytest
-from PySide6.QtWidgets import QGroupBox, QLabel, QWidget
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QGroupBox, QLabel, QScrollArea, QWidget
 from pytestqt.qtbot import QtBot
 
 from src import cache, parametres_affichage, parametres_sources
@@ -157,3 +158,28 @@ def test_parametres_changer_de_theme_enregistre_et_emet(qtbot: QtBot) -> None:
 
     assert signal.args == ["sombre"]
     assert parametres_affichage.charger_mode_theme() == "sombre"
+
+
+def test_parametres_notes_de_maj_rendues_en_markdown(qtbot: QtBot) -> None:
+    vue = VueParametres()
+    qtbot.addWidget(vue)
+    info: InfoMaj = {
+        "version": "1.2.0",
+        "notes": "### Recherche\n\n- Tri des résultats\n- Filtre en direct",
+        "url_zip": "https://codeberg.org/x.zip",
+        "url_publication": "https://codeberg.org/x",
+    }
+
+    vue.afficher_maj(info)
+
+    assert vue.label_maj_notes.textFormat() == Qt.TextFormat.MarkdownText
+
+
+def test_parametres_contenu_defilant_pour_les_notes_longues(qtbot: QtBot) -> None:
+    vue = VueParametres()
+    qtbot.addWidget(vue)
+    defilement = vue.findChild(QScrollArea)
+    assert defilement is not None
+    contenu = defilement.widget()
+    assert contenu is not None
+    assert contenu.isAncestorOf(vue.carte_maj)
