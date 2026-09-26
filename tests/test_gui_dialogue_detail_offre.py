@@ -1,9 +1,13 @@
 """Tests du dialogue de détail d'offre (src/gui/widgets/dialogue_detail_offre.py)."""
 
-import src.gui.widgets.dialogue_detail_offre as module_dialogue
+from pathlib import Path
+
+import pytest
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QGroupBox, QLabel
+from pytestqt.qtbot import QtBot
 
+import src.gui.widgets.dialogue_detail_offre as module_dialogue
 from src.gui.widgets.dialogue_detail_offre import DialogueDetailOffre
 from src.sources.choisirleservicepublic.extraction import DETAIL_VIDE
 from src.types import DetailOffre
@@ -16,8 +20,8 @@ def _texte_complet(dialogue: DialogueDetailOffre) -> str:
 
 
 def test_dialogue_detail_affiche_toutes_les_sections_renseignees(
-    qtbot, tmp_path, monkeypatch
-):
+    qtbot: QtBot, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     detail: DetailOffre = {
         "description": "Missions principales : piloter le projet X.",
         "salaire": "Non renseigné",
@@ -62,7 +66,7 @@ def test_dialogue_detail_affiche_toutes_les_sections_renseignees(
     assert dialogue.bouton_archive.isEnabled() is True
 
 
-def test_dialogue_detail_vide_affiche_message_par_defaut(qtbot):
+def test_dialogue_detail_vide_affiche_message_par_defaut(qtbot: QtBot) -> None:
     dialogue = DialogueDetailOffre("Poste sans détail", "Employeur", DETAIL_VIDE)
     qtbot.addWidget(dialogue)
     texte = _texte_complet(dialogue)
@@ -74,7 +78,7 @@ def test_dialogue_detail_vide_affiche_message_par_defaut(qtbot):
     assert dialogue.bouton_archive.isEnabled() is False
 
 
-def test_bouton_archive_desactive_si_le_pdf_nexiste_pas_encore(qtbot):
+def test_bouton_archive_desactive_si_le_pdf_nexiste_pas_encore(qtbot: QtBot) -> None:
     # Cas de l'écran Recherche : offre pas encore suivie, aucune
     # archive PDF n'a encore été générée pour cette référence.
     dialogue = DialogueDetailOffre(
@@ -85,7 +89,9 @@ def test_bouton_archive_desactive_si_le_pdf_nexiste_pas_encore(qtbot):
     assert dialogue.bouton_archive.isEnabled() is False
 
 
-def test_bouton_en_ligne_ouvre_lurl_dans_le_navigateur(qtbot, monkeypatch):
+def test_bouton_en_ligne_ouvre_lurl_dans_le_navigateur(
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
     ouvertes = []
     monkeypatch.setattr("webbrowser.open", lambda url: ouvertes.append(url))
     dialogue = DialogueDetailOffre(
@@ -101,7 +107,9 @@ def test_bouton_en_ligne_ouvre_lurl_dans_le_navigateur(qtbot, monkeypatch):
     assert ouvertes == ["https://choisirleservicepublic.gouv.fr/offre-1/"]
 
 
-def test_bouton_postuler_ouvre_le_lien_de_candidature(qtbot, monkeypatch):
+def test_bouton_postuler_ouvre_le_lien_de_candidature(
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
     ouvertes = []
     monkeypatch.setattr("webbrowser.open", lambda url: ouvertes.append(url))
     detail = DETAIL_VIDE.copy()
@@ -114,7 +122,9 @@ def test_bouton_postuler_ouvre_le_lien_de_candidature(qtbot, monkeypatch):
     assert ouvertes == ["https://talent-soft.com/candidature/123"]
 
 
-def test_bouton_archive_ouvre_le_pdf_archive(qtbot, tmp_path, monkeypatch):
+def test_bouton_archive_ouvre_le_pdf_archive(
+    qtbot: QtBot, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     ouvertes = []
     monkeypatch.setattr("webbrowser.open", lambda uri: ouvertes.append(uri))
     chemin_pdf = tmp_path / "ref-1.pdf"

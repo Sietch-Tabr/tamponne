@@ -44,16 +44,16 @@ def _references(proxy: ProxyOffres) -> list[str]:
     return [offre["reference"] for offre in proxy.offres_visibles()]
 
 
-def test_cle_tri_date_convertit_jj_mm_aaaa_en_iso():
+def test_cle_tri_date_convertit_jj_mm_aaaa_en_iso() -> None:
     assert cle_tri_date("05/03/2026") == "2026-03-05"
 
 
-def test_cle_tri_date_format_non_reconnu_retourne_chaine_vide():
+def test_cle_tri_date_format_non_reconnu_retourne_chaine_vide() -> None:
     assert cle_tri_date("—") == ""
     assert cle_tri_date("il y a 6 jours") == ""
 
 
-def test_modele_expose_entetes_et_cellules():
+def test_modele_expose_entetes_et_cellules() -> None:
     modele = ModeleOffres()
     modele.definir_offres(_OFFRES, set())
     assert modele.rowCount() == 3
@@ -63,7 +63,7 @@ def test_modele_expose_entetes_et_cellules():
     assert modele.index(1, 0).data(ROLE_OFFRE)["reference"] == "B"
 
 
-def test_modele_marque_les_nouvelles_offres_dune_etoile():
+def test_modele_marque_les_nouvelles_offres_dune_etoile() -> None:
     modele = ModeleOffres()
     modele.definir_offres(_OFFRES, {"B"})
     assert modele.index(1, 0).data() == "★ Infirmier de nuit"
@@ -71,11 +71,11 @@ def test_modele_marque_les_nouvelles_offres_dune_etoile():
     assert modele.index(0, 0).data() == "Attaché RH"
 
 
-def test_proxy_sans_tri_conserve_lordre_dorigine():
+def test_proxy_sans_tri_conserve_lordre_dorigine() -> None:
     assert _references(_proxy()) == ["A", "B", "C"]
 
 
-def test_proxy_tri_par_date_chronologique_et_non_alphabetique():
+def test_proxy_tri_par_date_chronologique_et_non_alphabetique() -> None:
     proxy = _proxy()
     proxy.sort(3, Qt.SortOrder.AscendingOrder)
     # Tri alphabétique sur JJ/MM/AAAA donnerait A (05/03), C (01/01), B (26/08).
@@ -84,7 +84,7 @@ def test_proxy_tri_par_date_chronologique_et_non_alphabetique():
     assert _references(proxy) == ["B", "A", "C"]
 
 
-def test_proxy_tri_texte_insensible_a_la_casse():
+def test_proxy_tri_texte_insensible_a_la_casse() -> None:
     modele = ModeleOffres()
     modele.definir_offres(
         [
@@ -100,7 +100,7 @@ def test_proxy_tri_texte_insensible_a_la_casse():
     assert _references(proxy) == ["Y", "Z", "X"]
 
 
-def test_proxy_filtre_texte_sur_toutes_les_colonnes():
+def test_proxy_filtre_texte_sur_toutes_les_colonnes() -> None:
     proxy = _proxy()
     proxy.setFilterFixedString("chu")  # colonne Employeur, casse ignorée
     assert _references(proxy) == ["B"]
@@ -108,7 +108,7 @@ def test_proxy_filtre_texte_sur_toutes_les_colonnes():
     assert _references(proxy) == ["A", "B", "C"]
 
 
-def test_proxy_nouvelles_seulement_se_combine_au_filtre_texte():
+def test_proxy_nouvelles_seulement_se_combine_au_filtre_texte() -> None:
     proxy = _proxy(nouvelles={"A", "B"})
     proxy.definir_nouvelles_seulement(True)
     assert _references(proxy) == ["A", "B"]

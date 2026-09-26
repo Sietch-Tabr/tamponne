@@ -4,14 +4,16 @@ Isolé de `data/profils.json` réel (fixture autouse, même pattern que
 `test_cache.py`/l'ancien `test_tui_accueil.py`).
 """
 
+from pathlib import Path
 from typing import cast
 
 import pytest
 from PySide6.QtWidgets import QLabel, QWidget
+from pytestqt.qtbot import QtBot
 
 from src import profils
-from src.types import Profil
 from src.gui.vues.accueil import VueAccueil
+from src.types import Profil
 
 
 def _texte_complet(widget: QWidget) -> str:
@@ -22,7 +24,9 @@ def _texte_complet(widget: QWidget) -> str:
 
 
 @pytest.fixture(autouse=True)
-def _rediriger_profils_vers_tmp(tmp_path, monkeypatch):
+def _rediriger_profils_vers_tmp(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setattr(profils, "CHEMIN_PROFILS", tmp_path / "profils.json")
 
 
@@ -50,14 +54,14 @@ def _profil_test() -> Profil:
     return cast(Profil, dict(_PROFIL_TEST))
 
 
-def test_accueil_sans_profil_affiche_un_message(qtbot):
+def test_accueil_sans_profil_affiche_un_message(qtbot: QtBot) -> None:
     vue = VueAccueil()
     qtbot.addWidget(vue)
     assert vue.liste_profils.count() == 1
     assert "Aucun profil" in vue.liste_profils.item(0).text()
 
 
-def test_accueil_liste_les_profils_sauvegardes(qtbot):
+def test_accueil_liste_les_profils_sauvegardes(qtbot: QtBot) -> None:
     profils.ajouter_profil("test-idiv", _profil_test())
     vue = VueAccueil()
     qtbot.addWidget(vue)
@@ -67,37 +71,42 @@ def test_accueil_liste_les_profils_sauvegardes(qtbot):
     assert "★ 2 nouvelle(s)" in _texte_complet(ligne)
 
 
-def test_action_lancer_emet_le_signal_avec_le_profil(qtbot):
+def test_action_lancer_emet_le_signal_avec_le_profil(qtbot: QtBot) -> None:
     profils.ajouter_profil("test-idiv", _profil_test())
     vue = VueAccueil()
     qtbot.addWidget(vue)
 
     with qtbot.waitSignal(vue.demande_lancer_profil, timeout=1000) as bloqueur:
         vue._traiter_action("lancer", "test-idiv", vue._profils["test-idiv"])
+    assert bloqueur.args is not None
     assert bloqueur.args[0] == "test-idiv"
 
 
-def test_double_clic_sur_un_profil_emet_demande_lancer_profil(qtbot):
+def test_double_clic_sur_un_profil_emet_demande_lancer_profil(qtbot: QtBot) -> None:
     profils.ajouter_profil("test-idiv", _profil_test())
     vue = VueAccueil()
     qtbot.addWidget(vue)
 
     with qtbot.waitSignal(vue.demande_lancer_profil, timeout=1000) as bloqueur:
         vue._on_double_clic(vue.liste_profils.item(0))
+    assert bloqueur.args is not None
     assert bloqueur.args[0] == "test-idiv"
 
 
-def test_action_modifier_emet_le_signal(qtbot):
+def test_action_modifier_emet_le_signal(qtbot: QtBot) -> None:
     profils.ajouter_profil("test-idiv", _profil_test())
     vue = VueAccueil()
     qtbot.addWidget(vue)
 
     with qtbot.waitSignal(vue.demande_modifier_profil, timeout=1000) as bloqueur:
         vue._traiter_action("modifier", "test-idiv", vue._profils["test-idiv"])
+    assert bloqueur.args is not None
     assert bloqueur.args[0] == "test-idiv"
 
 
-def test_action_dupliquer_avec_nom_duplique_le_profil(qtbot, monkeypatch):
+def test_action_dupliquer_avec_nom_duplique_le_profil(
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
     profils.ajouter_profil("test-idiv", _profil_test())
     vue = VueAccueil()
     qtbot.addWidget(vue)
@@ -110,7 +119,9 @@ def test_action_dupliquer_avec_nom_duplique_le_profil(qtbot, monkeypatch):
     assert "test-idiv-copie" in profils.charger_profils()
 
 
-def test_action_supprimer_avec_confirmation_supprime(qtbot, monkeypatch):
+def test_action_supprimer_avec_confirmation_supprime(
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
     profils.ajouter_profil("test-idiv", _profil_test())
     vue = VueAccueil()
     qtbot.addWidget(vue)
@@ -120,7 +131,9 @@ def test_action_supprimer_avec_confirmation_supprime(qtbot, monkeypatch):
     assert "test-idiv" not in profils.charger_profils()
 
 
-def test_action_supprimer_sans_confirmation_ne_supprime_pas(qtbot, monkeypatch):
+def test_action_supprimer_sans_confirmation_ne_supprime_pas(
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
     profils.ajouter_profil("test-idiv", _profil_test())
     vue = VueAccueil()
     qtbot.addWidget(vue)

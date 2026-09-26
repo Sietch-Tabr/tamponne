@@ -12,16 +12,19 @@ import pytest
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QPalette
 from PySide6.QtWidgets import QApplication, QPushButton
+from pytestqt.qtbot import QtBot
 
 from src.gui import theme
+from src.parametres_affichage import ModeTheme
 from src.gui.theme import (
-    PALETTE_CLAIRE,
-    PALETTE_SOMBRE,
     appliquer_theme,
     chemin_fleche_bas,
     construire_feuille_style,
     palette_active,
+    PALETTE_CLAIRE,
     palette_pour_mode,
+    PALETTE_SOMBRE,
+    Palette,
     palette_systeme,
 )
 
@@ -33,7 +36,7 @@ def _application() -> QApplication:
     return app
 
 
-def test_construire_feuille_style_sapplique_sans_erreur(qtbot):
+def test_construire_feuille_style_sapplique_sans_erreur(qtbot: QtBot) -> None:
     app = _application()
     feuille = construire_feuille_style(13.0)
     app.setStyleSheet(feuille)
@@ -43,7 +46,7 @@ def test_construire_feuille_style_sapplique_sans_erreur(qtbot):
     assert app.styleSheet() == feuille
 
 
-def test_construire_feuille_style_utilise_pt_pas_px():
+def test_construire_feuille_style_utilise_pt_pas_px() -> None:
     feuille = construire_feuille_style(13.0)
     assert "font-size: 13.0pt;" in feuille
     tailles_police = [ligne for ligne in feuille.splitlines() if "font-size" in ligne]
@@ -51,7 +54,7 @@ def test_construire_feuille_style_utilise_pt_pas_px():
     assert all("px" not in ligne for ligne in tailles_police)
 
 
-def test_bouton_a_variante_est_cochable_et_garde_son_etat(qtbot):
+def test_bouton_a_variante_est_cochable_et_garde_son_etat(qtbot: QtBot) -> None:
     bouton = QPushButton("A")
     bouton.setProperty("variant", "nav")
     bouton.setCheckable(True)
@@ -96,13 +99,15 @@ _PAIRES_TEXTE_FOND = [
 
 @pytest.mark.parametrize("palette", [PALETTE_SOMBRE, PALETTE_CLAIRE])
 @pytest.mark.parametrize("texte, fond", _PAIRES_TEXTE_FOND)
-def test_palette_contraste_wcag_aa(palette, texte, fond):
+def test_palette_contraste_wcag_aa(palette: Palette, texte: str, fond: str) -> None:
     rapport = _contraste(getattr(palette, texte), getattr(palette, fond))
     assert rapport >= 4.5, f"{texte}/{fond} : {rapport:.2f}:1"
 
 
 @pytest.mark.parametrize("palette", [PALETTE_SOMBRE, PALETTE_CLAIRE])
-def test_construire_feuille_style_utilise_les_couleurs_de_la_palette(palette):
+def test_construire_feuille_style_utilise_les_couleurs_de_la_palette(
+    palette: Palette,
+) -> None:
     feuille = construire_feuille_style(13.0, palette)
     assert f"background-color: {palette.bg};" in feuille
     assert f"color: {palette.sur_accent};" in feuille
@@ -124,7 +129,9 @@ class _StyleHintsFactices:
         (Qt.ColorScheme.Unknown, PALETTE_SOMBRE),
     ],
 )
-def test_palette_systeme_suit_le_reglage_clair_sombre(monkeypatch, schema, attendue):
+def test_palette_systeme_suit_le_reglage_clair_sombre(
+    monkeypatch: pytest.MonkeyPatch, schema: Qt.ColorScheme, attendue: Palette
+) -> None:
     monkeypatch.setattr(
         theme.QGuiApplication,
         "styleHints",
@@ -134,8 +141,8 @@ def test_palette_systeme_suit_le_reglage_clair_sombre(monkeypatch, schema, atten
 
 
 def test_appliquer_theme_memorise_la_taille_pour_la_reapplication(
-    qtbot, monkeypatch
-):
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setattr(theme, "_palette_active", PALETTE_SOMBRE)
     monkeypatch.setattr(theme, "_taille_base_pt", 13.0)
     monkeypatch.setattr(theme, "palette_systeme", lambda: PALETTE_CLAIRE)
@@ -164,8 +171,11 @@ def test_appliquer_theme_memorise_la_taille_pour_la_reapplication(
     ],
 )
 def test_palette_pour_mode_impose_ou_suit_le_systeme(
-    monkeypatch, mode, schema, attendue
-):
+    monkeypatch: pytest.MonkeyPatch,
+    mode: ModeTheme,
+    schema: Qt.ColorScheme,
+    attendue: Palette,
+) -> None:
     monkeypatch.setattr(
         theme.QGuiApplication,
         "styleHints",
@@ -174,7 +184,9 @@ def test_palette_pour_mode_impose_ou_suit_le_systeme(
     assert palette_pour_mode(mode) is attendue
 
 
-def test_appliquer_theme_memorise_le_mode_pour_la_reapplication(qtbot, monkeypatch):
+def test_appliquer_theme_memorise_le_mode_pour_la_reapplication(
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setattr(theme, "_palette_active", PALETTE_SOMBRE)
     monkeypatch.setattr(theme, "_mode_theme", "auto")
     # Système en sombre : un mode « clair » imposé doit tenir à la réapplication.
@@ -191,7 +203,9 @@ def test_appliquer_theme_memorise_le_mode_pour_la_reapplication(qtbot, monkeypat
 
 
 @pytest.mark.parametrize("palette", [PALETTE_SOMBRE, PALETTE_CLAIRE])
-def test_fleche_liste_deroulante_generee_dans_la_couleur_de_la_palette(palette):
+def test_fleche_liste_deroulante_generee_dans_la_couleur_de_la_palette(
+    palette: Palette,
+) -> None:
     feuille = construire_feuille_style(13.0, palette)
     chemin = chemin_fleche_bas(palette.texte_dim)
     assert f"image: url({chemin});" in feuille

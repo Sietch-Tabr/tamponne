@@ -1,10 +1,13 @@
 """Tests de l'écran Suivi de candidature (src/gui/vues/candidatures.py)."""
 
+from pathlib import Path
+
 import pytest
 from PySide6.QtCore import QPoint, Qt
+from pytestqt.qtbot import QtBot
 
 from src import candidatures
-from src.gui.vues.candidatures import VueCandidatures, _DialogueEvenement
+from src.gui.vues.candidatures import _DialogueEvenement, VueCandidatures
 from src.gui.widgets.delegue_candidature import ROLE_CONTENU
 from src.types import DetailOffre
 
@@ -15,13 +18,15 @@ def _texte_ligne(vue: VueCandidatures, ligne: int = 0) -> str:
 
 
 @pytest.fixture(autouse=True)
-def _rediriger_candidatures_vers_tmp(tmp_path, monkeypatch):
+def _rediriger_candidatures_vers_tmp(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setattr(
         candidatures, "CHEMIN_CANDIDATURES", tmp_path / "candidatures.json"
     )
 
 
-def test_sans_candidature_affiche_un_message(qtbot):
+def test_sans_candidature_affiche_un_message(qtbot: QtBot) -> None:
     vue = VueCandidatures()
     qtbot.addWidget(vue)
     assert vue.modele.rowCount() == 0
@@ -29,7 +34,7 @@ def test_sans_candidature_affiche_un_message(qtbot):
     assert "Aucune candidature" in vue.label_vide.text()
 
 
-def test_liste_les_candidatures_suivies(qtbot):
+def test_liste_les_candidatures_suivies(qtbot: QtBot) -> None:
     candidatures.ajouter_candidature(
         "ref-1", "Attaché", "DGFiP", "https://example.org/1"
     )
@@ -45,7 +50,9 @@ def test_liste_les_candidatures_suivies(qtbot):
     assert "Aucun événement" in texte
 
 
-def test_action_voir_ouvre_le_navigateur(qtbot, monkeypatch):
+def test_action_voir_ouvre_le_navigateur(
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
     candidatures.ajouter_candidature(
         "ref-1", "Attaché", "DGFiP", "https://example.org/1"
     )
@@ -58,7 +65,9 @@ def test_action_voir_ouvre_le_navigateur(qtbot, monkeypatch):
     assert ouvertes == ["https://example.org/1"]
 
 
-def test_action_detail_ouvre_la_dialogue_avec_le_detail_archive(qtbot, monkeypatch):
+def test_action_detail_ouvre_la_dialogue_avec_le_detail_archive(
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
     detail_factice: DetailOffre = {
         "description": "Missions du poste",
         "salaire": "",
@@ -78,13 +87,21 @@ def test_action_detail_ouvre_la_dialogue_avec_le_detail_archive(qtbot, monkeypat
     vue = VueCandidatures()
     qtbot.addWidget(vue)
 
-    appels = []
+    appels: list[tuple[str, str, DetailOffre, str, str]] = []
 
     class _DialogueFactice:
-        def __init__(self, titre_offre, employeur, detail, url, reference, parent=None):
+        def __init__(
+            self,
+            titre_offre: str,
+            employeur: str,
+            detail: DetailOffre,
+            url: str,
+            reference: str,
+            parent: object = None,
+        ) -> None:
             appels.append((titre_offre, employeur, detail, url, reference))
 
-        def exec(self):
+        def exec(self) -> None:
             return None
 
     monkeypatch.setattr(
@@ -97,7 +114,9 @@ def test_action_detail_ouvre_la_dialogue_avec_le_detail_archive(qtbot, monkeypat
     ]
 
 
-def test_action_supprimer_avec_confirmation_supprime(qtbot, monkeypatch):
+def test_action_supprimer_avec_confirmation_supprime(
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
     candidatures.ajouter_candidature(
         "ref-1", "Attaché", "DGFiP", "https://example.org/1"
     )
@@ -111,7 +130,9 @@ def test_action_supprimer_avec_confirmation_supprime(qtbot, monkeypatch):
     assert "ref-1" not in candidatures.charger_candidatures()
 
 
-def test_action_supprimer_sans_confirmation_ne_supprime_pas(qtbot, monkeypatch):
+def test_action_supprimer_sans_confirmation_ne_supprime_pas(
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
     candidatures.ajouter_candidature(
         "ref-1", "Attaché", "DGFiP", "https://example.org/1"
     )
@@ -125,7 +146,9 @@ def test_action_supprimer_sans_confirmation_ne_supprime_pas(qtbot, monkeypatch):
     assert "ref-1" in candidatures.charger_candidatures()
 
 
-def test_action_evenement_ajoute_un_evenement_via_le_dialogue(qtbot, monkeypatch):
+def test_action_evenement_ajoute_un_evenement_via_le_dialogue(
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
     candidatures.ajouter_candidature(
         "ref-1", "Attaché", "DGFiP", "https://example.org/1"
     )
@@ -154,7 +177,9 @@ def test_action_evenement_ajoute_un_evenement_via_le_dialogue(qtbot, monkeypatch
     }
 
 
-def test_action_evenement_annulee_najoute_rien(qtbot, monkeypatch):
+def test_action_evenement_annulee_najoute_rien(
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
     candidatures.ajouter_candidature(
         "ref-1", "Attaché", "DGFiP", "https://example.org/1"
     )
@@ -173,7 +198,9 @@ def test_action_evenement_annulee_najoute_rien(qtbot, monkeypatch):
     assert len(historique) == 0
 
 
-def test_badge_relance_suggeree_affiche_si_ancienne(qtbot, monkeypatch):
+def test_badge_relance_suggeree_affiche_si_ancienne(
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setattr(candidatures, "SEUIL_RELANCE_JOURS", 0)
     candidatures.ajouter_candidature(
         "ref-1",
@@ -188,7 +215,7 @@ def test_badge_relance_suggeree_affiche_si_ancienne(qtbot, monkeypatch):
     assert "Relance suggérée" in _texte_ligne(vue)
 
 
-def test_historique_affiche_dans_lordre_chronologique(qtbot):
+def test_historique_affiche_dans_lordre_chronologique(qtbot: QtBot) -> None:
     candidatures.ajouter_candidature(
         "ref-1",
         "Attaché",
@@ -216,7 +243,7 @@ def test_historique_affiche_dans_lordre_chronologique(qtbot):
     assert "RDV visio" in texte
 
 
-def _vue_affichee(qtbot) -> VueCandidatures:
+def _vue_affichee(qtbot: QtBot) -> VueCandidatures:
     vue = VueCandidatures()
     qtbot.addWidget(vue)
     vue.resize(1000, 600)
@@ -225,14 +252,16 @@ def _vue_affichee(qtbot) -> VueCandidatures:
     return vue
 
 
-def _centre_bouton(vue: VueCandidatures, action: str):
+def _centre_bouton(vue: VueCandidatures, action: str) -> QPoint:
     index = vue.modele.index(0)
     rect = vue.liste.visualRect(index)
     return vue.delegue.rectangles_boutons(rect, vue.liste.font())[action].center()
 
 
 @pytest.mark.parametrize("action", ["voir", "detail", "evenement", "supprimer"])
-def test_clic_sur_un_bouton_peint_declenche_son_action(qtbot, monkeypatch, action):
+def test_clic_sur_un_bouton_peint_declenche_son_action(
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch, action: str
+) -> None:
     candidatures.ajouter_candidature(
         "ref-1", "Attaché", "DGFiP", "https://example.org/1"
     )
@@ -247,7 +276,9 @@ def test_clic_sur_un_bouton_peint_declenche_son_action(qtbot, monkeypatch, actio
     assert appels == [(action, "ref-1")]
 
 
-def test_clic_hors_des_boutons_ne_declenche_rien(qtbot, monkeypatch):
+def test_clic_hors_des_boutons_ne_declenche_rien(
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
     candidatures.ajouter_candidature(
         "ref-1", "Attaché", "DGFiP", "https://example.org/1"
     )
@@ -258,7 +289,9 @@ def test_clic_hors_des_boutons_ne_declenche_rien(qtbot, monkeypatch):
     )
     rect = vue.liste.visualRect(vue.modele.index(0))
     qtbot.mouseClick(
-        vue.liste.viewport(), Qt.MouseButton.LeftButton, pos=rect.topLeft() + QPoint(4, 4)
+        vue.liste.viewport(),
+        Qt.MouseButton.LeftButton,
+        pos=rect.topLeft() + QPoint(4, 4),
     )
     assert appels == []
 
@@ -270,7 +303,9 @@ def test_clic_hors_des_boutons_ne_declenche_rien(qtbot, monkeypatch):
         (Qt.Key.Key_Delete, "supprimer"),
     ],
 )
-def test_raccourcis_clavier_sur_la_ligne_courante(qtbot, monkeypatch, touche, action):
+def test_raccourcis_clavier_sur_la_ligne_courante(
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch, touche: Qt.Key, action: str
+) -> None:
     candidatures.ajouter_candidature(
         "ref-1", "Attaché", "DGFiP", "https://example.org/1"
     )
@@ -285,7 +320,7 @@ def test_raccourcis_clavier_sur_la_ligne_courante(qtbot, monkeypatch, touche, ac
     assert appels == [(action, "ref-1")]
 
 
-def test_menu_contextuel_expose_les_quatre_actions(qtbot):
+def test_menu_contextuel_expose_les_quatre_actions(qtbot: QtBot) -> None:
     vue = VueCandidatures()
     qtbot.addWidget(vue)
     assert vue.liste.contextMenuPolicy() == Qt.ContextMenuPolicy.ActionsContextMenu
@@ -297,7 +332,7 @@ def test_menu_contextuel_expose_les_quatre_actions(qtbot):
     ]
 
 
-def test_badge_offre_depubliee(qtbot):
+def test_badge_offre_depubliee(qtbot: QtBot) -> None:
     candidatures.ajouter_candidature(
         "ref-1", "Attaché", "DGFiP", "https://example.org/1"
     )
@@ -309,10 +344,16 @@ def test_badge_offre_depubliee(qtbot):
     assert contenu.disponible is False
 
 
-def test_candidatures_triees_de_la_plus_recente_a_la_plus_ancienne(qtbot):
+def test_candidatures_triees_de_la_plus_recente_a_la_plus_ancienne(
+    qtbot: QtBot,
+) -> None:
     for reference, date in [("ancienne", "2026-01-01"), ("recente", "2026-03-01")]:
         candidatures.ajouter_candidature(
-            reference, reference, "DGFiP", "https://example.org/1", date_candidature=date
+            reference,
+            reference,
+            "DGFiP",
+            "https://example.org/1",
+            date_candidature=date,
         )
     vue = VueCandidatures()
     qtbot.addWidget(vue)

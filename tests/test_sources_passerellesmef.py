@@ -26,15 +26,15 @@ _CARTE_MINIMALE = """
 """
 
 
-def test_extraire_totaux():
+def test_extraire_totaux() -> None:
     assert extraire_totaux(_TITRE_PAGE) == (681, 1)
 
 
-def test_extraire_totaux_titre_absent():
+def test_extraire_totaux_titre_absent() -> None:
     assert extraire_totaux("") == (0, 1)
 
 
-def test_extraire_offres_carte_minimale():
+def test_extraire_offres_carte_minimale() -> None:
     offres = extraire_offres(_CARTE_MINIMALE)
     assert len(offres) == 1
     offre = offres[0]
@@ -51,12 +51,12 @@ def test_extraire_offres_carte_minimale():
     assert offre["source"] == SOURCE_LABEL
 
 
-def test_extraire_offres_sans_lien_ignoree():
+def test_extraire_offres_sans_lien_ignoree() -> None:
     html = '<div class="ts-offer-card"><h3 class="ts-offer-card__title"></h3></div>'
     assert extraire_offres(html) == []
 
 
-def test_extraire_offres_url_domaine_invalide_ignoree():
+def test_extraire_offres_url_domaine_invalide_ignoree() -> None:
     html = """
     <div class="ts-offer-card">
         <h3 class="ts-offer-card__title">
@@ -67,7 +67,7 @@ def test_extraire_offres_url_domaine_invalide_ignoree():
     assert extraire_offres(html) == []
 
 
-def test_extraire_offres_html_vide():
+def test_extraire_offres_html_vide() -> None:
     assert extraire_offres("") == []
 
 
@@ -99,7 +99,7 @@ _FICHE_DETAIL = """
 """
 
 
-def test_extraire_detail_offre_champs_dedies():
+def test_extraire_detail_offre_champs_dedies() -> None:
     detail = extraire_detail_offre(_FICHE_DETAIL)
     assert detail["secteur"] == "Numérique - Administrateur systèmes"
     assert detail["experience_requise"] == "Confirmé"
@@ -109,20 +109,20 @@ def test_extraire_detail_offre_champs_dedies():
     assert detail["lien_postuler"] == ""
 
 
-def test_extraire_detail_offre_description_combine_les_sections_narratives():
+def test_extraire_detail_offre_description_combine_les_sections_narratives() -> None:
     detail = extraire_detail_offre(_FICHE_DETAIL)
     assert "Direction du Trésor." in detail["description"]
     assert "Profil rigoureux." in detail["description"]
 
 
-def test_extraire_detail_offre_ignore_le_bloc_hors_contenu():
+def test_extraire_detail_offre_ignore_le_bloc_hors_contenu() -> None:
     # Régression : le panneau "espace candidat" (hors zone détail) ne
     # doit pas polluer sections_complementaires.
     detail = extraire_detail_offre(_FICHE_DETAIL)
     assert "J'ai déjà un espace candidat" not in detail["sections_complementaires"]
 
 
-def test_extraire_detail_offre_sections_complementaires_sans_doublon():
+def test_extraire_detail_offre_sections_complementaires_sans_doublon() -> None:
     detail = extraire_detail_offre(_FICHE_DETAIL)
     assert "Domaine et métier" not in detail["sections_complementaires"]
     assert "Niveau d'expérience min. requis" not in detail["sections_complementaires"]
@@ -132,7 +132,7 @@ def test_extraire_detail_offre_sections_complementaires_sans_doublon():
     )
 
 
-def test_extraire_detail_offre_sans_champs():
+def test_extraire_detail_offre_sans_champs() -> None:
     detail = extraire_detail_offre("<html></html>")
     assert detail["secteur"] == ""
     assert detail["sections_complementaires"] == {}

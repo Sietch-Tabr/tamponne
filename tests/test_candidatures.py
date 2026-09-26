@@ -1,6 +1,7 @@
 """Tests du suivi de candidature (src/candidatures.py)."""
 
 from datetime import date, timedelta
+from pathlib import Path
 from typing import cast
 
 import pytest
@@ -10,25 +11,29 @@ from src.types import Candidature
 
 
 @pytest.fixture(autouse=True)
-def _rediriger_candidatures_vers_tmp(tmp_path, monkeypatch):
+def _rediriger_candidatures_vers_tmp(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setattr(
         candidatures, "CHEMIN_CANDIDATURES", tmp_path / "candidatures.json"
     )
     monkeypatch.setattr(candidatures, "DOSSIER_ARCHIVES", tmp_path / "archives")
 
 
-def test_charger_candidatures_absent_retourne_dict_vide():
+def test_charger_candidatures_absent_retourne_dict_vide() -> None:
     assert candidatures.charger_candidatures() == {}
 
 
-def test_charger_candidatures_corrompu_retourne_dict_vide(tmp_path, monkeypatch):
+def test_charger_candidatures_corrompu_retourne_dict_vide(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     chemin = tmp_path / "candidatures.json"
     chemin.write_text("{ceci n'est pas du json", encoding="utf-8")
     monkeypatch.setattr(candidatures, "CHEMIN_CANDIDATURES", chemin)
     assert candidatures.charger_candidatures() == {}
 
 
-def test_ajouter_candidature_ne_prerempli_pas_lhistorique():
+def test_ajouter_candidature_ne_prerempli_pas_lhistorique() -> None:
     # Démarrer le suivi (ex. depuis « Suivre cette offre » en
     # Recherche) ne veut pas dire que la candidature a réellement été
     # envoyée — l'historique reste vide tant que l'utilisateur n'a rien
@@ -42,7 +47,7 @@ def test_ajouter_candidature_ne_prerempli_pas_lhistorique():
     assert toutes["ref-1"]["historique"] == []
 
 
-def test_ajouter_candidature_date_explicite():
+def test_ajouter_candidature_date_explicite() -> None:
     candidatures.ajouter_candidature(
         "ref-1",
         "Attaché",
@@ -54,7 +59,7 @@ def test_ajouter_candidature_date_explicite():
     assert toutes["ref-1"]["date_candidature"] == "2026-01-15"
 
 
-def test_ajouter_candidature_ecrase_une_candidature_existante():
+def test_ajouter_candidature_ecrase_une_candidature_existante() -> None:
     candidatures.ajouter_candidature(
         "ref-1", "Attaché", "DGFiP", "https://example.org/1"
     )
@@ -67,12 +72,12 @@ def test_ajouter_candidature_ecrase_une_candidature_existante():
     assert toutes["ref-1"]["historique"] == []
 
 
-def test_ajouter_evenement_sur_candidature_introuvable_leve_keyerror():
+def test_ajouter_evenement_sur_candidature_introuvable_leve_keyerror() -> None:
     with pytest.raises(KeyError):
         candidatures.ajouter_evenement("inconnue", "relance")
 
 
-def test_ajouter_evenement_empile_dans_lhistorique():
+def test_ajouter_evenement_empile_dans_lhistorique() -> None:
     candidatures.ajouter_candidature(
         "ref-1", "Attaché", "DGFiP", "https://example.org/1"
     )
@@ -83,7 +88,7 @@ def test_ajouter_evenement_empile_dans_lhistorique():
     assert toutes["ref-1"]["historique"][0]["note"] == "Reçu par mail"
 
 
-def test_supprimer_candidature():
+def test_supprimer_candidature() -> None:
     candidatures.ajouter_candidature(
         "ref-1", "Attaché", "DGFiP", "https://example.org/1"
     )
@@ -91,11 +96,11 @@ def test_supprimer_candidature():
     assert "ref-1" not in candidatures.charger_candidatures()
 
 
-def test_supprimer_candidature_inconnue_ne_leve_pas():
+def test_supprimer_candidature_inconnue_ne_leve_pas() -> None:
     candidatures.supprimer_candidature("inconnue")  # pas d'exception
 
 
-def test_supprimer_candidature_supprime_larchive_pdf():
+def test_supprimer_candidature_supprime_larchive_pdf() -> None:
     candidatures.ajouter_candidature(
         "ref-1", "Attaché", "DGFiP", "https://example.org/1"
     )
@@ -108,7 +113,7 @@ def test_supprimer_candidature_supprime_larchive_pdf():
     assert not chemin_pdf.exists()
 
 
-def test_supprimer_candidature_sans_archive_ne_leve_pas():
+def test_supprimer_candidature_sans_archive_ne_leve_pas() -> None:
     candidatures.ajouter_candidature(
         "ref-1", "Attaché", "DGFiP", "https://example.org/1"
     )
@@ -122,22 +127,22 @@ _PAGE_AVEC_LIEN_PDF = (
 )
 
 
-def test_extraire_url_pdf_trouve_le_lien():
+def test_extraire_url_pdf_trouve_le_lien() -> None:
     assert candidatures._extraire_url_pdf(_PAGE_AVEC_LIEN_PDF) == (
         "https://choisirleservicepublic.gouv.fr/wp-content/uploads/pdf-offers/x.pdf"
     )
 
 
-def test_extraire_url_pdf_absent_retourne_vide():
+def test_extraire_url_pdf_absent_retourne_vide() -> None:
     assert candidatures._extraire_url_pdf("<html></html>") == ""
 
 
-def test_extraire_url_pdf_domaine_externe_rejete():
+def test_extraire_url_pdf_domaine_externe_rejete() -> None:
     page = '<a class="fr-link--download" href="https://evil.example.com/x.pdf">Dl</a>'
     assert candidatures._extraire_url_pdf(page) == ""
 
 
-def test_generer_archive_pdf_reussi(monkeypatch):
+def test_generer_archive_pdf_reussi(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         candidatures, "telecharger_binaire", lambda url: b"%PDF-1.4 contenu"
     )
@@ -148,7 +153,9 @@ def test_generer_archive_pdf_reussi(monkeypatch):
     assert chemin.read_bytes() == b"%PDF-1.4 contenu"
 
 
-def test_generer_archive_pdf_sans_lien_echoue_sans_lever(capsys):
+def test_generer_archive_pdf_sans_lien_echoue_sans_lever(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     reussi = candidatures.generer_archive_pdf("ref-1", "<html></html>")
 
     assert reussi is False
@@ -156,8 +163,10 @@ def test_generer_archive_pdf_sans_lien_echoue_sans_lever(capsys):
     assert "lien PDF introuvable" in capsys.readouterr().err
 
 
-def test_generer_archive_pdf_echec_reseau_echoue_sans_lever(monkeypatch, capsys):
-    def _leve_erreur(url):
+def test_generer_archive_pdf_echec_reseau_echoue_sans_lever(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    def _leve_erreur(url: str) -> None:
         raise RuntimeError("Erreur réseau")
 
     monkeypatch.setattr(candidatures, "telecharger_binaire", _leve_erreur)
@@ -167,7 +176,7 @@ def test_generer_archive_pdf_echec_reseau_echoue_sans_lever(monkeypatch, capsys)
     assert "échec de téléchargement" in capsys.readouterr().err
 
 
-def test_dernier_evenement_retourne_le_plus_recent_par_date():
+def test_dernier_evenement_retourne_le_plus_recent_par_date() -> None:
     # Candidature partielle : seuls les champs lus par dernier_evenement.
     candidature = cast(
         Candidature,
@@ -188,7 +197,7 @@ def test_dernier_evenement_retourne_le_plus_recent_par_date():
     assert dernier["type"] == "entretien_passe"
 
 
-def test_dernier_evenement_historique_vide_retourne_none():
+def test_dernier_evenement_historique_vide_retourne_none() -> None:
     candidature = cast(
         Candidature,
         {
@@ -202,7 +211,7 @@ def test_dernier_evenement_historique_vide_retourne_none():
     assert candidatures.dernier_evenement(candidature) is None
 
 
-def test_statut_libelle_derive_du_dernier_evenement():
+def test_statut_libelle_derive_du_dernier_evenement() -> None:
     candidatures.ajouter_candidature(
         "ref-1", "Attaché", "DGFiP", "https://example.org/1"
     )
@@ -211,7 +220,7 @@ def test_statut_libelle_derive_du_dernier_evenement():
     assert candidatures.statut_libelle(toutes["ref-1"]) == "Entretien planifié"
 
 
-def test_relance_suggeree_false_si_recent():
+def test_relance_suggeree_false_si_recent() -> None:
     candidatures.ajouter_candidature(
         "ref-1", "Attaché", "DGFiP", "https://example.org/1"
     )
@@ -220,7 +229,7 @@ def test_relance_suggeree_false_si_recent():
     assert candidatures.relance_suggeree(toutes["ref-1"]) is False
 
 
-def test_relance_suggeree_true_apres_le_seuil():
+def test_relance_suggeree_true_apres_le_seuil() -> None:
     ancienne = (
         date.today() - timedelta(days=candidatures.SEUIL_RELANCE_JOURS + 1)
     ).isoformat()
@@ -232,7 +241,7 @@ def test_relance_suggeree_true_apres_le_seuil():
     assert candidatures.relance_suggeree(toutes["ref-1"]) is True
 
 
-def test_relance_suggeree_false_si_pas_devenement():
+def test_relance_suggeree_false_si_pas_devenement() -> None:
     # Suivi démarré mais aucun événement confirmé : rien à relancer,
     # on ne sait même pas si la candidature a été envoyée.
     candidatures.ajouter_candidature(
@@ -242,7 +251,7 @@ def test_relance_suggeree_false_si_pas_devenement():
     assert candidatures.relance_suggeree(toutes["ref-1"]) is False
 
 
-def test_relance_suggeree_false_si_candidature_close():
+def test_relance_suggeree_false_si_candidature_close() -> None:
     ancienne = (
         date.today() - timedelta(days=candidatures.SEUIL_RELANCE_JOURS + 1)
     ).isoformat()
@@ -254,7 +263,9 @@ def test_relance_suggeree_false_si_candidature_close():
     assert candidatures.relance_suggeree(toutes["ref-1"]) is False
 
 
-def test_verifier_disponibilite_true_si_pas_de_marqueur(monkeypatch):
+def test_verifier_disponibilite_true_si_pas_de_marqueur(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(
         candidatures,
         "obtenir_page_offres",
@@ -266,7 +277,9 @@ def test_verifier_disponibilite_true_si_pas_de_marqueur(monkeypatch):
     assert candidatures.verifier_disponibilite("https://example.org/1") is True
 
 
-def test_verifier_disponibilite_false_si_marqueur_depubliee(monkeypatch):
+def test_verifier_disponibilite_false_si_marqueur_depubliee(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(
         candidatures,
         "obtenir_page_offres",
@@ -278,15 +291,17 @@ def test_verifier_disponibilite_false_si_marqueur_depubliee(monkeypatch):
     assert candidatures.verifier_disponibilite("https://example.org/1") is False
 
 
-def test_verifier_disponibilite_none_si_erreur_reseau(monkeypatch):
-    def _erreur(url):
+def test_verifier_disponibilite_none_si_erreur_reseau(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def _erreur(url: str) -> None:
         raise RuntimeError("Erreur réseau")
 
     monkeypatch.setattr(candidatures, "obtenir_page_offres", _erreur)
     assert candidatures.verifier_disponibilite("https://example.org/1") is None
 
 
-def test_marquer_disponibilite_persiste_le_resultat():
+def test_marquer_disponibilite_persiste_le_resultat() -> None:
     candidatures.ajouter_candidature(
         "ref-1", "Attaché", "DGFiP", "https://example.org/1"
     )
@@ -296,11 +311,11 @@ def test_marquer_disponibilite_persiste_le_resultat():
     assert toutes["ref-1"]["derniere_verification"] == date.today().isoformat()
 
 
-def test_marquer_disponibilite_candidature_inconnue_ne_leve_pas():
+def test_marquer_disponibilite_candidature_inconnue_ne_leve_pas() -> None:
     candidatures.marquer_disponibilite("inconnue", False)  # pas d'exception
 
 
-def test_nouvelle_candidature_disponible_par_defaut():
+def test_nouvelle_candidature_disponible_par_defaut() -> None:
     candidatures.ajouter_candidature(
         "ref-1", "Attaché", "DGFiP", "https://example.org/1"
     )

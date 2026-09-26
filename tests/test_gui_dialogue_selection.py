@@ -2,6 +2,7 @@
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QPushButton, QTreeWidget, QTreeWidgetItem
+from pytestqt.qtbot import QtBot
 
 from src.gui.widgets.dialogue_selection import (
     DialogueSelectionGrades,
@@ -22,7 +23,7 @@ def _enfant(parent: QTreeWidgetItem, index: int) -> QTreeWidgetItem:
     return element
 
 
-def test_selection_liste_preremplie_avec_deja_selectionnes(qtbot):
+def test_selection_liste_preremplie_avec_deja_selectionnes(qtbot: QtBot) -> None:
     dialogue = DialogueSelectionListe(
         "Domaine(s)", ["Achat", "Numérique", "Santé"], ["Numérique"]
     )
@@ -30,7 +31,7 @@ def test_selection_liste_preremplie_avec_deja_selectionnes(qtbot):
     assert dialogue.selection() == ["Numérique"]
 
 
-def test_selection_liste_recherche_cache_les_non_correspondants(qtbot):
+def test_selection_liste_recherche_cache_les_non_correspondants(qtbot: QtBot) -> None:
     dialogue = DialogueSelectionListe("Domaine(s)", ["Achat", "Numérique", "Santé"], [])
     qtbot.addWidget(dialogue)
 
@@ -44,14 +45,14 @@ def test_selection_liste_recherche_cache_les_non_correspondants(qtbot):
         assert dialogue._liste.item(i).isHidden() is False
 
 
-def test_selection_liste_cocher_un_item_apparait_dans_selection(qtbot):
+def test_selection_liste_cocher_un_item_apparait_dans_selection(qtbot: QtBot) -> None:
     dialogue = DialogueSelectionListe("Domaine(s)", ["Achat", "Numérique"], [])
     qtbot.addWidget(dialogue)
     dialogue._liste.item(1).setCheckState(Qt.CheckState.Checked)
     assert dialogue.selection() == ["Numérique"]
 
 
-def test_boutons_ok_annuler_traduits_en_francais(qtbot):
+def test_boutons_ok_annuler_traduits_en_francais(qtbot: QtBot) -> None:
     dialogue = DialogueSelectionListe("Domaine(s)", ["Achat"], [])
     qtbot.addWidget(dialogue)
     labels = {b.text() for b in dialogue.findChildren(QPushButton)}
@@ -65,7 +66,7 @@ _ORGAS_TEST = {
 }
 
 
-def test_selection_organisations_preremplie(qtbot):
+def test_selection_organisations_preremplie(qtbot: QtBot) -> None:
     dialogue = DialogueSelectionOrganisations(
         _ORGAS_TEST, ["Ministère Alpha - Sous-org 1"]
     )
@@ -73,7 +74,9 @@ def test_selection_organisations_preremplie(qtbot):
     assert dialogue.selection() == ["Ministère Alpha - Sous-org 1"]
 
 
-def test_selection_organisations_recherche_cache_ministere_sans_correspondance(qtbot):
+def test_selection_organisations_recherche_cache_ministere_sans_correspondance(
+    qtbot: QtBot,
+) -> None:
     dialogue = DialogueSelectionOrganisations(_ORGAS_TEST, [])
     qtbot.addWidget(dialogue)
 
@@ -85,7 +88,7 @@ def test_selection_organisations_recherche_cache_ministere_sans_correspondance(q
     assert racine_beta.isExpanded() is True
 
 
-def test_selection_organisations_cocher_une_sous_org(qtbot):
+def test_selection_organisations_cocher_une_sous_org(qtbot: QtBot) -> None:
     dialogue = DialogueSelectionOrganisations(_ORGAS_TEST, [])
     qtbot.addWidget(dialogue)
     racine = _racine(dialogue._arbre, 0)
@@ -103,13 +106,13 @@ _CORPS_GRADES_TEST = {
 }
 
 
-def test_selection_grades_preremplie(qtbot):
+def test_selection_grades_preremplie(qtbot: QtBot) -> None:
     dialogue = DialogueSelectionGrades(_CORPS_GRADES_TEST, ["Attaché principal"])
     qtbot.addWidget(dialogue)
     assert dialogue.selection() == ["Attaché principal"]
 
 
-def test_selection_grades_corps_toujours_deplies_par_defaut(qtbot):
+def test_selection_grades_corps_toujours_deplies_par_defaut(qtbot: QtBot) -> None:
     """Peu de corps/grades : tout visible d'emblée, pas besoin de déplier."""
     dialogue = DialogueSelectionGrades(_CORPS_GRADES_TEST, [])
     qtbot.addWidget(dialogue)
@@ -117,7 +120,9 @@ def test_selection_grades_corps_toujours_deplies_par_defaut(qtbot):
         assert _racine(dialogue._arbre, i).isExpanded() is True
 
 
-def test_selection_grades_recherche_cache_corps_sans_correspondance(qtbot):
+def test_selection_grades_recherche_cache_corps_sans_correspondance(
+    qtbot: QtBot,
+) -> None:
     dialogue = DialogueSelectionGrades(_CORPS_GRADES_TEST, [])
     qtbot.addWidget(dialogue)
 
@@ -132,7 +137,7 @@ def test_selection_grades_recherche_cache_corps_sans_correspondance(qtbot):
     assert racine_adjoint.isHidden() is False
 
 
-def test_selection_grades_cocher_un_grade(qtbot):
+def test_selection_grades_cocher_un_grade(qtbot: QtBot) -> None:
     dialogue = DialogueSelectionGrades(_CORPS_GRADES_TEST, [])
     qtbot.addWidget(dialogue)
     racine = _racine(dialogue._arbre, 0)

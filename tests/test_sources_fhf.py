@@ -27,7 +27,7 @@ _CARTE_MINIMALE = """
 """
 
 
-def test_extraire_offres_carte_minimale():
+def test_extraire_offres_carte_minimale() -> None:
     offres = extraire_offres(_CARTE_MINIMALE)
     assert len(offres) == 1
     offre = offres[0]
@@ -41,12 +41,12 @@ def test_extraire_offres_carte_minimale():
     assert offre["source"] == SOURCE_LABEL
 
 
-def test_extraire_offres_sans_lien_ignoree():
+def test_extraire_offres_sans_lien_ignoree() -> None:
     html = '<article class="card-offer"><h3 class="card-title">Titre</h3></article>'
     assert extraire_offres(html) == []
 
 
-def test_extraire_offres_url_domaine_invalide_ignoree():
+def test_extraire_offres_url_domaine_invalide_ignoree() -> None:
     html = """
     <article class="card-offer">
       <h3 class="card-title">Titre</h3>
@@ -56,7 +56,7 @@ def test_extraire_offres_url_domaine_invalide_ignoree():
     assert extraire_offres(html) == []
 
 
-def test_extraire_offres_html_vide():
+def test_extraire_offres_html_vide() -> None:
     assert extraire_offres("") == []
 
 
@@ -78,14 +78,14 @@ _FICHE_DETAIL = """
 """
 
 
-def test_extraire_detail_offre_champs_dedies():
+def test_extraire_detail_offre_champs_dedies() -> None:
     detail = extraire_detail_offre(_FICHE_DETAIL)
     assert detail["description"] == "Prise en charge des patients la nuit."
     assert detail["date_publication"] == "02 sep. 2026"
     assert detail["lien_postuler"] == "https://ch-test.softy.pro/offre/1?idt=2"
 
 
-def test_extraire_detail_offre_sections_complementaires_sans_doublon():
+def test_extraire_detail_offre_sections_complementaires_sans_doublon() -> None:
     detail = extraire_detail_offre(_FICHE_DETAIL)
     assert "Poste proposé" not in detail["sections_complementaires"]
     assert "Descriptif" not in detail["sections_complementaires"]
@@ -93,7 +93,7 @@ def test_extraire_detail_offre_sections_complementaires_sans_doublon():
     assert "Etablissement" in detail["sections_complementaires"]
 
 
-def test_extraire_detail_offre_sans_champs():
+def test_extraire_detail_offre_sans_champs() -> None:
     detail = extraire_detail_offre("<html></html>")
     assert detail["description"] == ""
     assert detail["sections_complementaires"] == {}
@@ -114,7 +114,7 @@ def _offre(titre: str, employeur: str, reference: str = "X") -> Offre:
     }
 
 
-def test_filtrer_doublons_fhf_meme_titre_employeur_lie_est_retire():
+def test_filtrer_doublons_fhf_meme_titre_employeur_lie_est_retire() -> None:
     # Cas réel vérifié cette session : "EPSYLAN (Établissement Psychiatrique
     # de Loire-Atlantique Nord)" / "Centre Hospitalier Epsylan" — même
     # établissement, un mot distinctif partagé ("epsylan").
@@ -128,7 +128,7 @@ def test_filtrer_doublons_fhf_meme_titre_employeur_lie_est_retire():
     assert filtrer_doublons_fhf(fhf, existantes) == []
 
 
-def test_filtrer_doublons_fhf_titre_generique_employeurs_distincts_conserve():
+def test_filtrer_doublons_fhf_titre_generique_employeurs_distincts_conserve() -> None:
     # Cas réel vérifié cette session (faux positif évité) : titre générique
     # "Un(e) Infirmier(ère)" mais employeurs sans rapport.
     fhf = [_offre("Un(e) Infirmier(ère)", "SESSAD L'Elan Antenne de Liévin")]
@@ -136,12 +136,12 @@ def test_filtrer_doublons_fhf_titre_generique_employeurs_distincts_conserve():
     assert filtrer_doublons_fhf(fhf, existantes) == fhf
 
 
-def test_filtrer_doublons_fhf_titre_different_conserve():
+def test_filtrer_doublons_fhf_titre_different_conserve() -> None:
     fhf = [_offre("Infirmier de nuit", "Centre Hospitalier Epsylan")]
     existantes = [_offre("Aide-soignant de jour", "Centre Hospitalier Epsylan")]
     assert filtrer_doublons_fhf(fhf, existantes) == fhf
 
 
-def test_filtrer_doublons_fhf_liste_existante_vide_conserve_tout():
+def test_filtrer_doublons_fhf_liste_existante_vide_conserve_tout() -> None:
     fhf = [_offre("Infirmier de nuit", "Centre Hospitalier X")]
     assert filtrer_doublons_fhf(fhf, []) == fhf
