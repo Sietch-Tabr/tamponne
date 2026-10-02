@@ -4,6 +4,17 @@ Toutes les évolutions notables de Tamponné, de la plus récente à la plus
 ancienne. Le détail de chaque version est aussi publié sur la page
 [Releases](https://codeberg.org/Kwaite/tamponne/releases) du dépôt.
 
+## [1.0.5] — 2026-10-03
+
+### Fiabilité
+
+- Réorganisation interne du moteur de recherche, sans changement visible : recherche, résultats et suivi de candidature fonctionnent comme avant
+- Couverture de tests renforcée sur la recherche multi-source et le suivi d'offre
+
+### Maintenance
+
+- Outils de vérification du code mis à jour
+
 ## [1.0.4] — 2026-09-26
 
 ### Recherche
@@ -94,6 +105,7 @@ Version initiale.
 - Suivi de candidature
 - Mise à jour automatique
 
+[1.0.5]: https://codeberg.org/Kwaite/tamponne/compare/v1.0.4...v1.0.5
 [1.0.4]: https://codeberg.org/Kwaite/tamponne/compare/v1.0.3...v1.0.4
 [1.0.3]: https://codeberg.org/Kwaite/tamponne/compare/v1.0.2...v1.0.3
 [1.0.2]: https://codeberg.org/Kwaite/tamponne/compare/v1.0.1...v1.0.2
