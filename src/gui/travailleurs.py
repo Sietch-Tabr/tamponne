@@ -7,30 +7,18 @@ connexion à une fonction/lambda ordinaire ne garantit pas l'exécution
 sur le bon thread.
 """
 
-from concurrent.futures import Future, ThreadPoolExecutor
-
 from PySide6.QtCore import QObject, Signal
 
 from src.candidatures import verifier_disponibilite
 from src.maj import ecrire_maj_disponible, verifier_derniere_publication
-from src.parametres_sources import (
-    SOURCES_DISPONIBLES,
-    VERSANT_SOURCE,
-    charger_sources_actives,
-)
-from src.sources.base import SourceOffres, deduplique_offres
-from src.sources.choisirleservicepublic import ChoisirLeServicePublic
-from src.sources.emploiterritorial import EmploiTerritorial
-from src.sources.fhf import Fhf
-from src.sources.fhf.dedoublonnage import filtrer_doublons_fhf
-from src.sources.passerellesmef import PasserellesMef
-from src.types import Candidature, FiltresRecherche, Offre, Organisations
+from src.recherche import RechercheImpossible, rechercher_toutes_sources
+from src.types import Candidature, FiltresRecherche, Organisations
 
 
 class TravailleurRecherche(QObject):
-    """Interroge les sources actives (`parametres_sources`) en parallèle,
-    fusionne et dédoublonne les résultats — à déplacer dans un `QThread`
-    avant de démarrer (`moveToThread`).
+    """Adaptateur Qt de `src.recherche.rechercher_toutes_sources` (sources
+    actives interrogées en parallèle, fusion, dédoublonnage) — à déplacer
+    dans un `QThread` avant de démarrer (`moveToThread`).
 
     Chaque source tourne dans un thread du pool : les signaux peuvent
     donc être émis depuis ces threads, d'où l'obligation de ne les
@@ -53,104 +41,23 @@ class TravailleurRecherche(QObject):
         self._filtres = filtres
         self._orgas_cache = orgas_cache
 
-    def _construire_source(self, cle: str) -> SourceOffres | None:
-        if cle == "choisirleservicepublic":
-            return ChoisirLeServicePublic(self._orgas_cache)
-        if cle == "emploiterritorial":
-            return EmploiTerritorial()
-        if cle == "passerellesmef":
-            return PasserellesMef()
-        if cle == "fhf":
-            return Fhf()
-        return None
-
-    def _sources_a_interroger(self) -> list[tuple[str, str, SourceOffres]]:
-        """(clé, nom affiché, source) des sources actives et compatibles
-        avec le filtre Versant, dans l'ordre de `SOURCES_DISPONIBLES`."""
-        sources_actives = charger_sources_actives()
-        versants_filtres = self._filtres.get("versants") or []
-        resultat: list[tuple[str, str, SourceOffres]] = []
-        for cle, nom_affiche in SOURCES_DISPONIBLES.items():
-            if not sources_actives.get(cle, True):
-                continue
-            versant_source = VERSANT_SOURCE.get(cle)
-            if (
-                versant_source is not None
-                and versants_filtres
-                and versant_source not in versants_filtres
-            ):
-                continue  # source mono-versant exclue par le filtre Versant
-            source = self._construire_source(cle)
-            if source is not None:
-                resultat.append((cle, nom_affiche, source))
-        return resultat
-
-    def _interroger(
-        self, nom_affiche: str, source: SourceOffres
-    ) -> tuple[list[Offre], int, bool]:
-        """Exécuté dans un thread du pool : une source, toutes ses pages."""
-
-        def _on_page(page: int, total: int) -> None:
-            self.progression.emit(nom_affiche, page, total)
-
-        try:
-            return source.rechercher(self._filtres, on_page=_on_page)
-        finally:
-            self.source_terminee.emit(nom_affiche)
-
     def executer(self) -> None:
         """Slot à connecter à `QThread.started` — tourne dans le thread
-        du worker une fois `moveToThread` appelé.
-
-        Les sources sont interrogées simultanément (une par thread), mais
-        fusionnées dans l'ordre de `SOURCES_DISPONIBLES` : le
-        dédoublonnage garde la première occurrence (choisirleservicepublic)
-        et FHF est comparée aux offres des sources qui la précèdent.
-        """
-        sources = self._sources_a_interroger()
-        if not sources:
-            self.erreur.emit("Aucune source active — voir l'onglet Sources.")
+        du worker une fois `moveToThread` appelé. Relaie en signaux les
+        callbacks de `src.recherche.rechercher_toutes_sources`."""
+        try:
+            offres, nb_pages, arret_anticipe = rechercher_toutes_sources(
+                self._filtres,
+                self._orgas_cache,
+                on_source_en_cours=self.source_en_cours.emit,
+                on_progression=self.progression.emit,
+                on_source_terminee=self.source_terminee.emit,
+                on_avertissement=self.avertissement.emit,
+            )
+        except RechercheImpossible as erreur:
+            self.erreur.emit(str(erreur))
             return
-
-        with ThreadPoolExecutor(max_workers=len(sources)) as pool:
-            futurs: list[tuple[str, str, Future[tuple[list[Offre], int, bool]]]] = []
-            for cle, nom_affiche, source in sources:
-                self.source_en_cours.emit(nom_affiche)
-                futurs.append(
-                    (
-                        cle,
-                        nom_affiche,
-                        pool.submit(self._interroger, nom_affiche, source),
-                    )
-                )
-
-            toutes_offres: list[Offre] = []
-            nb_pages_reference = 1
-            arret_anticipe_reference = False
-            nb_echecs = 0
-            for cle, nom_affiche, futur in futurs:
-                try:
-                    offres, nb_pages, arret_anticipe = futur.result()
-                except RuntimeError as erreur:
-                    nb_echecs += 1
-                    self.avertissement.emit(f"{nom_affiche} indisponible : {erreur}")
-                    continue
-                if cle == "fhf":
-                    offres = filtrer_doublons_fhf(offres, toutes_offres)
-                toutes_offres.extend(offres)
-                if cle == "choisirleservicepublic":
-                    nb_pages_reference = nb_pages
-                    arret_anticipe_reference = arret_anticipe
-
-        if nb_echecs == len(sources):
-            self.erreur.emit("Toutes les sources actives sont indisponibles.")
-            return
-
-        self.resultat.emit(
-            deduplique_offres(toutes_offres),
-            nb_pages_reference,
-            arret_anticipe_reference,
-        )
+        self.resultat.emit(offres, nb_pages, arret_anticipe)
 
 
 class VerificateurDisponibilite(QObject):
@@ -201,46 +108,3 @@ class VerificateurMiseAJour(QObject):
         if info is not None:
             ecrire_maj_disponible(info)
         self.resultat.emit(info)
-
-
-_MOIS_FR = {
-    "janvier": 1,
-    "février": 2,
-    "mars": 3,
-    "avril": 4,
-    "mai": 5,
-    "juin": 6,
-    "juillet": 7,
-    "août": 8,
-    "septembre": 9,
-    "octobre": 10,
-    "novembre": 11,
-    "décembre": 12,
-}
-
-
-def _reformater_date(date_str: str) -> str:
-    """Reformate une date française textuelle (ex. « 26 août 2026 »,
-    format réel renvoyé par le site) en format compact JJ/MM/AAAA.
-    Retourne la chaîne d'origine si le format n'est pas reconnu."""
-    parties = date_str.strip().split()
-    if len(parties) != 3:
-        return date_str
-    jour, mois_nom, annee = parties
-    if jour.endswith("er"):
-        jour = jour[:-2]
-    mois = _MOIS_FR.get(mois_nom.lower())
-    if mois is None or not jour.isdigit() or not annee.isdigit():
-        return date_str
-    return f"{int(jour):02d}/{mois:02d}/{annee}"
-
-
-def offre_vers_ligne(offre: Offre) -> tuple[str, str, str, str, str]:
-    """Extrait les 5 colonnes affichées dans le tableau de résultats."""
-    return (
-        offre["titre"],
-        offre["employeur"] or "—",
-        offre["localisation"] or "—",
-        _reformater_date(offre["date"]) if offre["date"] else "—",
-        offre.get("source") or "Choisir le service public",
-    )

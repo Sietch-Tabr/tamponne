@@ -254,3 +254,19 @@ class InfoMaj(TypedDict):
     notes: str
     url_zip: str
     url_publication: str
+
+
+class ResultatTraite(TypedDict):
+    """Résultat d'une recherche après post-traitement
+    (`src.recherche.post_traiter_resultats`).
+
+    Attributes:
+        offres: Offres conservées après filtres de grade.
+        nb_exclus: Nombre d'offres IDiv/IP exclues par le filtre de titre.
+        nouvelles: Références des offres jamais vues pour ce profil
+            (vide hors profil sauvegardé).
+    """
+
+    offres: list[Offre]
+    nb_exclus: int
+    nouvelles: set[str]

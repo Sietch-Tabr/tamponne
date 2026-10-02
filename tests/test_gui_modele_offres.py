@@ -2,12 +2,7 @@
 
 from PySide6.QtCore import Qt
 
-from src.gui.modele_offres import (
-    ROLE_OFFRE,
-    ModeleOffres,
-    ProxyOffres,
-    cle_tri_date,
-)
+from src.gui.modele_offres import ROLE_OFFRE, ModeleOffres, ProxyOffres
 from src.types import Offre
 
 
@@ -42,15 +37,6 @@ def _proxy(nouvelles: set[str] | None = None) -> ProxyOffres:
 
 def _references(proxy: ProxyOffres) -> list[str]:
     return [offre["reference"] for offre in proxy.offres_visibles()]
-
-
-def test_cle_tri_date_convertit_jj_mm_aaaa_en_iso() -> None:
-    assert cle_tri_date("05/03/2026") == "2026-03-05"
-
-
-def test_cle_tri_date_format_non_reconnu_retourne_chaine_vide() -> None:
-    assert cle_tri_date("—") == ""
-    assert cle_tri_date("il y a 6 jours") == ""
 
 
 def test_modele_expose_entetes_et_cellules() -> None:
