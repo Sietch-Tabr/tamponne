@@ -34,8 +34,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from src.cache import maj_cache_offres
-from src.candidatures import ajouter_candidature, generer_archive_pdf
+from src.candidatures import suivre_offre
 from src.export import exporter_html, ouvrir_dans_navigateur
 from src.filtres import (
     CORPS_GRADES,
@@ -43,7 +42,6 @@ from src.filtres import (
     DOMAINES,
     EXPERIENCES,
     LOCALISATIONS,
-    filtrer_par_grades,
     resumer_filtres,
 )
 from src.gui.modele_offres import ROLE_OFFRE, ModeleOffres, ProxyOffres
@@ -57,9 +55,9 @@ from src.gui.widgets.dialogue_selection import (
     question_oui_non,
 )
 from src.gui.widgets.ligne_responsive import LigneResponsive
-from src.profils import ajouter_profil, mettre_a_jour_stats, modifier_profil
-from src.sources.choisirleservicepublic import MAX_PAGES, recuperer_detail_offre
-from src.sources.choisirleservicepublic.extraction import filtrer_grades_superieurs
+from src.profils import ajouter_profil, modifier_profil
+from src.recherche import lignes_resume, post_traiter_resultats
+from src.sources.choisirleservicepublic import recuperer_detail_offre
 from src.types import FiltresRecherche, Offre, Organisations, Profil
 
 _INDIFFERENT = "Indifférente"
@@ -705,21 +703,15 @@ class VueRechercheResultats(QWidget):
     def _on_resultat(
         self, offres: list[Offre], nb_pages: int, arret_anticipe: bool
     ) -> None:
-        if self._afficher_tout:
-            offres_filtrees, nb_exclus = offres, 0
-        else:
-            offres_filtrees, nb_exclus = filtrer_grades_superieurs(offres)
-        offres_filtrees = filtrer_par_grades(offres_filtrees, self._grades_filtrage)
-
+        # Badge nouvelles offres : seulement pour un profil sauvegardé, pas en édition.
+        profil = None if self.mode_edition else self.nom_profil
+        resultat = post_traiter_resultats(
+            offres, self._grades_filtrage, self._afficher_tout, profil
+        )
+        offres_filtrees = resultat["offres"]
+        self._nouvelles = resultat["nouvelles"]
         self._offres_affichees = offres_filtrees
         self._dernier_nb_pages = nb_pages
-
-        # Badge nouvelles offres : seulement pour un profil sauvegardé, pas en édition.
-        if self.nom_profil and not self.mode_edition:
-            self._nouvelles = maj_cache_offres(self.nom_profil, offres_filtrees)
-            mettre_a_jour_stats(self.nom_profil, len(self._nouvelles))
-        else:
-            self._nouvelles = set()
 
         # N'a de sens que s'il reste des offres à exclure.
         peut_filtrer_nouvelles = bool(self._nouvelles) and len(self._nouvelles) < len(
@@ -733,27 +725,13 @@ class VueRechercheResultats(QWidget):
         self._peupler_table(offres_filtrees)
         self.bouton_exporter.setEnabled(bool(offres_filtrees))
 
-        resume = resumer_filtres(self.construire_filtres())
-        lignes = [
-            f"Filtres : {resume}",
-            f"{len(offres_filtrees)} offre(s)"
-            + (f" · {nb_pages} page(s)" if nb_pages > 1 else ""),
-        ]
-        if self._nouvelles:
-            lignes.append(
-                f"{len(self._nouvelles)} nouvelle(s) offre(s) depuis la dernière recherche"
-            )
-        if nb_exclus:
-            lignes.append(f"{nb_exclus} offre(s) IDiv/IP exclue(s) (filtre de titre)")
-        if arret_anticipe:
-            lignes.append(f"Arrêt à la page {nb_pages} (page vide)")
-        elif nb_pages > MAX_PAGES:
-            lignes.append(
-                f"{nb_pages} pages au total — seules les {MAX_PAGES} premières chargées."
-            )
-        if not offres_filtrees:
-            lignes.append("Aucune offre trouvée.")
-        lignes.extend(self._avertissements)
+        lignes = lignes_resume(
+            self.construire_filtres(),
+            resultat,
+            nb_pages,
+            arret_anticipe,
+            self._avertissements,
+        )
         self.barre_progression.setVisible(False)
         self._reinitialiser_role_entete()
         self.label_entete.setText("\n".join(lignes))
@@ -855,22 +833,10 @@ class VueRechercheResultats(QWidget):
         # GET synchrone ponctuel, même compromis que le rafraîchissement du cache.
         QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
         try:
-            detail = recuperer_detail_offre(offre["url"])
-            generer_archive_pdf(offre["reference"], detail["page_html"])
+            suivre_offre(offre)
         finally:
             QApplication.restoreOverrideCursor()
 
-        ajouter_candidature(
-            offre["reference"],
-            offre["titre"],
-            offre["employeur"],
-            offre["url"],
-            offre_domaine=offre["domaine"],
-            offre_localisation=offre["localisation"],
-            offre_versant=offre["versant"],
-            offre_date=offre["date"],
-            detail=detail,
-        )
         QMessageBox.information(
             self, "Candidature suivie", f"« {offre['titre']} » ajoutée au suivi."
         )

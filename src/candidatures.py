@@ -12,12 +12,13 @@ from pathlib import Path
 
 from bs4 import BeautifulSoup, Tag
 
+from src.sources.choisirleservicepublic import recuperer_detail_offre
 from src.sources.choisirleservicepublic.api import (
     obtenir_page_offres,
     telecharger_binaire,
 )
 from src.sources.choisirleservicepublic.extraction import DETAIL_VIDE, _valider_url
-from src.types import Candidature, DetailOffre, EvenementCandidature
+from src.types import Candidature, DetailOffre, EvenementCandidature, Offre
 from src.utils import ecriture_atomique
 
 CHEMIN_CANDIDATURES = Path(__file__).parent.parent / "data" / "candidatures.json"
@@ -161,6 +162,28 @@ def ajouter_candidature(
     }
     sauvegarder_candidatures(candidatures)
 
+
+def suivre_offre(offre: Offre) -> None:
+    """Démarre le suivi d'une offre issue d'une recherche : récupère sa
+    fiche détaillée, archive le PDF officiel puis enregistre la candidature.
+
+    Appel réseau synchrone. Un échec de téléchargement n'empêche pas le
+    suivi (détail vide, pas d'archive : voir `recuperer_detail_offre` et
+    `generer_archive_pdf`).
+    """
+    detail = recuperer_detail_offre(offre["url"])
+    generer_archive_pdf(offre["reference"], detail["page_html"])
+    ajouter_candidature(
+        offre["reference"],
+        offre["titre"],
+        offre["employeur"],
+        offre["url"],
+        offre_domaine=offre["domaine"],
+        offre_localisation=offre["localisation"],
+        offre_versant=offre["versant"],
+        offre_date=offre["date"],
+        detail=detail,
+    )
 
 def ajouter_evenement(
     reference: str,

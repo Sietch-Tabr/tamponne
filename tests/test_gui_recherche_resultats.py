@@ -662,7 +662,7 @@ def test_suivre_cette_offre_demarre_le_suivi_de_candidature(
         "page_html": "<html></html>",
     }
     monkeypatch.setattr(
-        "src.gui.vues.recherche_resultats.recuperer_detail_offre",
+        "src.candidatures.recuperer_detail_offre",
         lambda url: detail_factice,
     )
 

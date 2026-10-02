@@ -7,7 +7,8 @@ from typing import cast
 import pytest
 
 from src import candidatures
-from src.types import Candidature
+from src.sources.choisirleservicepublic.extraction import DETAIL_VIDE
+from src.types import Candidature, DetailOffre, Offre
 
 
 @pytest.fixture(autouse=True)
@@ -174,6 +175,60 @@ def test_generer_archive_pdf_echec_reseau_echoue_sans_lever(
     assert reussi is False
     assert "échec de téléchargement" in capsys.readouterr().err
 
+
+
+def test_suivre_offre_enregistre_detail_et_archive_pdf(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    detail: DetailOffre = {**DETAIL_VIDE, "page_html": _PAGE_AVEC_LIEN_PDF}
+    monkeypatch.setattr(candidatures, "recuperer_detail_offre", lambda url: detail)
+    monkeypatch.setattr(
+        candidatures, "telecharger_binaire", lambda url: b"%PDF-1.4 contenu"
+    )
+    offre: Offre = {
+        "titre": "Attaché",
+        "url": "https://example.org/1",
+        "reference": "ref-1",
+        "domaine": "RH",
+        "employeur": "DGFiP",
+        "localisation": "Montpellier (34)",
+        "versant": "Fonction publique de l'État",
+        "date": "26 août 2026",
+        "source": "",
+    }
+
+    candidatures.suivre_offre(offre)
+
+    suivie = candidatures.charger_candidatures()["ref-1"]
+    assert suivie["offre_titre"] == "Attaché"
+    assert suivie["offre_localisation"] == "Montpellier (34)"
+    assert suivie["detail"] == detail
+    assert candidatures.chemin_archive_pdf("ref-1").exists()
+
+
+def test_suivre_offre_sans_detail_ni_archive_suit_quand_meme(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Fiche injoignable : le suivi basique reste utile (titre/url)."""
+    monkeypatch.setattr(
+        candidatures, "recuperer_detail_offre", lambda url: DETAIL_VIDE
+    )
+    offre: Offre = {
+        "titre": "Attaché",
+        "url": "https://example.org/1",
+        "reference": "ref-1",
+        "domaine": "",
+        "employeur": "DGFiP",
+        "localisation": "",
+        "versant": "",
+        "date": "",
+        "source": "",
+    }
+
+    candidatures.suivre_offre(offre)
+
+    assert "ref-1" in candidatures.charger_candidatures()
+    assert not candidatures.chemin_archive_pdf("ref-1").exists()
 
 def test_dernier_evenement_retourne_le_plus_recent_par_date() -> None:
     # Candidature partielle : seuls les champs lus par dernier_evenement.

@@ -1,8 +1,6 @@
 """Modèle Qt des résultats de recherche (modèle/vue) : tri par colonne et
 filtrage en direct sans reconstruire le tableau."""
 
-import re
-
 from PySide6.QtCore import (
     QAbstractTableModel,
     QModelIndex,
@@ -12,7 +10,7 @@ from PySide6.QtCore import (
     Qt,
 )
 
-from src.gui.travailleurs import offre_vers_ligne
+from src.formatage import cle_tri_date, offre_vers_ligne
 from src.types import Offre
 
 ENTETES = ["Titre", "Employeur", "Localisation", "Publiée le", "Source"]
@@ -23,20 +21,7 @@ ROLE_OFFRE = Qt.ItemDataRole.UserRole
 ROLE_TRI = Qt.ItemDataRole.UserRole + 1
 """Clé de tri : date ISO pour « Publiée le », texte en minuscules sinon."""
 
-_RE_DATE_JJ_MM_AAAA = re.compile(r"^(\d{2})/(\d{2})/(\d{4})$")
-
 type _Index = QModelIndex | QPersistentModelIndex
-
-
-def cle_tri_date(date_affichee: str) -> str:
-    """Convertit une date affichée JJ/MM/AAAA en AAAA-MM-JJ, triable
-    lexicographiquement. Une date non reconnue (absente, format libre)
-    donne une chaîne vide : elle se range avant toutes les autres."""
-    correspondance = _RE_DATE_JJ_MM_AAAA.match(date_affichee)
-    if correspondance is None:
-        return ""
-    jour, mois, annee = correspondance.groups()
-    return f"{annee}-{mois}-{jour}"
 
 
 class ModeleOffres(QAbstractTableModel):
