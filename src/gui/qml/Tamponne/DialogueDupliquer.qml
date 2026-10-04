@@ -2,7 +2,8 @@ import QtQuick
 import QtQuick.Layouts
 import Tamponne
 
-/*! « Dupliquer la fiche » : nom de la copie, proposé « <nom>-copie ». */
+/*! « Dupliquer la fiche » : nom et intitulé de la copie, proposés
+    « <nom>-copie » et « <intitulé> (copie) ». */
 Dialogue {
     id: racine
 
@@ -12,7 +13,7 @@ Dialogue {
 
     /*! Émis à la validation ; l'appelant renvoie un message d'erreur via
         `refuser()` ou ferme la fenêtre. */
-    signal duplique(string nom, string nouveauNom)
+    signal duplique(string nom, string nouveauNom, string intituleCopie)
 
     titre: "Dupliquer la fiche"
     width: 470
@@ -22,6 +23,7 @@ Dialogue {
         intitule = intituleFiche
         erreur = ""
         champNom.text = nomFiche + "-copie"
+        champIntitule.text = intituleFiche + " (copie)"
         open()
         champNom.forceActiveFocus()
         champNom.selectAll()
@@ -49,7 +51,15 @@ Dialogue {
             objectName: "champNom"
             Layout.fillWidth: true
             Accessible.name: "Nom de la nouvelle fiche"
-            onAccepted: racine.duplique(racine.nom, text)
+            onAccepted: racine.duplique(racine.nom, text, champIntitule.text)
+        }
+        Item { Layout.preferredHeight: 10 }
+        EtiquetteChamp { text: "Intitulé de la copie" }
+        ChampSouligne {
+            id: champIntitule
+            Layout.fillWidth: true
+            Accessible.name: "Intitulé de la copie"
+            onAccepted: racine.duplique(racine.nom, champNom.text, text)
         }
         Texte {
             Layout.fillWidth: true
@@ -69,7 +79,7 @@ Dialogue {
         BoutonTampon {
             Layout.margins: 4
             text: "Dupliquer"
-            onClicked: racine.duplique(racine.nom, champNom.text)
+            onClicked: racine.duplique(racine.nom, champNom.text, champIntitule.text)
         }
     ]
 }

@@ -56,8 +56,16 @@ def supprimer_profil(nom: str) -> None:
     sauvegarder_profils(profils)
 
 
-def dupliquer_profil(nom_source: str, nouveau_nom: str) -> None:
-    """Copie un profil sous un nouveau nom."""
+def dupliquer_profil(
+    nom_source: str, nouveau_nom: str, label: str | None = None
+) -> None:
+    """Copie un profil sous un nouveau nom.
+
+    Args:
+        nom_source: Profil à copier.
+        nouveau_nom: Nom de la copie.
+        label: Intitulé de la copie ; `None` garde celui du profil source.
+    """
     profils = charger_profils()
     if nom_source not in profils:
         raise KeyError(f"Profil introuvable : {nom_source}")
@@ -65,6 +73,8 @@ def dupliquer_profil(nom_source: str, nouveau_nom: str) -> None:
         **profils[nom_source],
         "cree_le": date.today().isoformat(),
     }
+    if label:
+        profils[nouveau_nom]["label"] = label
     sauvegarder_profils(profils)
 
 

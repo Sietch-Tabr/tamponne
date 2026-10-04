@@ -104,12 +104,12 @@ def test_dupliquer_cree_la_copie_et_refuse_un_doublon(
         if e.metaObject().className().startswith("DialogueDupliquer")
     )
     assert dialogue.property("opened") is True
-    dialogue.duplique.emit("attache-paris", "hospitalier-achats")  # type: ignore[attr-defined]
+    dialogue.duplique.emit("attache-paris", "hospitalier-achats", "")  # type: ignore[attr-defined]
     assert dialogue.property("erreur") == "Une fiche porte déjà ce nom."
     assert dialogue.property("opened") is True
-    dialogue.duplique.emit("attache-paris", "attache-paris-copie")  # type: ignore[attr-defined]
+    dialogue.duplique.emit("attache-paris", "attache-paris-copie", "Copie de test")  # type: ignore[attr-defined]
     qapp.processEvents()
-    assert "attache-paris-copie" in profils.charger_profils()
+    assert profils.charger_profils()["attache-paris-copie"].get("label") == "Copie de test"
     assert racine is not None
 
 

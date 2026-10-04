@@ -27,8 +27,8 @@ Item {
 
     DialogueDupliquer {
         id: duplication
-        onDuplique: (nom, nouveauNom) => {
-            const erreur = racine.profils.dupliquer(nom, nouveauNom)
+        onDuplique: (nom, nouveauNom, intituleCopie) => {
+            const erreur = racine.profils.dupliquer(nom, nouveauNom, intituleCopie)
             if (erreur === "")
                 close()
             else

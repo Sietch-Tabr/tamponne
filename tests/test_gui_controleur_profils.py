@@ -55,16 +55,16 @@ def test_fiches_exposent_intitule_resume_et_nouvelles(qapp: QApplication) -> Non
 def test_dupliquer_refuse_nom_vide_ou_existant(qapp: QApplication) -> None:
     controleur = ControleurProfils(qapp)
     assert (
-        controleur.dupliquer("attache-paris", "  ")
+        controleur.dupliquer("attache-paris", "  ", "")
         == "Donner un nom à la nouvelle fiche."
     )
-    assert controleur.dupliquer("attache-paris", "hospitalier-achats") == (
+    assert controleur.dupliquer("attache-paris", "hospitalier-achats", "") == (
         "Une fiche porte déjà ce nom."
     )
     assert (
-        controleur.dupliquer("absente", "copie") == "La fiche d'origine n'existe plus."
+        controleur.dupliquer("absente", "copie", "") == "La fiche d'origine n'existe plus."
     )
-    assert controleur.dupliquer("attache-paris", " attache-copie ") == ""
+    assert controleur.dupliquer("attache-paris", " attache-copie ", "") == ""
     assert "attache-copie" in profils.charger_profils()
     assert controleur.property("nombre") == 3
 

@@ -114,9 +114,10 @@ class ControleurProfils(QObject):
         if nom in charger_profils():
             self.modification_demandee.emit(nom)
 
-    @Slot(str, str, result=str)
-    def dupliquer(self, nom: str, nouveau_nom: str) -> str:
-        """Copie la fiche sous un nouveau nom.
+    @Slot(str, str, str, result=str)
+    def dupliquer(self, nom: str, nouveau_nom: str, intitule: str) -> str:
+        """Copie la fiche sous un nouveau nom et un nouvel intitulé (celui
+        d'origine s'il est laissé vide).
 
         Returns:
             Message d'erreur à afficher, chaîne vide si la copie a réussi.
@@ -129,7 +130,7 @@ class ControleurProfils(QObject):
             return "Une fiche porte déjà ce nom."
         if nom not in profils:
             return "La fiche d'origine n'existe plus."
-        dupliquer_profil(nom, nouveau_nom)
+        dupliquer_profil(nom, nouveau_nom, intitule.strip() or None)
         self.rafraichir()
         return ""
 
