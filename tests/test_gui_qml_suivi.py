@@ -6,12 +6,13 @@ from datetime import date
 from pathlib import Path
 
 import pytest
-from PySide6.QtCore import QObject, QUrl
+from PySide6.QtCore import Q_ARG, QMetaObject, QObject, QUrl
 from PySide6.QtGui import QAccessible, QAccessibleInterface
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtWidgets import QApplication
 
 from outils import donnees_demo
+from src import candidatures
 from src.gui import application, controleur_suivi
 from src.gui.pont import Pont
 
@@ -89,3 +90,69 @@ def test_ecran_suivi_vide_affiche_le_message(qapp: QApplication) -> None:
     assert avertissements == []
     assert any(n.startswith("Aucun dossier en cours.") for n in noms)
     del moteur, pont
+
+
+def _ecran(moteur: QQmlApplicationEngine) -> tuple[QObject, QObject]:
+    """(fenêtre racine, écran Suivi) : la racine doit rester référencée
+    pendant le test, sa libération côté Python détruirait la fenêtre."""
+    racine = moteur.rootObjects()[0]
+    ecran = racine.findChild(QObject, "ecranSuivi")
+    assert ecran is not None
+    return racine, ecran
+
+
+def _dialogue(ecran: QObject, nom_type: str) -> QObject:
+    """Fenêtre de l'écran par son type QML (DialogueDetail, DialogueEvenement…)."""
+    for enfant in ecran.children():
+        if enfant.metaObject().className().startswith(nom_type):
+            return enfant
+    raise AssertionError(f"{nom_type} introuvable")
+
+
+def test_detail_s_ouvre_sur_la_fiche_archivee(
+    ecran_avec_dossiers: tuple[QQmlApplicationEngine, list[str]], qapp: QApplication
+) -> None:
+    moteur, avertissements = ecran_avec_dossiers
+    _racine, ecran = _ecran(moteur)
+    QMetaObject.invokeMethod(ecran, "ouvrirDetail", Q_ARG(str, "MINT_2026-31544"))
+    qapp.processEvents()
+    detail = _dialogue(ecran, "DialogueDetail")
+    assert detail.property("opened") is True
+    assert detail.property("fiche")["titre"] == "Attaché(e) d'administration RH"
+    assert avertissements == []
+
+
+def test_evenement_tamponne_met_a_jour_le_dossier(
+    ecran_avec_dossiers: tuple[QQmlApplicationEngine, list[str]], qapp: QApplication
+) -> None:
+    moteur, _ = ecran_avec_dossiers
+    _racine, ecran = _ecran(moteur)
+    QMetaObject.invokeMethod(ecran, "ouvrirEvenement", Q_ARG(str, "MINT_2026-31544"))
+    qapp.processEvents()
+    dialogue = _dialogue(ecran, "DialogueEvenement")
+    assert dialogue.property("opened") is True
+    dialogue.tamponne.emit(  # type: ignore[attr-defined]
+        "MINT_2026-31544", "relance", "2026-10-04", "par courriel"
+    )
+    historique = candidatures.charger_candidatures()["MINT_2026-31544"]["historique"]
+    assert historique[-1] == {
+        "date": "2026-10-04",
+        "type": "relance",
+        "note": "par courriel",
+    }
+
+
+def test_suppr_demande_confirmation_puis_oui_supprime(
+    ecran_avec_dossiers: tuple[QQmlApplicationEngine, list[str]], qapp: QApplication
+) -> None:
+    moteur, _ = ecran_avec_dossiers
+    _racine, ecran = _ecran(moteur)
+    QMetaObject.invokeMethod(
+        ecran, "demanderSuppression", Q_ARG(str, "MINT_2026-31544")
+    )
+    qapp.processEvents()
+    confirmation = _dialogue(ecran, "DialogueConfirmation")
+    assert confirmation.property("opened") is True
+    assert "Attaché(e) d'administration RH" in confirmation.property("message")
+    confirmation.confirme.emit()  # type: ignore[attr-defined]
+    assert "MINT_2026-31544" not in candidatures.charger_candidatures()

@@ -21,7 +21,7 @@ from typing import cast
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtCore import QRect, Qt, QUrl  # noqa: E402
+from PySide6.QtCore import Q_ARG, QMetaObject, QObject, QRect, Qt, QUrl  # noqa: E402
 from PySide6.QtGui import QColor, QFont, QGuiApplication, QImage, QPainter  # noqa: E402
 from PySide6.QtQuick import QQuickWindow  # noqa: E402
 from shiboken6 import Shiboken  # noqa: E402
@@ -34,10 +34,17 @@ DOSSIER_POLICES = RACINE / "src" / "gui" / "qml" / "Tamponne" / "polices"
 FIREFOX = Path("/Applications/Firefox.app/Contents/MacOS/firefox")
 LARGEUR = 1280
 
-ECRANS: dict[str, tuple[str, int, int]] = {
-    "suivi": ("Dossier-Suivi.dc.html", 2, 900),
+ECRANS: dict[str, tuple[str, int, int, str]] = {
+    "suivi": ("Dossier-Suivi.dc.html", 2, 900, ""),
+    "detail": ("Dossier-Detail.dc.html", 2, 1100, "ouvrirDetail"),
+    "evenement": ("Dossier-Dialogues.dc.html", 2, 900, "ouvrirEvenement"),
+    "confirmation": ("Dossier-Dialogues.dc.html", 2, 900, "demanderSuppression"),
 }
-"""Écran → (fichier de maquette, index d'onglet QML, hauteur de fenêtre)."""
+"""Écran → (fichier de maquette, index d'onglet QML, hauteur de fenêtre,
+fonction de `EcranSuivi.qml` à appeler avant la capture, avec la référence
+de démonstration)."""
+
+REFERENCE_DEMO = "MINT_2026-31544"
 
 _POLICES_LOCALES = f"""<style>
 @font-face{{font-family:'Archivo';src:url('{(DOSSIER_POLICES / "Archivo-Variable.ttf").as_uri()}');font-weight:100 900;font-stretch:62% 125%}}
@@ -89,8 +96,9 @@ def capturer_maquette(fichier: str, nuit: bool, hauteur: int, dossier: Path) -> 
     return QImage(str(capture))
 
 
-def capturer_qml(onglet: int, nuit: bool, hauteur: int) -> QImage:
-    """Capture hors écran de la fenêtre QML sur l'onglet demandé."""
+def capturer_qml(onglet: int, nuit: bool, hauteur: int, action: str) -> QImage:
+    """Capture hors écran de la fenêtre QML sur l'onglet demandé, après
+    avoir ouvert une fenêtre de l'écran Suivi si `action` est renseignée."""
     from src.gui import application, controleur_suivi
     from src.gui.pont import Pont
 
@@ -115,6 +123,12 @@ def capturer_qml(onglet: int, nuit: bool, hauteur: int) -> QImage:
     assert app is not None
     for _ in range(30):
         app.processEvents()
+    if action:
+        ecran = fenetre.findChild(QObject, "ecranSuivi")
+        assert ecran is not None
+        QMetaObject.invokeMethod(ecran, action, Q_ARG(str, REFERENCE_DEMO))
+        for _ in range(30):
+            app.processEvents()
     image = fenetre.grabWindow()
     fenetre.close()
     # Moteur détruit avant le pont : ses liaisons liraient sinon un objet disparu.
@@ -159,7 +173,7 @@ def main() -> int:
 
     QGuiApplication.setAttribute(Qt.ApplicationAttribute.AA_DontUseNativeMenuBar)
     app = QGuiApplication(sys.argv[:1])
-    fichier, onglet, hauteur = ECRANS[arguments.ecran]
+    fichier, onglet, hauteur, action = ECRANS[arguments.ecran]
     arguments.sortie.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="tamponne-comparaison-") as temporaire:
         dossier = Path(temporaire)
@@ -167,7 +181,7 @@ def main() -> int:
         for nuit in (False, True):
             theme = "nuit" if nuit else "jour"
             maquette = capturer_maquette(fichier, nuit, hauteur, dossier)
-            qml = capturer_qml(onglet, nuit, hauteur)
+            qml = capturer_qml(onglet, nuit, hauteur, action)
             destination = arguments.sortie / f"{arguments.ecran}-{theme}.png"
             assembler(maquette, qml, destination)
             print(destination)

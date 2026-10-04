@@ -46,13 +46,32 @@ def _dossier(
     }
 
 
+def _avec_fiche(candidature: Candidature) -> Candidature:
+    """Fiche de poste de la maquette (textes entre crochets)."""
+    candidature["detail"].update(
+        {
+            "description": "[Description reprise de l'offre]",
+            "salaire": "[selon l'offre]",
+            "experience_requise": "[selon l'offre]",
+            "formation_requise": "[selon l'offre]",
+            "secteur": "[selon l'offre]",
+            "date_publication": "01/10/2026",
+            "date_limite": "[selon l'offre]",
+            "a_propos_employeur": "[Présentation de l'employeur reprise de l'offre]",
+            "lien_postuler": "https://example.org/postuler",
+        }
+    )
+    return candidature
+
+
 def installer(dossier: Path) -> None:
     """Redirige les données du Suivi vers `dossier` et y écrit les trois
     dossiers de la maquette (le plus récemment suivi en dernier)."""
     candidatures.CHEMIN_CANDIDATURES = dossier / "candidatures.json"
     candidatures.DOSSIER_ARCHIVES = dossier / "archives"
     candidatures.DOSSIER_ARCHIVES.mkdir(parents=True, exist_ok=True)
-    (candidatures.DOSSIER_ARCHIVES / "FHF_48213.pdf").write_bytes(b"%PDF-1.4\n")
+    for reference in ("FHF_48213", "MINT_2026-31544"):
+        (candidatures.DOSSIER_ARCHIVES / f"{reference}.pdf").write_bytes(b"%PDF-1.4\n")
     candidatures.sauvegarder_candidatures(
         {
             "FHF_48213": _dossier(
@@ -79,11 +98,13 @@ def installer(dossier: Path) -> None:
                     },
                 ],
             ),
-            "MINT_2026-31544": _dossier(
-                "Attaché(e) d'administration RH",
-                "Préfecture de région",
-                "Paris 75",
-                [{"date": "2026-09-11", "type": "candidature_envoyee", "note": ""}],
+            "MINT_2026-31544": _avec_fiche(
+                _dossier(
+                    "Attaché(e) d'administration RH",
+                    "Préfecture de région",
+                    "Paris 75",
+                    [{"date": "2026-09-11", "type": "candidature_envoyee", "note": ""}],
+                )
             ),
         }
     )

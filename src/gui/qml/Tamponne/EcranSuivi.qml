@@ -12,6 +12,58 @@ Item {
     /*! `ControleurSuivi` (src/gui/controleur_suivi.py). */
     required property var suivi
 
+    function titreDe(reference: string): string {
+        const fiche = suivi.detail(reference)
+        return fiche.titre || ""
+    }
+
+    function ouvrirDetail(reference: string) {
+        if (reference !== "")
+            detail.afficher(suivi.detail(reference))
+    }
+
+    function ouvrirEvenement(reference: string) {
+        evenement.ouvrirPour(reference, titreDe(reference))
+    }
+
+    function demanderSuppression(reference: string) {
+        if (reference === "")
+            return
+        confirmation.reference = reference
+        confirmation.demander("Arrêter le suivi",
+            "Retirer le dossier « " + titreDe(reference) + " » du suivi ? Son historique et sa copie archivée seront jetés.")
+    }
+
+    DialogueDetail {
+        id: detail
+        onPostuler: (reference) => racine.suivi.postuler(reference)
+        onConsulterEnLigne: (reference) => racine.suivi.voir_offre(reference)
+        onVoirArchive: (reference) => racine.suivi.voir_archive(reference)
+    }
+
+    DialogueEvenement {
+        id: evenement
+        types: racine.suivi.types_evenement
+        onTamponne: (reference, typeEvenement, dateIso, note) =>
+            racine.suivi.ajouter_evenement(reference, typeEvenement, dateIso, note)
+    }
+
+    DialogueConfirmation {
+        id: confirmation
+        property string reference: ""
+        onConfirme: racine.suivi.supprimer(reference)
+    }
+
+    MenuDossier {
+        id: menu
+        property string reference: ""
+        onVoirOffre: racine.suivi.voir_offre(reference)
+        onVoirArchive: racine.suivi.voir_archive(reference)
+        onDetail: racine.ouvrirDetail(reference)
+        onAjouterEvenement: racine.ouvrirEvenement(reference)
+        onSupprimer: racine.demanderSuppression(reference)
+    }
+
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 28
@@ -66,10 +118,40 @@ Item {
 
             ScrollBar.vertical: ScrollBar {}
 
+            focus: true
+            keyNavigationEnabled: true
+            Accessible.role: Accessible.List
+            Accessible.name: "Dossiers en cours"
+
+            Keys.onReturnPressed: racine.ouvrirDetail(liste.referenceCourante())
+            Keys.onEnterPressed: racine.ouvrirDetail(liste.referenceCourante())
+            Keys.onDeletePressed: racine.demanderSuppression(liste.referenceCourante())
+            Keys.onPressed: (touche) => {
+                if (touche.key === Qt.Key_Backspace) {
+                    racine.demanderSuppression(liste.referenceCourante())
+                    touche.accepted = true
+                }
+            }
+
+            function referenceCourante(): string {
+                return currentItem ? (currentItem as DossierSuivi).reference : ""
+            }
+
             delegate: DossierSuivi {
+                required property int index
                 width: ListView.view.width
+                courant: ListView.isCurrentItem && ListView.view.activeFocus
                 onVoirOffre: (reference) => racine.suivi.voir_offre(reference)
                 onVoirArchive: (reference) => racine.suivi.voir_archive(reference)
+                onDetail: (reference) => racine.ouvrirDetail(reference)
+                onAjouterEvenement: (reference) => racine.ouvrirEvenement(reference)
+                onSupprimer: (reference) => racine.demanderSuppression(reference)
+                onMenuDemande: (reference, disponible, x, y) => {
+                    liste.currentIndex = index
+                    menu.reference = reference
+                    menu.disponible = disponible
+                    menu.popup(this, x, y)
+                }
             }
         }
 

@@ -22,6 +22,11 @@ Feuille {
     signal detail(string reference)
     signal ajouterEvenement(string reference)
     signal supprimer(string reference)
+    /*! Clic droit : position dans le dossier, pour ouvrir le menu. */
+    signal menuDemande(string reference, bool disponible, real x, real y)
+
+    /*! Dossier courant de la liste quand celle-ci a le focus clavier. */
+    property bool courant: false
 
     readonly property bool relance: joursSansNouvelles >= 0
     readonly property color fondDossier: disponible ? Theme.papier : Theme.papierGrise
@@ -34,6 +39,21 @@ Feuille {
 
     function echapper(texte: string): string {
         return texte.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    }
+
+    MouseArea {
+        anchors.fill: parent
+        acceptedButtons: Qt.RightButton
+        onClicked: (souris) => racine.menuDemande(racine.reference, racine.disponible, souris.x, souris.y)
+    }
+
+    Rectangle {
+        visible: racine.courant
+        anchors.fill: parent
+        anchors.margins: -5
+        color: "transparent"
+        border.color: Theme.tampon
+        border.width: 3
     }
 
     RowLayout {

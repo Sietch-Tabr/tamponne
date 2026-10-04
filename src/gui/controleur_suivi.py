@@ -27,7 +27,7 @@ from src.candidatures import (
     marquer_disponibilite,
     supprimer_candidature,
 )
-from src.gui.presentation import ContenuDossier, contenu_dossier
+from src.gui.presentation import ContenuDossier, contenu_detail, contenu_dossier
 from src.gui.travailleurs import VerificateurDisponibilite
 
 type _Index = QModelIndex | QPersistentModelIndex
@@ -219,6 +219,48 @@ class ControleurSuivi(QObject):
         candidature = charger_candidatures().get(reference)
         if candidature and candidature["offre_url"].startswith("https://"):
             QDesktopServices.openUrl(QUrl(candidature["offre_url"]))
+
+    @Slot(str, result="QVariantMap")
+    def detail(self, reference: str) -> dict[str, Any]:
+        """Contenu de la fiche de poste archivée au moment du suivi (aucun
+        appel réseau) ; dictionnaire vide si le dossier n'existe plus."""
+        candidature = charger_candidatures().get(reference)
+        if candidature is None:
+            return {}
+        contenu = contenu_detail(
+            reference,
+            candidature["offre_titre"],
+            [candidature["offre_employeur"], candidature["offre_localisation"]],
+            candidature["detail"],
+            candidature["offre_url"],
+            chemin_archive_pdf(reference).exists(),
+        )
+        return {
+            "reference": contenu.reference,
+            "titre": contenu.titre,
+            "sousTitre": contenu.sous_titre,
+            "description": contenu.description,
+            "informations": [
+                {"libelle": libelle, "valeur": valeur}
+                for libelle, valeur in contenu.informations
+            ],
+            "rubriques": [
+                {"titre": titre, "texte": texte} for titre, texte in contenu.rubriques
+            ],
+            "peutPostuler": bool(contenu.lien_postuler),
+            "enLigne": bool(contenu.url),
+            "archivePresente": contenu.archive_presente,
+        }
+
+    @Slot(str)
+    def postuler(self, reference: str) -> None:
+        """Ouvre le portail de candidature de l'offre (liens https uniquement)."""
+        candidature = charger_candidatures().get(reference)
+        if candidature is None:
+            return
+        lien = candidature["detail"].get("lien_postuler") or ""
+        if lien.startswith("https://"):
+            QDesktopServices.openUrl(QUrl(lien))
 
     @Slot(str)
     def voir_archive(self, reference: str) -> None:

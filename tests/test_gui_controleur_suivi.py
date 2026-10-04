@@ -153,3 +153,14 @@ def test_modele_ignore_role_inconnu(qapp: QApplication) -> None:
     modele = _modele(ControleurSuivi(qapp))
     index = modele.index(0, 0, QModelIndex())
     assert modele.data(index, Qt.ItemDataRole.DisplayRole) is None
+
+
+@pytest.mark.usefixtures("deux_dossiers")
+def test_detail_renvoie_fiche_archivee_et_vide_si_absent(qapp: QApplication) -> None:
+    controleur = ControleurSuivi(qapp)
+    fiche = controleur.detail("REF-A")
+    assert fiche["titre"] == "Premier suivi"
+    assert fiche["sousTitre"] == "Préfecture de région · Paris 75"
+    assert fiche["peutPostuler"] is False
+    assert fiche["enLigne"] is True
+    assert controleur.detail("REF-ABSENTE") == {}

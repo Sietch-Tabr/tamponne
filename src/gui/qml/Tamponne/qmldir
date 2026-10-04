@@ -14,3 +14,13 @@ Feuille 1.0 Feuille.qml
 CadrePointille 1.0 CadrePointille.qml
 DossierSuivi 1.0 DossierSuivi.qml
 EcranSuivi 1.0 EcranSuivi.qml
+BoutonTampon 1.0 BoutonTampon.qml
+EtiquetteChamp 1.0 EtiquetteChamp.qml
+ChampSouligne 1.0 ChampSouligne.qml
+ListeDeroulante 1.0 ListeDeroulante.qml
+ChampDate 1.0 ChampDate.qml
+Dialogue 1.0 Dialogue.qml
+DialogueEvenement 1.0 DialogueEvenement.qml
+DialogueConfirmation 1.0 DialogueConfirmation.qml
+DialogueDetail 1.0 DialogueDetail.qml
+MenuDossier 1.0 MenuDossier.qml

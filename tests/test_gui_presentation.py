@@ -2,7 +2,7 @@
 
 from datetime import date
 
-from src.gui.presentation import contenu_dossier, reformater_date_iso
+from src.gui.presentation import contenu_detail, contenu_dossier, reformater_date_iso
 from src.types import Candidature, EvenementCandidature
 
 
@@ -116,3 +116,45 @@ def test_contenu_dossier_sans_historique_indique_aucun_evenement() -> None:
     )
     assert contenu.statut == "aucun événement"
     assert contenu.tampons == ()
+
+
+def test_contenu_detail_ordonne_rubriques_et_ignore_valeurs_vides() -> None:
+    detail = _candidature([])["detail"]
+    detail.update(
+        {
+            "description": "Gérer la paie.",
+            "salaire": "",
+            "secteur": "Administration",
+            "date_publication": "01/10/2026",
+            "a_propos_employeur": "Préfecture de région.",
+            "sections_complementaires": {"Profil recherché": "Rigueur."},
+            "lien_postuler": "https://portail.example.org",
+        }
+    )
+    contenu = contenu_detail(
+        "MINT_2026-31544",
+        "Attaché(e) d'administration RH",
+        ["Préfecture de région", "", "Paris 75"],
+        detail,
+        "https://example.org/offre",
+        archive_presente=True,
+    )
+    assert contenu.sous_titre == "Préfecture de région · Paris 75"
+    assert contenu.description == "Gérer la paie."
+    assert contenu.informations == (
+        ("Secteur", "Administration"),
+        ("Publiée le", "01/10/2026"),
+    )
+    assert contenu.rubriques == (
+        ("Qui sommes-nous ?", "Préfecture de région."),
+        ("Profil recherché", "Rigueur."),
+    )
+    assert contenu.lien_postuler == "https://portail.example.org"
+
+
+def test_contenu_detail_refuse_liens_non_https() -> None:
+    detail = _candidature([])["detail"]
+    detail["lien_postuler"] = "http://portail.example.org"
+    contenu = contenu_detail("R", "T", [], detail, "javascript:alert(1)", False)
+    assert contenu.lien_postuler == ""
+    assert contenu.url == ""
