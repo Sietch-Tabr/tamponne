@@ -2,8 +2,15 @@
 
 from datetime import date
 
-from src.gui.presentation import contenu_detail, contenu_dossier, reformater_date_iso
-from src.types import Candidature, EvenementCandidature
+from src.gui.presentation import (
+    contenu_detail,
+    contenu_dossier,
+    lignes_fiche,
+    reformater_date_iso,
+    texte_nombre_fiches,
+    texte_nouvelles,
+)
+from src.types import Candidature, EvenementCandidature, Profil
 
 
 def _candidature(
@@ -158,3 +165,43 @@ def test_contenu_detail_refuse_liens_non_https() -> None:
     contenu = contenu_detail("R", "T", [], detail, "javascript:alert(1)", False)
     assert contenu.lien_postuler == ""
     assert contenu.url == ""
+
+
+def test_lignes_fiche_regroupe_comme_la_maquette() -> None:
+    profil: Profil = {
+        "categories": ["A+ (direction)", "A"],
+        "versants": ["etat", "territorial"],
+        "localisations": ["Île-de-France"],
+        "teletravail": True,
+    }
+    assert lignes_fiche(profil) == [
+        "Cat. A+ (direction), A · État, Territorial",
+        "Île-de-France · télétravail",
+    ]
+
+
+def test_lignes_fiche_troisieme_ligne_pour_les_autres_criteres() -> None:
+    profil: Profil = {
+        "categories": ["A"],
+        "versants": ["hospitalier"],
+        "domaines": ["Achats", "Finances"],
+        "organisations": ["Ministère - Direction des achats"],
+        "query": "achat",
+    }
+    assert lignes_fiche(profil) == [
+        "Cat. A · Hospitalier",
+        "Toute la France",
+        "Achats +1 · Direction des achats · mot-clé « achat »",
+    ]
+
+
+def test_lignes_fiche_profil_vide() -> None:
+    assert lignes_fiche({}) == ["Toutes catégories · tous versants", "Toute la France"]
+
+
+def test_textes_nouvelles_et_nombre_de_fiches_accordes() -> None:
+    assert texte_nouvelles(0) == ""
+    assert texte_nouvelles(1) == "1 nouvelle"
+    assert texte_nouvelles(2) == "2 nouvelles"
+    assert texte_nombre_fiches(1) == "1 fiche classée"
+    assert texte_nombre_fiches(2) == "2 fiches classées"

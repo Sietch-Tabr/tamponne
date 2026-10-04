@@ -4,7 +4,7 @@ data/)."""
 
 from pathlib import Path
 
-from src import candidatures
+from src import candidatures, profils
 from src.types import Candidature, DetailOffre, EvenementCandidature
 
 _DETAIL_VIDE: DetailOffre = {
@@ -66,8 +66,28 @@ def _avec_fiche(candidature: Candidature) -> Candidature:
 
 
 def installer(dossier: Path) -> None:
-    """Redirige les données du Suivi vers `dossier` et y écrit les trois
-    dossiers de la maquette (le plus récemment suivi en dernier)."""
+    """Redirige les données vers `dossier` et y écrit les fiches et les
+    trois dossiers de la maquette (le plus récemment suivi en dernier)."""
+    profils.CHEMIN_PROFILS = dossier / "profils.json"
+    dossier.mkdir(parents=True, exist_ok=True)
+    profils.sauvegarder_profils(
+        {
+            "attache-paris": {
+                "label": "Attaché, Paris et petite couronne",
+                "categories": ["A+ (direction)", "A"],
+                "versants": ["etat", "territorial"],
+                "localisations": ["Île-de-France"],
+                "teletravail": True,
+                "nb_nouvelles": 2,
+            },
+            "hospitalier-achats": {
+                "label": "Hospitalier, achats",
+                "categories": ["A"],
+                "versants": ["hospitalier"],
+                "query": "achat",
+            },
+        }
+    )
     candidatures.CHEMIN_CANDIDATURES = dossier / "candidatures.json"
     candidatures.DOSSIER_ARCHIVES = dossier / "archives"
     candidatures.DOSSIER_ARCHIVES.mkdir(parents=True, exist_ok=True)

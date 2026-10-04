@@ -9,7 +9,7 @@ from src.candidatures import (
     dernier_evenement,
     relance_suggeree,
 )
-from src.types import Candidature, DetailOffre
+from src.types import Candidature, DetailOffre, Profil
 
 LIBELLES_TAMPON: dict[str, str] = {
     "candidature_envoyee": "Envoyée",
@@ -200,3 +200,74 @@ def contenu_detail(
         url=url if url.startswith("https://") else "",
         archive_presente=archive_presente,
     )
+
+
+_VERSANTS_FICHE: dict[str, str] = {
+    "etat": "État",
+    "hospitalier": "Hospitalier",
+    "territorial": "Territorial",
+}
+
+
+def _premier_et_reste(valeurs: list[str]) -> str:
+    """« Premier +N » : la fiche n'a la place que pour le premier élément."""
+    return valeurs[0] + (f" +{len(valeurs) - 1}" if len(valeurs) > 1 else "")
+
+
+def lignes_fiche(profil: Profil) -> list[str]:
+    """Résumé d'un profil sur la fiche bristol de l'écran Profils.
+
+    Args:
+        profil: Profil tel que stocké par `src.profils`.
+
+    Returns:
+        Une à trois lignes : catégories et versants ; lieu et options ;
+        autres critères (domaines, organisations, grades, expérience,
+        date de publication, mot-clé), omise s'il n'y en a aucun.
+    """
+    categories = profil.get("categories") or []
+    versants = [_VERSANTS_FICHE.get(v, v) for v in profil.get("versants") or []]
+    ligne_statut = " · ".join(
+        [
+            ("Cat. " + ", ".join(categories)) if categories else "Toutes catégories",
+            ", ".join(versants) if versants else "tous versants",
+        ]
+    )
+
+    localisations = profil.get("localisations") or []
+    lieu = [_premier_et_reste(localisations) if localisations else "Toute la France"]
+    if profil.get("teletravail"):
+        lieu.append("télétravail")
+    if profil.get("management"):
+        lieu.append("management")
+
+    autres: list[str] = []
+    if domaines := profil.get("domaines"):
+        autres.append(_premier_et_reste(domaines))
+    if organisations := profil.get("organisations"):
+        autres.append(_premier_et_reste([o.split(" - ")[-1] for o in organisations]))
+    if grades := profil.get("grades"):
+        autres.append(_premier_et_reste(grades))
+    if experience := profil.get("experience"):
+        autres.append(experience.lower())
+    if date_publication := profil.get("date_publication"):
+        autres.append(date_publication.lower())
+    if mot_cle := profil.get("query"):
+        autres.append(f"mot-clé « {mot_cle} »")
+
+    lignes = [ligne_statut, " · ".join(lieu)]
+    if autres:
+        lignes.append(" · ".join(autres))
+    return lignes
+
+
+def texte_nouvelles(nombre: int) -> str:
+    """Texte du tampon des nouvelles offres d'une fiche, vide si aucune."""
+    if nombre <= 0:
+        return ""
+    return f"{nombre} nouvelle{'s' if nombre > 1 else ''}"
+
+
+def texte_nombre_fiches(nombre: int) -> str:
+    """Compteur sous le titre « Mes fiches de recherche »."""
+    return f"{nombre} fiche{'s' if nombre > 1 else ''} classée{'s' if nombre > 1 else ''}"

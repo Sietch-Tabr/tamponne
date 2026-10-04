@@ -35,16 +35,31 @@ FIREFOX = Path("/Applications/Firefox.app/Contents/MacOS/firefox")
 LARGEUR = 1280
 
 ECRANS: dict[str, tuple[str, int, int, str]] = {
+    "profils": ("Dossier-Accueil.dc.html", 0, 900, ""),
+    "dupliquer": (
+        "Dossier-Saisie.dc.html",
+        0,
+        620,
+        "ecranProfils:ouvrirDuplication:attache-paris",
+    ),
     "suivi": ("Dossier-Suivi.dc.html", 2, 900, ""),
-    "detail": ("Dossier-Detail.dc.html", 2, 1100, "ouvrirDetail"),
-    "evenement": ("Dossier-Dialogues.dc.html", 2, 900, "ouvrirEvenement"),
-    "confirmation": ("Dossier-Dialogues.dc.html", 2, 900, "demanderSuppression"),
+    "detail": ("Dossier-Detail.dc.html", 2, 1100, "ecranSuivi:ouvrirDetail:MINT_2026-31544"),
+    "evenement": (
+        "Dossier-Dialogues.dc.html",
+        2,
+        900,
+        "ecranSuivi:ouvrirEvenement:MINT_2026-31544",
+    ),
+    "confirmation": (
+        "Dossier-Dialogues.dc.html",
+        2,
+        900,
+        "ecranSuivi:demanderSuppression:MINT_2026-31544",
+    ),
 }
 """Écran → (fichier de maquette, index d'onglet QML, hauteur de fenêtre,
-fonction de `EcranSuivi.qml` à appeler avant la capture, avec la référence
-de démonstration)."""
-
-REFERENCE_DEMO = "MINT_2026-31544"
+action « objectName:fonction:argument » appelée dans le QML avant la
+capture, vide si aucune)."""
 
 _POLICES_LOCALES = f"""<style>
 @font-face{{font-family:'Archivo';src:url('{(DOSSIER_POLICES / "Archivo-Variable.ttf").as_uri()}');font-weight:100 900;font-stretch:62% 125%}}
@@ -124,15 +139,15 @@ def capturer_qml(onglet: int, nuit: bool, hauteur: int, action: str) -> QImage:
     for _ in range(30):
         app.processEvents()
     if action:
-        ecran = fenetre.findChild(QObject, "ecranSuivi")
+        nom_objet, fonction, argument = action.split(":")
+        ecran = fenetre.findChild(QObject, nom_objet)
         assert ecran is not None
-        QMetaObject.invokeMethod(ecran, action, Q_ARG(str, REFERENCE_DEMO))
+        QMetaObject.invokeMethod(ecran, fonction, Q_ARG(str, argument))
         for _ in range(30):
             app.processEvents()
     image = fenetre.grabWindow()
     fenetre.close()
-    # Moteur détruit avant le pont : ses liaisons liraient sinon un objet disparu.
-    del fenetre, moteur
+    del fenetre
     return image
 
 

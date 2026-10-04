@@ -24,6 +24,12 @@ ApplicationWindow {
     title: "Tamponné"
     color: Theme.bureau
 
+    Connections {
+        target: fenetre.pont.profils
+        function onLancement_demande() { fenetre.ongletCourant = 1 }
+        function onModification_demandee() { fenetre.ongletCourant = 1 }
+    }
+
     menuBar: BandeMenus {
         onNouvelleRecherche: fenetre.ongletCourant = 1
         onOuvrirSuivi: fenetre.ongletCourant = 2
@@ -102,7 +108,11 @@ ApplicationWindow {
                 anchors.fill: parent
                 currentIndex: fenetre.ongletCourant
 
-                Item { objectName: "ecranProfils" }
+                EcranProfils {
+                    objectName: "ecranProfils"
+                    profils: fenetre.pont.profils
+                    onNouvelleFiche: fenetre.ongletCourant = 1
+                }
                 Item { objectName: "ecranRecherche" }
                 EcranSuivi {
                     objectName: "ecranSuivi"

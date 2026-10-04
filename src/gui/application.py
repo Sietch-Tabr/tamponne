@@ -19,12 +19,16 @@ def creer_moteur(pont: Pont) -> QQmlApplicationEngine:
     mode de thème enregistré appliqué.
 
     Args:
-        pont: Objet transmis à la propriété `pont` de `Fenetre.qml`.
+        pont: Objet transmis à la propriété `pont` de `Fenetre.qml` ; le
+            moteur en devient le parent (détruit après l'interface).
 
     Returns:
         Moteur configuré, fenêtre non encore chargée.
     """
     moteur = QQmlApplicationEngine()
+    # Le moteur devient parent du pont : Qt détruit toujours l'interface
+    # avant lui, quel que soit l'ordre de libération côté Python.
+    pont.setParent(moteur)
     moteur.addImportPath(str(DOSSIER_QML))
     moteur.setInitialProperties({"pont": pont})
     theme = moteur.singletonInstance("Tamponne", "Theme")
@@ -53,10 +57,7 @@ def main() -> int:
     moteur.load(QUrl.fromLocalFile(str(DOSSIER_QML / "Tamponne" / "Fenetre.qml")))
     if not moteur.rootObjects():
         return 1
-    code = app.exec()
-    # Moteur détruit avant le pont : ses liaisons liraient sinon un objet disparu.
-    del moteur
-    return code
+    return app.exec()
 
 
 if __name__ == "__main__":

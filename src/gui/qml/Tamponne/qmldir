@@ -24,3 +24,6 @@ DialogueEvenement 1.0 DialogueEvenement.qml
 DialogueConfirmation 1.0 DialogueConfirmation.qml
 DialogueDetail 1.0 DialogueDetail.qml
 MenuDossier 1.0 MenuDossier.qml
+FicheBristol 1.0 FicheBristol.qml
+DialogueDupliquer 1.0 DialogueDupliquer.qml
+EcranProfils 1.0 EcranProfils.qml

@@ -5,6 +5,7 @@ from typing import cast
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
 
+from src.gui.controleur_profils import ControleurProfils
 from src.gui.controleur_suivi import ControleurSuivi
 from src.parametres_affichage import MODES_THEME, ModeTheme, sauvegarder_mode_theme
 
@@ -19,12 +20,19 @@ class Pont(QObject):
         super().__init__(parent)
         self._mise_a_jour_disponible = False
         self._suivi = ControleurSuivi(self)
+        self._profils = ControleurProfils(self)
 
     def _lire_suivi(self) -> QObject:
         return self._suivi
 
     suivi = Property(QObject, _lire_suivi, constant=True)
     """Contrôleur de l'écran Suivi (`ControleurSuivi`)."""
+
+    def _lire_profils(self) -> QObject:
+        return self._profils
+
+    profils = Property(QObject, _lire_profils, constant=True)
+    """Contrôleur de l'écran Profils (`ControleurProfils`)."""
 
     def arreter(self) -> None:
         """Attend la fin des traitements en arrière-plan avant de quitter."""
