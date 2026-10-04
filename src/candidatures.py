@@ -17,7 +17,12 @@ from src.sources.choisirleservicepublic.api import (
     obtenir_page_offres,
     telecharger_binaire,
 )
-from src.sources.choisirleservicepublic.extraction import DETAIL_VIDE, _valider_url
+from src.formatage import SOURCE_PAR_DEFAUT
+from src.sources.choisirleservicepublic.extraction import (
+    DETAIL_VIDE,
+    _valider_url,
+    deriver_source,
+)
 from src.types import Candidature, DetailOffre, EvenementCandidature, Offre
 from src.utils import ecriture_atomique
 
@@ -127,6 +132,7 @@ def ajouter_candidature(
     offre_localisation: str = "",
     offre_versant: str = "",
     offre_date: str = "",
+    offre_source: str = "",
     detail: DetailOffre | None = None,
 ) -> None:
     """Démarre le suivi d'une candidature pour une offre.
@@ -137,6 +143,7 @@ def ajouter_candidature(
     précédent vaut mieux qu'un historique mélangé.
 
     Args:
+        offre_source: Source de l'offre (colonne Source du registre).
         detail: Détail structuré + archive HTML brute de la fiche de
             poste (voir `DetailOffre`), récupéré à l'appel via
             `recuperer_detail_offre` — absent (`None`) si l'appelant ne
@@ -159,6 +166,7 @@ def ajouter_candidature(
         "disponible": True,
         "derniere_verification": "",
         "detail": detail or DETAIL_VIDE,
+        "offre_source": offre_source,
     }
     sauvegarder_candidatures(candidatures)
 
@@ -182,6 +190,7 @@ def suivre_offre(offre: Offre) -> None:
         offre_localisation=offre["localisation"],
         offre_versant=offre["versant"],
         offre_date=offre["date"],
+        offre_source=offre.get("source") or SOURCE_PAR_DEFAUT,
         detail=detail,
     )
 
@@ -211,6 +220,15 @@ def supprimer_candidature(reference: str) -> None:
     candidatures.pop(reference, None)
     sauvegarder_candidatures(candidatures)
     chemin_archive_pdf(reference).unlink(missing_ok=True)
+
+
+def source_candidature(candidature: Candidature) -> str:
+    """Source de l'offre suivie : celle mémorisée au suivi, sinon déduite
+    du préfixe de la référence (candidatures antérieures à la 2.0), sinon
+    chaîne vide."""
+    return candidature.get("offre_source") or deriver_source(
+        candidature.get("offre_reference") or ""
+    )
 
 
 def dernier_evenement(candidature: Candidature) -> EvenementCandidature | None:

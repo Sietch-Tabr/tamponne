@@ -1,6 +1,6 @@
 """Types partagés entre les modules du projet."""
 
-from typing import TypedDict
+from typing import NotRequired, TypedDict
 
 Organisations = dict[str, dict[str, int]]
 """Mapping ministère → {nom de sous-organisation → identifiant API}."""
@@ -211,6 +211,9 @@ class Candidature(TypedDict):
             moment de la candidature (voir `src.types.Offre`).
         detail: Détail structuré + archive HTML brute, voir
             `DetailOffre`.
+        offre_source: Source de l'offre au moment du suivi (absente des
+            candidatures enregistrées avant la 2.0, voir
+            :func:`~src.candidatures.source_candidature`).
     """
 
     offre_titre: str
@@ -226,6 +229,7 @@ class Candidature(TypedDict):
     disponible: bool
     derniere_verification: str
     detail: DetailOffre
+    offre_source: NotRequired[str]
 
 
 class PageAPI(TypedDict):

@@ -376,3 +376,18 @@ def test_nouvelle_candidature_disponible_par_defaut() -> None:
     toutes = candidatures.charger_candidatures()
     assert toutes["ref-1"]["disponible"] is True
     assert toutes["ref-1"]["derniere_verification"] == ""
+
+
+def test_source_candidature_memorisee_puis_deduite_du_prefixe() -> None:
+    candidatures.ajouter_candidature(
+        "2026-1", "Titre", "Employeur", "https://example.org", offre_source="FHF"
+    )
+    assert candidatures.source_candidature(
+        candidatures.charger_candidatures()["2026-1"]
+    ) == "FHF"
+    ancienne = candidatures.charger_candidatures()["2026-1"]
+    del ancienne["offre_source"]
+    ancienne["offre_reference"] = "MINT_2026-31544"
+    assert candidatures.source_candidature(ancienne) == "Ministère de l'Intérieur"
+    ancienne["offre_reference"] = "2026-30871"
+    assert candidatures.source_candidature(ancienne) == ""

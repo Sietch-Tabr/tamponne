@@ -25,6 +25,7 @@ from src.candidatures import (
     charger_candidatures,
     chemin_archive_pdf,
     marquer_disponibilite,
+    source_candidature,
     supprimer_candidature,
 )
 from src.gui.presentation import ContenuDossier, contenu_detail, contenu_dossier
@@ -230,7 +231,11 @@ class ControleurSuivi(QObject):
         contenu = contenu_detail(
             reference,
             candidature["offre_titre"],
-            [candidature["offre_employeur"], candidature["offre_localisation"]],
+            [
+                candidature["offre_employeur"],
+                candidature["offre_localisation"],
+                source_candidature(candidature),
+            ],
             candidature["detail"],
             candidature["offre_url"],
             chemin_archive_pdf(reference).exists(),
@@ -241,7 +246,11 @@ class ControleurSuivi(QObject):
             "sousTitre": contenu.sous_titre,
             "description": contenu.description,
             "informations": [
-                {"libelle": libelle, "valeur": valeur}
+                {
+                    "libelle": libelle,
+                    "valeur": valeur,
+                    "date": libelle in ("Publiée le", "Date limite"),
+                }
                 for libelle, valeur in contenu.informations
             ],
             "rubriques": [

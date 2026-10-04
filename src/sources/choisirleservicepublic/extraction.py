@@ -49,8 +49,9 @@ _SOURCES_CONNUES = {
 }
 
 
-def _deriver_source(reference: str) -> str:
-    """Origine de l'offre, déduite du préfixe de référence."""
+def deriver_source(reference: str) -> str:
+    """Origine de l'offre, déduite du préfixe de référence (chaîne vide si
+    la référence n'a pas de préfixe)."""
     if "_" not in reference:
         return ""
     prefixe = reference.split("_", 1)[0]
@@ -109,7 +110,7 @@ def extraire_offres(html: str) -> list[Offre]:
                 "localisation": localisation,
                 "versant": versant,
                 "date": date,
-                "source": _deriver_source(reference),
+                "source": deriver_source(reference),
             }
         )
     return offres

@@ -61,6 +61,7 @@ def _avec_fiche(candidature: Candidature) -> Candidature:
             "lien_postuler": "https://example.org/postuler",
         }
     )
+    candidature["offre_source"] = "Ministère de l'Intérieur"
     return candidature
 
 

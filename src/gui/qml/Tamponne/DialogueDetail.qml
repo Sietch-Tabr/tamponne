@@ -141,6 +141,8 @@ Dialogue {
                             Layout.column: 1
                             Layout.fillWidth: true
                             text: modelData.valeur
+                            font.family: modelData.date ? Theme.policeMono : Theme.policeTexte
+                            font.pixelSize: modelData.date ? 14 : 16
                         }
                     }
                 }
