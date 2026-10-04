@@ -19,6 +19,6 @@ while true; do
     # sortie non nul sur la ligne précédente ferait quitter le script
     # avant même d'atteindre la capture du code.
     code=0
-    uv run python -m src.gui.app || code=$?
+    uv run python -m src.gui.application || code=$?
     [ "$code" -eq 42 ] || break
 done

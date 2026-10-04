@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <title>Détail d'une offre, variante dossier</title>
+    <script src="./support.js"></script>
+  </head>
+  <body>
+    <x-dc>
+      <helmet>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&amp;family=IBM+Plex+Mono:wght@400;600&amp;display=swap"
+        />
+        <style>
+          body {
+            margin: 0;
+            background: #0f1512;
+          }
+          .app {
+            --bureau: #23302a;
+            --kraft: #d9bf8c;
+            --papier: #fbfaf6;
+            --papier-2: #f2eee3;
+            --encre: #1c1a17;
+            --encre-2: #4a463e;
+            --regle: #cfc8b6;
+            --tampon: #4b2c9e;
+            --sur-tampon: #ffffff;
+            --ombre: #b39257;
+            --ombre-portee: rgba(28, 26, 23, 0.3);
+            --logo: #ede6d3;
+            --sous-logo: #c9d2cb;
+            --etiquette: #e9d7aa;
+            --etiquette-survol: #f1e2bc;
+            --voile: rgba(15, 21, 18, 0.55);
+            --melange: multiply;
+          }
+          .app.nuit {
+            --bureau: #0f1512;
+            --kraft: #4a3b24;
+            --papier: #1c221f;
+            --papier-2: #252c28;
+            --encre: #ece6d6;
+            --encre-2: #b5ae9e;
+            --regle: #3a433e;
+            --tampon: #ffb672;
+            --sur-tampon: #1f1408;
+            --ombre: #080b09;
+            --ombre-portee: rgba(0, 0, 0, 0.6);
+            --logo: #e6dcc2;
+            --sous-logo: #9daea3;
+            --etiquette: #5e4c2e;
+            --etiquette-survol: #6e5a37;
+            --voile: rgba(0, 0, 0, 0.6);
+            --melange: screen;
+          }
+          .app a {
+            color: var(--tampon);
+          }
+          .lampe {
+            all: unset;
+            cursor: pointer;
+            min-height: 44px;
+            padding: 0 16px;
+            border: 1.5px solid var(--sous-logo);
+            border-radius: 999px;
+            color: var(--logo);
+            font-family: "IBM Plex Mono", monospace;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+          }
+          .lampe[aria-pressed="true"] {
+            background: var(--logo);
+            color: var(--bureau);
+            border-color: var(--logo);
+          }
+          .lampe:focus-visible {
+            outline: 3px solid var(--logo);
+            outline-offset: 3px;
+          }
+          .tampon {
+            display: inline-block;
+            padding: 2px 8px;
+            border: 2.5px solid currentColor;
+            border-radius: 4px;
+            font-weight: 800;
+            font-stretch: 85%;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            line-height: 1.3;
+            color: var(--tampon);
+            mix-blend-mode: var(--melange);
+          }
+          .mono {
+            font-family: "IBM Plex Mono", monospace;
+            font-size: 14px;
+          }
+          .dialogue {
+            background: var(--papier);
+            color: var(--encre);
+            padding: 26px 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            box-shadow:
+              0 2px 0 var(--ombre),
+              0 18px 40px var(--ombre-portee);
+            box-sizing: border-box;
+            border-top: 6px solid var(--kraft);
+          }
+          .rubrique {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 800;
+            font-stretch: 88%;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid var(--encre);
+            padding-bottom: 6px;
+          }
+          .texte {
+            margin: 0;
+            font-size: 16px;
+            line-height: 1.6;
+          }
+          .infos {
+            margin: 0;
+            display: grid;
+            grid-template-columns: max-content 1fr;
+            gap: 6px 18px;
+            font-size: 16px;
+          }
+          .infos dt {
+            font-family: "IBM Plex Mono", monospace;
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--encre-2);
+            padding-top: 3px;
+          }
+          .infos dd {
+            margin: 0;
+          }
+          .btn-tampon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 48px;
+            padding: 0 22px;
+            border: 0;
+            border-radius: 3px;
+            background: var(--tampon);
+            color: var(--sur-tampon);
+            font: inherit;
+            font-weight: 800;
+            font-stretch: 85%;
+            font-size: 16px;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            cursor: pointer;
+            outline: 2px solid var(--tampon);
+            outline-offset: 3px;
+            box-shadow:
+              inset 0 0 0 3px var(--tampon),
+              inset 0 0 0 4.5px var(--sur-tampon);
+            transform: rotate(-1deg);
+            transition: transform 0.12s;
+          }
+          .btn-tampon:hover {
+            transform: rotate(0);
+          }
+          .btn-tampon:active {
+            transform: scale(0.97);
+          }
+          .btn-tampon:focus-visible {
+            outline: 3px solid var(--encre);
+            outline-offset: 3px;
+          }
+          .btn-etiquette {
+            position: relative;
+            min-height: 44px;
+            padding: 0 16px 0 36px;
+            border: 1.5px solid var(--encre-2);
+            border-radius: 3px 8px 8px 3px;
+            background: var(--etiquette);
+            color: var(--encre);
+            font: inherit;
+            font-weight: 700;
+            font-size: 16px;
+            cursor: pointer;
+          }
+          .btn-etiquette::before {
+            content: "";
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            width: 8px;
+            height: 8px;
+            margin-top: -5.5px;
+            border-radius: 50%;
+            border: 1.5px solid currentColor;
+            background: var(--papier);
+          }
+          .btn-etiquette::after {
+            content: "";
+            position: absolute;
+            left: 26px;
+            top: 7px;
+            bottom: 7px;
+            border-left: 1.5px dashed var(--encre-2);
+          }
+          .btn-etiquette:hover {
+            background: var(--etiquette-survol);
+          }
+          .btn-etiquette:focus-visible {
+            outline: 3px solid var(--tampon);
+            outline-offset: 2px;
+          }
+          @media (prefers-reduced-motion: reduce) {
+            .btn-tampon,
+            .btn-tampon:hover,
+            .btn-tampon:active {
+              transform: none;
+              transition: none;
+            }
+          }
+          @media (forced-colors: active) {
+            .btn-tampon,
+            .btn-etiquette {
+              border: 2px solid ButtonText;
+              outline: 0;
+              box-shadow: none;
+            }
+            .btn-etiquette::before,
+            .btn-etiquette::after {
+              display: none;
+            }
+            .tampon {
+              mix-blend-mode: normal;
+            }
+            .lampe {
+              border-color: ButtonText;
+            }
+          }
+        </style>
+      </helmet>
+      <div
+        class="{{classe}}"
+        style="
+          width: 1280px;
+          min-height: 1100px;
+          box-sizing: border-box;
+          padding: 22px 24px 28px;
+          background: var(--bureau);
+          font-family: Archivo, system-ui, sans-serif;
+          color: var(--encre);
+          display: flex;
+          flex-direction: column;
+          gap: 18px;
+        "
+      >
+        <div style="display: flex; align-items: center; gap: 16px">
+          <a
+            href="Dossier-Recherche.dc.html"
+            class="mono"
+            style="color: var(--sous-logo)"
+            >‹ Retour au registre (fenêtre ouverte par « Consulter » ou « détail
+            »)</a
+          >
+          <button
+            class="lampe"
+            type="button"
+            aria-pressed="{{pressee}}"
+            onClick="{{basculer}}"
+            style="margin-left: auto"
+          >{{libelleLampe}}</button>
+        </div>
+        <div
+          style="
+            flex: 1;
+            background: var(--voile);
+            padding: 28px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+          "
+        >
+          <section
+            class="dialogue"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="titre-offre"
+            style="width: 860px; position: relative"
+          >
+            <div
+              style="
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: space-between;
+                gap: 8px;
+              "
+            >
+              <span class="mono" style="color: var(--encre-2)"
+                >Réf. MINT_2026-31544</span
+              >
+              <span class="mono" style="color: var(--encre-2)"
+                >Fiche de poste</span
+              >
+            </div>
+            <h1
+              id="titre-offre"
+              style="
+                margin: 0;
+                font-size: 36px;
+                font-weight: 800;
+                font-stretch: 80%;
+                text-transform: uppercase;
+                line-height: 1.05;
+              "
+            >
+              Attaché(e) d'administration RH
+            </h1>
+            <p class="texte" style="color: var(--encre-2)">
+              Préfecture de région · Paris 75 · Ministère de l'Intérieur
+            </p>
+            <div
+              style="
+                display: flex;
+                flex-wrap: wrap;
+                gap: 14px;
+                align-items: center;
+              "
+            >
+              <button class="btn-tampon" type="button" style="margin: 4px">
+                Postuler
+              </button>
+              <button class="btn-etiquette" type="button">
+                Consulter en ligne
+              </button>
+              <button
+                class="btn-etiquette"
+                type="button"
+                title="PDF autonome de la fiche telle qu'elle était au moment du suivi, consultable hors ligne ou après dépublication"
+              >
+                Voir la copie archivée
+              </button>
+            </div>
+
+            <h2 class="rubrique">Description du poste</h2>
+            <p class="texte">[Description reprise de l'offre]</p>
+
+            <h2 class="rubrique">Informations</h2>
+            <dl class="infos">
+              <dt>Salaire</dt>
+              <dd>[selon l'offre]</dd>
+              <dt>Expérience requise</dt>
+              <dd>[selon l'offre]</dd>
+              <dt>Formation requise</dt>
+              <dd>[selon l'offre]</dd>
+              <dt>Secteur</dt>
+              <dd>[selon l'offre]</dd>
+              <dt>Publiée le</dt>
+              <dd class="mono">01/10/2026</dd>
+              <dt>Date limite</dt>
+              <dd class="mono">[selon l'offre]</dd>
+            </dl>
+
+            <h2 class="rubrique">Qui sommes-nous ?</h2>
+            <p class="texte">
+              [Présentation de l'employeur reprise de l'offre]
+            </p>
+
+            <div
+              style="
+                display: flex;
+                justify-content: flex-end;
+                border-top: 1px solid var(--regle);
+                padding-top: 14px;
+              "
+            >
+              <a
+                class="btn-etiquette"
+                href="Dossier-Recherche.dc.html"
+                style="
+                  display: inline-flex;
+                  align-items: center;
+                  text-decoration: none;
+                  color: var(--encre);
+                "
+                >Fermer</a
+              >
+            </div>
+            <span
+              class="tampon"
+              aria-hidden="true"
+              style="
+                position: absolute;
+                right: 30px;
+                top: 58px;
+                transform: rotate(-6deg);
+                font-size: 15px;
+              "
+              >Copie archivée</span
+            >
+          </section>
+        </div>
+      </div>
+    </x-dc>
+    <script
+      type="text/x-dc"
+      data-dc-script
+      data-props='{"theme":{"editor":"enum","options":["sombre","clair"],"default":"sombre"},"$preview":{"width":1280,"height":1100}}'
+    >
+      class Component extends DCLogic {
+        renderVals() {
+          const choisi = this.state && typeof this.state.nuit === 'boolean' ? this.state.nuit : null;
+          const nuit = choisi !== null ? choisi : (this.props.theme ?? 'sombre') !== 'clair';
+          return {
+            classe: nuit ? 'app nuit' : 'app',
+            pressee: nuit ? 'true' : 'false',
+      libelleLampe: nuit ? 'Bureau de jour' : 'Bureau de nuit',
+            basculer: () => this.setState({ nuit: !nuit })
+          };
+        }
+      }
+    </script>
+  </body>
+</html>

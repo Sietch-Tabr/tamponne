@@ -1,0 +1,16 @@
+module Tamponne
+singleton Theme 1.0 Theme.qml
+Fenetre 1.0 Fenetre.qml
+BandeMenus 1.0 BandeMenus.qml
+MenuFiche 1.0 MenuFiche.qml
+Logotype 1.0 Logotype.qml
+BoutonLampe 1.0 BoutonLampe.qml
+Onglet 1.0 Onglet.qml
+Texte 1.0 Texte.qml
+Tampon 1.0 Tampon.qml
+BoutonEtiquette 1.0 BoutonEtiquette.qml
+LienCrayon 1.0 LienCrayon.qml
+Feuille 1.0 Feuille.qml
+CadrePointille 1.0 CadrePointille.qml
+DossierSuivi 1.0 DossierSuivi.qml
+EcranSuivi 1.0 EcranSuivi.qml

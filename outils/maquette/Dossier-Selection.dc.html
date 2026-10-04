@@ -1,0 +1,562 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <title>Fenêtres de sélection, variante dossier</title>
+    <script src="./support.js"></script>
+  </head>
+  <body>
+    <x-dc>
+      <helmet>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&amp;family=IBM+Plex+Mono:wght@400;600&amp;display=swap"
+        />
+        <style>
+          body {
+            margin: 0;
+            background: #0f1512;
+          }
+          .app {
+            --bureau: #23302a;
+            --kraft: #d9bf8c;
+            --papier: #fbfaf6;
+            --papier-2: #f2eee3;
+            --encre: #1c1a17;
+            --encre-2: #4a463e;
+            --regle: #cfc8b6;
+            --tampon: #4b2c9e;
+            --sur-tampon: #ffffff;
+            --surligneur: #f4e27a;
+            --surligne-texte: #1c1a17;
+            --ombre: #b39257;
+            --ombre-portee: rgba(28, 26, 23, 0.3);
+            --logo: #ede6d3;
+            --sous-logo: #c9d2cb;
+            --etiquette: #e9d7aa;
+            --etiquette-survol: #f1e2bc;
+            --voile: rgba(15, 21, 18, 0.55);
+            --melange: multiply;
+          }
+          .app.nuit {
+            --bureau: #0f1512;
+            --kraft: #4a3b24;
+            --papier: #1c221f;
+            --papier-2: #252c28;
+            --encre: #ece6d6;
+            --encre-2: #b5ae9e;
+            --regle: #3a433e;
+            --tampon: #ffb672;
+            --sur-tampon: #1f1408;
+            --surligneur: #5b521c;
+            --surligne-texte: #fff4c2;
+            --ombre: #080b09;
+            --ombre-portee: rgba(0, 0, 0, 0.6);
+            --logo: #e6dcc2;
+            --sous-logo: #9daea3;
+            --etiquette: #5e4c2e;
+            --etiquette-survol: #6e5a37;
+            --voile: rgba(0, 0, 0, 0.6);
+            --melange: screen;
+          }
+          .lampe {
+            all: unset;
+            cursor: pointer;
+            min-height: 44px;
+            padding: 0 16px;
+            border: 1.5px solid var(--sous-logo);
+            border-radius: 999px;
+            color: var(--logo);
+            font-family: "IBM Plex Mono", monospace;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+          }
+          .lampe[aria-pressed="true"] {
+            background: var(--logo);
+            color: var(--bureau);
+            border-color: var(--logo);
+          }
+          .lampe:focus-visible {
+            outline: 3px solid var(--logo);
+            outline-offset: 3px;
+          }
+          .mono {
+            font-family: "IBM Plex Mono", monospace;
+            font-size: 14px;
+          }
+          .dialogue {
+            background: var(--papier);
+            color: var(--encre);
+            padding: 22px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            box-shadow:
+              0 2px 0 var(--ombre),
+              0 18px 40px var(--ombre-portee);
+            box-sizing: border-box;
+            border-top: 6px solid var(--kraft);
+          }
+          .dialogue h2 {
+            margin: 0;
+            font-size: 26px;
+            font-weight: 800;
+            font-stretch: 80%;
+            text-transform: uppercase;
+            line-height: 1.05;
+            border-bottom: 2px solid var(--encre);
+            padding-bottom: 8px;
+          }
+          .champ {
+            min-height: 42px;
+            border: 0;
+            border-bottom: 2px solid var(--encre);
+            background: transparent;
+            color: var(--encre);
+            font: inherit;
+            font-size: 16px;
+            padding: 0 2px;
+            width: 100%;
+            box-sizing: border-box;
+          }
+          .champ::placeholder {
+            color: var(--encre-2);
+          }
+          .champ:focus-visible {
+            outline: 3px solid var(--tampon);
+            outline-offset: 2px;
+          }
+          .liste {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            border: 1.5px solid var(--encre);
+            max-height: 440px;
+            overflow: auto;
+          }
+          .liste li {
+            border-bottom: 1px solid var(--regle);
+          }
+          .liste li:last-child {
+            border-bottom: 0;
+          }
+          .coche {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-height: 42px;
+            padding: 0 12px;
+            font-size: 16px;
+          }
+          .coche input {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            margin: 0;
+            border: 2px solid var(--encre);
+            background: var(--papier);
+            display: grid;
+            place-content: center;
+            flex: none;
+          }
+          .coche input:checked::before {
+            content: "";
+            width: 13px;
+            height: 13px;
+            background: var(--tampon);
+            clip-path: polygon(
+              14% 44%,
+              0 65%,
+              50% 100%,
+              100% 16%,
+              80% 0,
+              43% 62%
+            );
+          }
+          .coche input:indeterminate::before {
+            content: "";
+            width: 12px;
+            height: 3px;
+            background: var(--tampon);
+          }
+          .coche input:focus-visible {
+            outline: 3px solid var(--tampon);
+            outline-offset: 2px;
+          }
+          .groupe {
+            font-weight: 800;
+            font-stretch: 90%;
+            background: var(--papier-2);
+          }
+          .enfant {
+            padding-left: 44px;
+          }
+          .repli {
+            all: unset;
+            cursor: pointer;
+            font-family: "IBM Plex Mono", monospace;
+            font-size: 14px;
+            min-width: 24px;
+            text-align: center;
+          }
+          .repli:focus-visible {
+            outline: 3px solid var(--tampon);
+          }
+          .btn-tampon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 48px;
+            padding: 0 22px;
+            border: 0;
+            border-radius: 3px;
+            background: var(--tampon);
+            color: var(--sur-tampon);
+            font: inherit;
+            font-weight: 800;
+            font-stretch: 85%;
+            font-size: 16px;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            cursor: pointer;
+            outline: 2px solid var(--tampon);
+            outline-offset: 3px;
+            box-shadow:
+              inset 0 0 0 3px var(--tampon),
+              inset 0 0 0 4.5px var(--sur-tampon);
+            transform: rotate(-1deg);
+            transition: transform 0.12s;
+          }
+          .btn-tampon:hover {
+            transform: rotate(0);
+          }
+          .btn-tampon:active {
+            transform: scale(0.97);
+          }
+          .btn-tampon:focus-visible {
+            outline: 3px solid var(--encre);
+            outline-offset: 3px;
+          }
+          .btn-etiquette {
+            position: relative;
+            min-height: 44px;
+            padding: 0 16px 0 36px;
+            border: 1.5px solid var(--encre-2);
+            border-radius: 3px 8px 8px 3px;
+            background: var(--etiquette);
+            color: var(--encre);
+            font: inherit;
+            font-weight: 700;
+            font-size: 16px;
+            cursor: pointer;
+          }
+          .btn-etiquette::before {
+            content: "";
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            width: 8px;
+            height: 8px;
+            margin-top: -5.5px;
+            border-radius: 50%;
+            border: 1.5px solid currentColor;
+            background: var(--papier);
+          }
+          .btn-etiquette::after {
+            content: "";
+            position: absolute;
+            left: 26px;
+            top: 7px;
+            bottom: 7px;
+            border-left: 1.5px dashed var(--encre-2);
+          }
+          .btn-etiquette:hover {
+            background: var(--etiquette-survol);
+          }
+          .btn-etiquette:focus-visible {
+            outline: 3px solid var(--tampon);
+            outline-offset: 2px;
+          }
+          .pied {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            align-items: center;
+            justify-content: flex-end;
+            border-top: 1px solid var(--regle);
+            padding-top: 14px;
+          }
+          @media (prefers-reduced-motion: reduce) {
+            .btn-tampon,
+            .btn-tampon:hover,
+            .btn-tampon:active {
+              transform: none;
+              transition: none;
+            }
+          }
+          @media (forced-colors: active) {
+            .coche input {
+              appearance: auto;
+              -webkit-appearance: auto;
+            }
+            .btn-tampon,
+            .btn-etiquette {
+              border: 2px solid ButtonText;
+              outline: 0;
+              box-shadow: none;
+            }
+            .btn-etiquette::before,
+            .btn-etiquette::after {
+              display: none;
+            }
+            .lampe {
+              border-color: ButtonText;
+            }
+          }
+        </style>
+      </helmet>
+      <div
+        class="{{classe}}"
+        style="
+          width: 1280px;
+          min-height: 900px;
+          box-sizing: border-box;
+          padding: 22px 24px 28px;
+          background: var(--bureau);
+          font-family: Archivo, system-ui, sans-serif;
+          color: var(--encre);
+          position: relative;
+          display: flex;
+          flex-direction: column;
+          gap: 18px;
+        "
+      >
+        <div style="display: flex; align-items: center; gap: 16px">
+          <span class="mono" style="color: var(--sous-logo)"
+            >Fenêtres ouvertes depuis la demande de recherche (Organisations,
+            Corps / grade ; Domaines et Localisations reprennent la liste
+            simple)</span
+          >
+          <button
+            class="lampe"
+            type="button"
+            aria-pressed="{{pressee}}"
+            onClick="{{basculer}}"
+            style="margin-left: auto"
+          >{{libelleLampe}}</button>
+        </div>
+        <div
+          style="
+            flex: 1;
+            background: var(--voile);
+            padding: 28px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 28px;
+            align-items: flex-start;
+            justify-content: center;
+          "
+        >
+          <section
+            class="dialogue"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="titre-orgas"
+            style="flex: 0 1 560px"
+          >
+            <h2 id="titre-orgas">Organisations</h2>
+            <label
+              ><span
+                class="sr"
+                style="
+                  position: absolute;
+                  width: 1px;
+                  height: 1px;
+                  overflow: hidden;
+                  clip: rect(0, 0, 0, 0);
+                "
+                >Rechercher une organisation</span
+              >
+              <input
+                class="champ"
+                type="search"
+                placeholder="Rechercher..."
+                value="intérieur"
+              />
+            </label>
+            <ul class="liste" aria-label="Ministères et sous-organisations">
+              <li>
+                <label class="coche groupe"
+                  ><button
+                    class="repli"
+                    type="button"
+                    aria-expanded="true"
+                    aria-label="Replier Ministère de l'Intérieur"
+                  >
+                    ▾</button
+                  ><input type="checkbox" class="partiel" /> Ministère de
+                  l'Intérieur</label
+                >
+              </li>
+              <li>
+                <label class="coche enfant"
+                  ><input type="checkbox" checked="checked" /> Préfecture de
+                  région Île-de-France</label
+                >
+              </li>
+              <li>
+                <label class="coche enfant"
+                  ><input type="checkbox" checked="checked" /> Direction
+                  générale de la police nationale</label
+                >
+              </li>
+              <li>
+                <label class="coche enfant"
+                  ><input type="checkbox" /> Direction générale des étrangers en
+                  France</label
+                >
+              </li>
+              <li>
+                <label class="coche enfant"
+                  ><input type="checkbox" /> Secrétariat général du ministère de
+                  l'Intérieur</label
+                >
+              </li>
+              <li>
+                <label class="coche groupe"
+                  ><button
+                    class="repli"
+                    type="button"
+                    aria-expanded="false"
+                    aria-label="Déplier Ministère de l'Intérieur et des Outre-mer [exemple]"
+                  >
+                    ▸</button
+                  ><input type="checkbox" /> Ministère de l'Intérieur et des
+                  Outre-mer [exemple]</label
+                >
+              </li>
+            </ul>
+            <span class="mono" style="color: var(--encre-2)">2 cochés</span>
+            <div class="pied">
+              <button class="btn-etiquette" type="button">Annuler</button>
+              <button class="btn-tampon" type="button" style="margin: 4px">
+                Valider
+              </button>
+            </div>
+          </section>
+
+          <section
+            class="dialogue"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="titre-grades"
+            style="flex: 0 1 460px"
+          >
+            <h2 id="titre-grades">Corps / Grade</h2>
+            <label
+              ><span
+                style="
+                  position: absolute;
+                  width: 1px;
+                  height: 1px;
+                  overflow: hidden;
+                  clip: rect(0, 0, 0, 0);
+                "
+                >Rechercher un corps ou un grade</span
+              >
+              <input class="champ" type="search" placeholder="Rechercher..." />
+            </label>
+            <ul class="liste" aria-label="Corps et grades">
+              <li>
+                <label class="coche groupe"
+                  ><button
+                    class="repli"
+                    type="button"
+                    aria-expanded="true"
+                    aria-label="Replier Attaché"
+                  >
+                    ▾</button
+                  ><input type="checkbox" /> Attaché</label
+                >
+              </li>
+              <li>
+                <label class="coche enfant"
+                  ><input type="checkbox" /> Attaché</label
+                >
+              </li>
+              <li>
+                <label class="coche enfant"
+                  ><input type="checkbox" checked="checked" /> Attaché
+                  principal</label
+                >
+              </li>
+              <li>
+                <label class="coche enfant"
+                  ><input type="checkbox" /> Attaché hors classe</label
+                >
+              </li>
+              <li>
+                <label class="coche groupe"
+                  ><button
+                    class="repli"
+                    type="button"
+                    aria-expanded="true"
+                    aria-label="Replier Adjoint administratif"
+                  >
+                    ▾</button
+                  ><input type="checkbox" /> Adjoint administratif</label
+                >
+              </li>
+              <li>
+                <label class="coche enfant"
+                  ><input type="checkbox" /> Adjoint administratif</label
+                >
+              </li>
+              <li>
+                <label class="coche enfant"
+                  ><input type="checkbox" /> Adjoint administratif principal de
+                  2e classe</label
+                >
+              </li>
+              <li>
+                <label class="coche enfant"
+                  ><input type="checkbox" /> Adjoint administratif principal de
+                  1re classe</label
+                >
+              </li>
+            </ul>
+            <span class="mono" style="color: var(--encre-2)">1 coché</span>
+            <div class="pied">
+              <button class="btn-etiquette" type="button">Annuler</button>
+              <button class="btn-tampon" type="button" style="margin: 4px">
+                Valider
+              </button>
+            </div>
+          </section>
+        </div>
+      </div>
+    </x-dc>
+    <script
+      type="text/x-dc"
+      data-dc-script
+      data-props='{"theme":{"editor":"enum","options":["sombre","clair"],"default":"sombre"},"$preview":{"width":1280,"height":900}}'
+    >
+      class Component extends DCLogic {
+        renderVals() {
+          const choisi = this.state && typeof this.state.nuit === 'boolean' ? this.state.nuit : null;
+          const nuit = choisi !== null ? choisi : (this.props.theme ?? 'sombre') !== 'clair';
+          return {
+            classe: nuit ? 'app nuit' : 'app',
+            pressee: nuit ? 'true' : 'false',
+      libelleLampe: nuit ? 'Bureau de jour' : 'Bureau de nuit',
+            basculer: () => this.setState({ nuit: !nuit })
+          };
+        }
+      }
+    </script>
+  </body>
+</html>

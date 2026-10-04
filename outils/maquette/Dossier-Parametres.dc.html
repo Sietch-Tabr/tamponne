@@ -1,0 +1,586 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <title>Réglages, variante dossier</title>
+    <script src="./support.js"></script>
+  </head>
+  <body>
+    <x-dc>
+      <helmet>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&amp;family=IBM+Plex+Mono:wght@400;600&amp;display=swap"
+        />
+        <style>
+          body {
+            margin: 0;
+            background: #0f1512;
+          }
+          .app {
+--bristol:#FFFFFF;--bristol-ligne:#C9D6EE;--bristol-tete:#C8423B;--surligneur:#F4E27A;--surligne-texte:#1C1A17;
+            --bureau: #23302a;
+            --kraft: #d9bf8c;
+            --onglet: #c4a66c;
+            --onglet-survol: #d0b57e;
+            --texte-kraft: #3e2f12;
+            --num: #3e2f12;
+            --papier: #fbfaf6;
+            --papier-2: #f2eee3;
+            --encre: #1c1a17;
+            --encre-2: #4a463e;
+            --regle: #8a8473;
+            --tampon: #4b2c9e;
+            --sur-tampon: #ffffff;
+            --rouge: #b3261e;
+            --vert: #1f7a45;
+            --ombre: #b39257;
+            --ombre-portee: rgba(28, 26, 23, 0.16);
+            --logo: #ede6d3;
+            --sous-logo: #c9d2cb;
+            --etiquette: #e9d7aa;
+            --etiquette-survol: #f1e2bc;
+            --melange: multiply;
+          }
+          .app.nuit {
+--bristol:#1E2530;--bristol-ligne:#2D3A50;--bristol-tete:#E36A60;--surligneur:#5B521C;--surligne-texte:#FFF4C2;
+            --bureau: #0f1512;
+            --kraft: #4a3b24;
+            --onglet: #33291a;
+            --onglet-survol: #4d3e27;
+            --texte-kraft: #eadcbe;
+            --num: #d9c08c;
+            --papier: #1c221f;
+            --papier-2: #252c28;
+            --encre: #ece6d6;
+            --encre-2: #b5ae9e;
+            --regle: #56605a;
+            --tampon: #ffb672;
+            --sur-tampon: #1f1408;
+            --rouge: #ff8e80;
+            --vert: #82d9a4;
+            --ombre: #080b09;
+            --ombre-portee: rgba(0, 0, 0, 0.45);
+            --logo: #e6dcc2;
+            --sous-logo: #9daea3;
+            --etiquette: #5e4c2e;
+            --etiquette-survol: #6e5a37;
+            --melange: screen;
+          }
+          .sr {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+          }
+          .app a {
+            color: var(--tampon);
+          }
+          .app .onglet {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 44px;
+            padding: 0 18px;
+            background: var(--onglet);
+            color: var(--encre);
+            border-radius: 10px 10px 0 0;
+            text-decoration: none;
+            font-weight: 700;
+            font-stretch: 90%;
+            font-size: 16px;
+          }
+          .app .onglet:hover {
+            background: var(--onglet-survol);
+          }
+          .app .onglet:focus-visible {
+            outline: 3px solid var(--tampon);
+            outline-offset: 2px;
+          }
+          .app .onglet-actif {
+            background: var(--kraft);
+            min-height: 52px;
+          }
+          .num {
+            font-family: "IBM Plex Mono", monospace;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--num);
+          }
+          .point {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--rouge);
+            display: inline-block;
+          }
+          .lampe {
+            all: unset;
+            cursor: pointer;
+            min-height: 44px;
+            padding: 0 16px;
+            border: 1.5px solid var(--sous-logo);
+            border-radius: 999px;
+            color: var(--logo);
+            font-family: "IBM Plex Mono", monospace;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+          }
+          .lampe[aria-pressed="true"] {
+            background: var(--logo);
+            color: var(--bureau);
+            border-color: var(--logo);
+          }
+          .lampe:focus-visible {
+            outline: 3px solid var(--logo);
+            outline-offset: 3px;
+          }
+          .tampon {
+            display: inline-block;
+            padding: 2px 8px;
+            border: 2.5px solid currentColor;
+            border-radius: 4px;
+            font-weight: 800;
+            font-stretch: 85%;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            line-height: 1.3;
+            color: var(--tampon);
+            mix-blend-mode: var(--melange);
+          }
+          .mono {
+            font-family: "IBM Plex Mono", monospace;
+            font-size: 14px;
+          }
+          .feuille {
+            background: var(--papier);
+            color: var(--encre);
+            padding: 20px 22px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            box-shadow:
+              0 2px 0 var(--ombre),
+              0 10px 22px var(--ombre-portee);
+            box-sizing: border-box;
+          }
+          .feuille h2 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 800;
+            font-stretch: 88%;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid var(--encre);
+            padding-bottom: 6px;
+          }
+          .coche {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-height: 44px;
+            font-size: 16px;
+            border-bottom: 1px dotted var(--regle);
+          }
+          .coche input {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            margin: 0;
+            border: 2px solid var(--encre);
+            background: var(--papier);
+            display: grid;
+            place-content: center;
+            flex: none;
+          }
+          .coche input:checked::before {
+            content: "";
+            width: 13px;
+            height: 13px;
+            background: var(--tampon);
+            clip-path: polygon(
+              14% 44%,
+              0 65%,
+              50% 100%,
+              100% 16%,
+              80% 0,
+              43% 62%
+            );
+          }
+          .coche input:focus-visible {
+            outline: 3px solid var(--tampon);
+            outline-offset: 2px;
+          }
+          .btn-tampon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 48px;
+            padding: 0 22px;
+            border: 0;
+            border-radius: 3px;
+            background: var(--tampon);
+            color: var(--sur-tampon);
+            font: inherit;
+            font-weight: 800;
+            font-stretch: 85%;
+            font-size: 16px;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            cursor: pointer;
+            outline: 2px solid var(--tampon);
+            outline-offset: 3px;
+            box-shadow:
+              inset 0 0 0 3px var(--tampon),
+              inset 0 0 0 4.5px var(--sur-tampon);
+            transform: rotate(-1deg);
+            transition: transform 0.12s;
+          }
+          .btn-tampon:hover {
+            transform: rotate(0);
+          }
+          .btn-tampon:active {
+            transform: scale(0.97);
+          }
+          .btn-tampon:focus-visible {
+            outline: 3px solid var(--encre);
+            outline-offset: 3px;
+          }
+          .btn-etiquette {
+            position: relative;
+            min-height: 44px;
+            padding: 0 16px 0 36px;
+            border: 1.5px solid var(--encre-2);
+            border-radius: 3px 8px 8px 3px;
+            background: var(--etiquette);
+            color: var(--encre);
+            font: inherit;
+            font-weight: 700;
+            font-size: 16px;
+            cursor: pointer;
+          }
+          .btn-etiquette::before {
+            content: "";
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            width: 8px;
+            height: 8px;
+            margin-top: -5.5px;
+            border-radius: 50%;
+            border: 1.5px solid currentColor;
+            background: var(--papier);
+          }
+          .btn-etiquette::after {
+            content: "";
+            position: absolute;
+            left: 26px;
+            top: 7px;
+            bottom: 7px;
+            border-left: 1.5px dashed var(--encre-2);
+          }
+          .btn-etiquette:hover {
+            background: var(--etiquette-survol);
+          }
+          .btn-etiquette:focus-visible {
+            outline: 3px solid var(--tampon);
+            outline-offset: 2px;
+          }
+          .selection {
+            min-height: 44px;
+            border: 0;
+            border-bottom: 2px solid var(--encre);
+            background: var(--papier);
+            color: var(--encre);
+            font: inherit;
+            font-size: 16px;
+          }
+          .selection:focus-visible {
+            outline: 3px solid var(--tampon);
+            outline-offset: 2px;
+          }
+          @media (prefers-reduced-motion: reduce) {
+            .btn-tampon,
+            .btn-tampon:hover,
+            .btn-tampon:active {
+              transform: none;
+              transition: none;
+            }
+          }
+          @media (forced-colors: active) {
+            .coche input {
+              appearance: auto;
+              -webkit-appearance: auto;
+            }
+            .btn-tampon,
+            .btn-etiquette {
+              border: 2px solid ButtonText;
+              outline: 0;
+              box-shadow: none;
+            }
+            .btn-etiquette::before,
+            .btn-etiquette::after {
+              display: none;
+            }
+            .tampon {
+              mix-blend-mode: normal;
+            }
+            .lampe {
+              border-color: ButtonText;
+            }
+          }
+        
+
+.menubar{display:flex;align-items:stretch;gap:2px;margin:-22px -24px 16px;padding:0 18px;min-height:40px;background:var(--bristol);border-top:3px solid var(--bristol-tete);border-bottom:1px solid var(--bristol-ligne)}
+.menu-entree{all:unset;cursor:pointer;padding:0 14px;display:inline-flex;align-items:center;font-family:Archivo,system-ui,sans-serif;font-weight:800;font-stretch:85%;font-size:15px;text-transform:uppercase;letter-spacing:1px;color:var(--encre)}
+.menu-entree:hover,.menu-entree[aria-expanded="true"]{background:var(--surligneur);color:var(--surligne-texte)}
+.menu-entree:focus-visible{outline:3px solid var(--tampon);outline-offset:-3px}
+</style>
+      </helmet>
+      <div
+        class="{{classe}}"
+        style="
+          min-height: 900px;
+          display: flex;
+          flex-direction: column;
+          padding: 22px 24px 28px;
+          box-sizing: border-box;
+          background: var(--bureau);
+          font-family: Archivo, system-ui, sans-serif;
+          color: var(--encre);
+        "
+      >
+<div class="menubar" role="menubar" aria-label="Menu de l'application"><a class="menu-entree" href="Dossier-Menu.dc.html" role="menuitem" aria-haspopup="menu" aria-expanded="false">Fichier</a><a class="menu-entree" href="Dossier-Menu.dc.html" role="menuitem" aria-haspopup="menu" aria-expanded="false">Aide</a></div>
+        <div
+          style="
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px 20px;
+            padding: 0 6px 18px;
+          "
+        >
+          <span
+            class="tampon"
+            style="
+              color: var(--logo);
+              font-size: 26px;
+              transform: rotate(-3deg);
+              mix-blend-mode: normal;
+              outline: 1.5px solid var(--logo);
+              outline-offset: 3px;
+            "
+            >Tamponné</span
+          >
+          <span style="color: var(--sous-logo); font-size: 15px"
+            >Offres de la fonction publique · 4 sources</span
+          >
+          <button
+            class="lampe"
+            type="button"
+            aria-pressed="{{pressee}}"
+            onClick="{{basculer}}"
+            style="margin-left: auto"
+          >{{libelleLampe}}</button>
+        </div>
+
+        <nav
+          aria-label="Navigation principale"
+          style="
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-end;
+            gap: 4px;
+            padding: 0 20px;
+          "
+        >
+          <a class="onglet" href="Dossier-Accueil.dc.html"
+            >Profils</a
+          >
+          <a class="onglet" href="Dossier-Recherche.dc.html"
+            >Recherche</a
+          >
+          <a class="onglet" href="Dossier-Suivi.dc.html"
+            >Suivi</a
+          >
+          <a class="onglet" href="Dossier-Aide.dc.html"
+            >Aide</a
+          >
+          <a
+            class="onglet onglet-actif"
+            href="Dossier-Parametres.dc.html"
+            aria-current="page"
+            >Réglages
+            <span class="point" aria-hidden="true"></span
+            ><span class="sr">(mise à jour disponible)</span></a
+          >
+        </nav>
+
+        <div
+          style="
+            flex: 1;
+            background: var(--kraft);
+            border-radius: 4px 12px 12px 12px;
+            padding: 28px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 22px;
+            align-items: flex-start;
+          "
+        >
+          <section
+            class="feuille"
+            aria-labelledby="titre-avis"
+            style="
+              flex: 999 1 520px;
+              min-width: 0;
+              position: relative;
+              padding: 26px 28px;
+            "
+          >
+            <div
+              style="
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: space-between;
+                gap: 8px;
+                align-items: baseline;
+              "
+            >
+              <span class="mono" style="color: var(--encre-2)"
+                >Avis n° 2.0.1</span
+              >
+              <span class="mono" style="color: var(--encre-2)">04/10/2026</span>
+            </div>
+            <h1
+              id="titre-avis"
+              style="
+                margin: 0;
+                font-size: 40px;
+                font-weight: 800;
+                font-stretch: 80%;
+                text-transform: uppercase;
+                line-height: 1;
+              "
+            >
+              Avis de mise à jour
+            </h1>
+            <p style="margin: 0; font-size: 17px; line-height: 1.55">
+              <strong>Objet :</strong> version 2.0.1 disponible (installée :
+              2.0.0).
+            </p>
+            <div
+              class="mono"
+              style="
+                padding: 12px 14px;
+                border-left: 3px solid var(--encre);
+                background: var(--papier-2);
+                line-height: 1.6;
+              "
+            >
+              [Notes de version reprises de la publication Codeberg]
+            </div>
+            <div
+              style="
+                display: flex;
+                flex-wrap: wrap;
+                gap: 14px;
+                align-items: center;
+                margin-top: 6px;
+              "
+            >
+              <button class="btn-tampon" type="button" style="margin: 4px">
+                Installer et redémarrer
+              </button>
+              <button class="btn-etiquette" type="button">
+                Au prochain lancement
+              </button>
+            </div>
+          </section>
+
+          <div
+            style="
+              flex: 1 1 300px;
+              display: flex;
+              flex-direction: column;
+              gap: 22px;
+            "
+          >
+            <section class="feuille" aria-labelledby="titre-sources">
+              <h2 id="titre-sources">Sources consultées</h2>
+              <label class="coche"
+                ><input type="checkbox" checked="checked" /> Choisir le service
+                public</label
+              >
+              <label class="coche"
+                ><input type="checkbox" checked="checked" /> Fonction publique territoriale (emploi-territorial.fr)</label
+              >
+              <label class="coche"
+                ><input type="checkbox" checked="checked" /> Passerelles - Bercy (passerelles.economie.gouv.fr)</label
+              >
+              <label class="coche"
+                ><input type="checkbox" checked="checked" /> Fonction publique hospitalière (emploi.fhf.fr)</label
+              >
+            </section>
+
+            <section class="feuille" aria-labelledby="titre-classement">
+              <h2 id="titre-classement">Classement</h2>
+              <label style="display: flex; flex-direction: column; gap: 4px"
+                ><span
+                  class="mono"
+                  style="
+                    text-transform: uppercase;
+                    font-size: 13px;
+                    letter-spacing: 0.5px;
+                    color: var(--encre-2);
+                  "
+                  >Thème</span
+                >
+                <select class="selection">
+                  <option>Suivre le système</option>
+                  <option>Bureau de jour</option>
+                  <option>Bureau de nuit</option>
+                </select>
+              </label>
+              <label class="coche"
+                ><input type="checkbox" /> Réduire les animations</label
+              >
+              <div style="display: flex; flex-wrap: wrap; gap: 8px">
+                <button class="btn-etiquette" type="button">
+                  Rafraîchir le cache
+                </button>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </x-dc>
+    <script
+      type="text/x-dc"
+      data-dc-script
+      data-props='{"theme":{"editor":"enum","options":["sombre","clair"],"default":"sombre"},"$preview":{"width":1280,"height":900}}'
+    >
+      class Component extends DCLogic {
+        renderVals() {
+          const choisi = this.state && typeof this.state.nuit === 'boolean' ? this.state.nuit : null;
+          const nuit = choisi !== null ? choisi : (this.props.theme ?? 'sombre') !== 'clair';
+          return {
+            classe: nuit ? 'app nuit' : 'app',
+            pressee: nuit ? 'true' : 'false',
+      libelleLampe: nuit ? 'Bureau de jour' : 'Bureau de nuit',
+            basculer: () => this.setState({ nuit: !nuit })
+          };
+        }
+      }
+    </script>
+  </body>
+</html>

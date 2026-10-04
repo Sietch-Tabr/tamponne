@@ -8,5 +8,5 @@ if exist data\maj_disponible.json (
     if errorlevel 1 echo Mise a jour indisponible, on continue avec la version actuelle. 1>&2
     uv sync --quiet
 )
-uv run python -m src.gui.app
+uv run python -m src.gui.application
 if %ERRORLEVEL%==42 goto boucle

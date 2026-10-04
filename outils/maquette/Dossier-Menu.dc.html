@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <title>Menus Fichier et Aide, variante dossier</title>
+    <script src="./support.js"></script>
+  </head>
+  <body>
+    <x-dc>
+      <helmet>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&amp;family=IBM+Plex+Mono:wght@400;600&amp;display=swap"
+        />
+        <style>
+          body {
+            margin: 0;
+            background: #0f1512;
+          }
+          .app {
+            --bureau: #23302a;
+            --kraft: #d9bf8c;
+            --onglet: #c4a66c;
+            --encre: #1c1a17;
+            --encre-2: #4a463e;
+            --num: #3e2f12;
+            --tampon: #4b2c9e;
+            --rouge: #b3261e;
+            --ombre-portee: rgba(28, 26, 23, 0.25);
+            --logo: #ede6d3;
+            --sous-logo: #c9d2cb;
+            --bristol: #ffffff;
+            --bristol-ligne: #c9d6ee;
+            --bristol-tete: #c8423b;
+            --surligneur: #f4e27a;
+            --surligne-texte: #1c1a17;
+            --melange: multiply;
+          }
+          .app.nuit {
+            --bureau: #0f1512;
+            --kraft: #4a3b24;
+            --onglet: #33291a;
+            --encre: #ece6d6;
+            --encre-2: #b5ae9e;
+            --num: #d9c08c;
+            --tampon: #ffb672;
+            --rouge: #ff8e80;
+            --ombre-portee: rgba(0, 0, 0, 0.6);
+            --logo: #e6dcc2;
+            --sous-logo: #9daea3;
+            --bristol: #1e2530;
+            --bristol-ligne: #2d3a50;
+            --bristol-tete: #e36a60;
+            --surligneur: #5b521c;
+            --surligne-texte: #fff4c2;
+            --melange: screen;
+          }
+          .lampe {
+            all: unset;
+            cursor: pointer;
+            min-height: 44px;
+            padding: 0 16px;
+            border: 1.5px solid var(--sous-logo);
+            border-radius: 999px;
+            color: var(--logo);
+            font-family: "IBM Plex Mono", monospace;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+          }
+          .lampe[aria-pressed="true"] {
+            background: var(--logo);
+            color: var(--bureau);
+            border-color: var(--logo);
+          }
+          .lampe:focus-visible {
+            outline: 3px solid var(--logo);
+            outline-offset: 3px;
+          }
+          .tampon {
+            display: inline-block;
+            padding: 2px 8px;
+            border: 2.5px solid currentColor;
+            border-radius: 4px;
+            font-weight: 800;
+            font-stretch: 85%;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            line-height: 1.3;
+            color: var(--tampon);
+            mix-blend-mode: var(--melange);
+          }
+          .menubar {
+            display: flex;
+            align-items: stretch;
+            gap: 2px;
+            padding: 0 18px;
+            min-height: 40px;
+            background: var(--bristol);
+            border-top: 3px solid var(--bristol-tete);
+            border-bottom: 1px solid var(--bristol-ligne);
+          }
+          .menu-entree {
+            all: unset;
+            cursor: pointer;
+            padding: 0 14px;
+            display: inline-flex;
+            align-items: center;
+            font-family: Archivo, system-ui, sans-serif;
+            font-weight: 800;
+            font-stretch: 85%;
+            font-size: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--encre);
+          }
+          .menu-entree:hover,
+          .menu-entree[aria-expanded="true"] {
+            background: var(--surligneur);
+            color: var(--surligne-texte);
+          }
+          .menu-entree:focus-visible {
+            outline: 3px solid var(--tampon);
+            outline-offset: -3px;
+          }
+          .fiche-menu {
+            list-style: none;
+            margin: 0;
+            padding: 6px 0;
+            width: 320px;
+            background-color: var(--bristol);
+            background-image: repeating-linear-gradient(
+              to bottom,
+              transparent 0,
+              transparent 39px,
+              var(--bristol-ligne) 39px,
+              var(--bristol-ligne) 40px
+            );
+            background-position: 0 6px;
+            border-top: 3px solid var(--bristol-tete);
+            box-shadow: 0 12px 26px var(--ombre-portee);
+            color: var(--encre);
+          }
+          .fiche-menu li {
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 0 16px;
+            font-size: 16px;
+          }
+          .fiche-menu li.actif {
+            background: var(--surligneur);
+            color: var(--surligne-texte);
+          }
+          .fiche-menu .raccourci {
+            font-family: "IBM Plex Mono", monospace;
+            font-size: 13px;
+            color: var(--encre-2);
+          }
+          .fiche-menu li.actif .raccourci {
+            color: var(--surligne-texte);
+          }
+          .fiche-menu li.separateur {
+            min-height: 0;
+            height: 0;
+            border-top: 1.5px dashed var(--encre-2);
+            margin: 6px 16px;
+            padding: 0;
+          }
+          .legende {
+            font-family: "IBM Plex Mono", monospace;
+            font-size: 13px;
+            color: var(--sous-logo);
+          }
+          @media (forced-colors: active) {
+            .tampon {
+              mix-blend-mode: normal;
+            }
+            .lampe {
+              border-color: ButtonText;
+            }
+          }
+        </style>
+      </helmet>
+      <div
+        class="{{classe}}"
+        style="
+          width: 1280px;
+          min-height: 620px;
+          box-sizing: border-box;
+          background: var(--bureau);
+          font-family: Archivo, system-ui, sans-serif;
+          color: var(--encre);
+          display: flex;
+          flex-direction: column;
+        "
+      >
+        <div class="menubar" role="menubar" aria-label="Menu de l'application">
+          <button
+            class="menu-entree"
+            type="button"
+            role="menuitem"
+            aria-haspopup="menu"
+            aria-expanded="true"
+          >
+            Fichier
+          </button>
+          <button
+            class="menu-entree"
+            type="button"
+            role="menuitem"
+            aria-haspopup="menu"
+            aria-expanded="false"
+          >
+            Aide
+          </button>
+        </div>
+        <div
+          style="
+            display: flex;
+            flex-wrap: wrap;
+            gap: 40px;
+            padding: 0 18px;
+            align-items: flex-start;
+          "
+        >
+          <ul class="fiche-menu" role="menu" aria-label="Fichier">
+            <li role="menuitem" class="actif">
+              <span>Nouvelle recherche</span
+              ><span class="raccourci">Ctrl+N</span>
+            </li>
+            <li role="menuitem">
+              <span>Suivi de candidature</span><span class="raccourci"></span>
+            </li>
+            <li role="separator" class="separateur"></li>
+            <li role="menuitem">
+              <span>Quitter</span><span class="raccourci">Ctrl+Q</span>
+            </li>
+          </ul>
+          <div
+            style="
+              display: flex;
+              flex-direction: column;
+              gap: 8px;
+              margin-top: 16px;
+            "
+          >
+            <span class="legende">Menu Aide, une fois ouvert</span>
+            <ul class="fiche-menu" role="menu" aria-label="Aide">
+              <li role="menuitem" class="actif">
+                <span>Aide de Tamponné</span><span class="raccourci"></span>
+              </li>
+            </ul>
+          </div>
+          <div
+            style="
+              display: flex;
+              flex-direction: column;
+              gap: 10px;
+              margin-top: 16px;
+              max-width: 420px;
+            "
+          >
+            <span class="legende"
+              >Raccourcis : Ctrl sous Windows et Linux, ⌘ sous macOS (⌘N,
+              ⌘Q).</span
+            >
+            <span class="legende"
+              >Sur macOS, la barre du système en haut de l'écran garde en plus
+              son menu d'application (Tamponné › Quitter) : il est imposé par le
+              système et n'est pas stylable.</span
+            >
+            <button
+              class="lampe"
+              type="button"
+              aria-pressed="{{pressee}}"
+              onClick="{{basculer}}"
+              style="align-self: flex-start"
+            >{{libelleLampe}}</button>
+          </div>
+        </div>
+      </div>
+    </x-dc>
+    <script
+      type="text/x-dc"
+      data-dc-script
+      data-props='{"theme":{"editor":"enum","options":["sombre","clair"],"default":"sombre"},"$preview":{"width":1280,"height":620}}'
+    >
+      class Component extends DCLogic {
+        renderVals() {
+          const choisi = this.state && typeof this.state.nuit === 'boolean' ? this.state.nuit : null;
+          const nuit = choisi !== null ? choisi : (this.props.theme ?? 'sombre') !== 'clair';
+          return {
+            classe: nuit ? 'app nuit' : 'app',
+            pressee: nuit ? 'true' : 'false',
+      libelleLampe: nuit ? 'Bureau de jour' : 'Bureau de nuit',
+            basculer: () => this.setState({ nuit: !nuit })
+          };
+        }
+      }
+    </script>
+  </body>
+</html>

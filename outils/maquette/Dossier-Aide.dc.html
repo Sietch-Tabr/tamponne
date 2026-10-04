@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <title>Aide, variante dossier</title>
+    <script src="./support.js"></script>
+  </head>
+  <body>
+    <x-dc>
+      <helmet>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&amp;family=IBM+Plex+Mono:wght@400;600&amp;display=swap"
+        />
+        <style>
+          body {
+            margin: 0;
+            background: #0f1512;
+          }
+          .app {
+--bristol:#FFFFFF;--bristol-ligne:#C9D6EE;--bristol-tete:#C8423B;--surligneur:#F4E27A;--surligne-texte:#1C1A17;
+            --bureau: #23302a;
+            --kraft: #d9bf8c;
+            --onglet: #c4a66c;
+            --onglet-survol: #d0b57e;
+            --texte-kraft: #3e2f12;
+            --num: #3e2f12;
+            --papier: #fbfaf6;
+            --papier-2: #f2eee3;
+            --encre: #1c1a17;
+            --encre-2: #4a463e;
+            --regle: #cfc8b6;
+            --tampon: #4b2c9e;
+            --sur-tampon: #ffffff;
+            --rouge: #b3261e;
+            --ombre: #b39257;
+            --ombre-portee: rgba(28, 26, 23, 0.18);
+            --logo: #ede6d3;
+            --sous-logo: #c9d2cb;
+            --melange: multiply;
+          }
+          .app.nuit {
+--bristol:#1E2530;--bristol-ligne:#2D3A50;--bristol-tete:#E36A60;--surligneur:#5B521C;--surligne-texte:#FFF4C2;
+            --bureau: #0f1512;
+            --kraft: #4a3b24;
+            --onglet: #33291a;
+            --onglet-survol: #4d3e27;
+            --texte-kraft: #eadcbe;
+            --num: #d9c08c;
+            --papier: #1c221f;
+            --papier-2: #252c28;
+            --encre: #ece6d6;
+            --encre-2: #b5ae9e;
+            --regle: #3a433e;
+            --tampon: #ffb672;
+            --sur-tampon: #1f1408;
+            --rouge: #ff8e80;
+            --ombre: #080b09;
+            --ombre-portee: rgba(0, 0, 0, 0.45);
+            --logo: #e6dcc2;
+            --sous-logo: #9daea3;
+            --melange: screen;
+          }
+          .sr {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+          }
+          .app a {
+            color: var(--tampon);
+          }
+          .app .onglet {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 44px;
+            padding: 0 18px;
+            background: var(--onglet);
+            color: var(--encre);
+            border-radius: 10px 10px 0 0;
+            text-decoration: none;
+            font-weight: 700;
+            font-stretch: 90%;
+            font-size: 16px;
+          }
+          .app .onglet:hover {
+            background: var(--onglet-survol);
+          }
+          .app .onglet:focus-visible {
+            outline: 3px solid var(--tampon);
+            outline-offset: 2px;
+          }
+          .app .onglet-actif {
+            background: var(--kraft);
+            min-height: 52px;
+          }
+          .num {
+            font-family: "IBM Plex Mono", monospace;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--num);
+          }
+          .point {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--rouge);
+            display: inline-block;
+          }
+          .lampe {
+            all: unset;
+            cursor: pointer;
+            min-height: 44px;
+            padding: 0 16px;
+            border: 1.5px solid var(--sous-logo);
+            border-radius: 999px;
+            color: var(--logo);
+            font-family: "IBM Plex Mono", monospace;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+          }
+          .lampe[aria-pressed="true"] {
+            background: var(--logo);
+            color: var(--bureau);
+            border-color: var(--logo);
+          }
+          .lampe:focus-visible {
+            outline: 3px solid var(--logo);
+            outline-offset: 3px;
+          }
+          .tampon {
+            display: inline-block;
+            padding: 2px 8px;
+            border: 2.5px solid currentColor;
+            border-radius: 4px;
+            font-weight: 800;
+            font-stretch: 85%;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            line-height: 1.3;
+            color: var(--tampon);
+            mix-blend-mode: var(--melange);
+          }
+          .mono {
+            font-family: "IBM Plex Mono", monospace;
+            font-size: 14px;
+          }
+          .feuille {
+            background: var(--papier);
+            color: var(--encre);
+            padding: 20px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            box-shadow:
+              0 2px 0 var(--ombre),
+              0 10px 22px var(--ombre-portee);
+            box-sizing: border-box;
+          }
+          .feuille h2 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 800;
+            font-stretch: 88%;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid var(--encre);
+            padding-bottom: 6px;
+          }
+          .terme {
+            margin: 0;
+            font-size: 17px;
+            font-weight: 800;
+            font-stretch: 90%;
+          }
+          .definition {
+            margin: 0 0 6px;
+            font-size: 16px;
+            line-height: 1.55;
+            color: var(--encre);
+          }
+          .exemple {
+            margin: 0;
+            padding: 10px 12px;
+            border-left: 3px solid var(--encre);
+            background: var(--papier-2);
+            font-family: "IBM Plex Mono", monospace;
+            font-size: 14px;
+            line-height: 1.7;
+            
+          }
+          @media (forced-colors: active) {
+            .tampon {
+              mix-blend-mode: normal;
+            }
+            .lampe {
+              border-color: ButtonText;
+            }
+          }
+        
+
+.menubar{display:flex;align-items:stretch;gap:2px;margin:-22px -24px 16px;padding:0 18px;min-height:40px;background:var(--bristol);border-top:3px solid var(--bristol-tete);border-bottom:1px solid var(--bristol-ligne)}
+.menu-entree{all:unset;cursor:pointer;padding:0 14px;display:inline-flex;align-items:center;font-family:Archivo,system-ui,sans-serif;font-weight:800;font-stretch:85%;font-size:15px;text-transform:uppercase;letter-spacing:1px;color:var(--encre)}
+.menu-entree:hover,.menu-entree[aria-expanded="true"]{background:var(--surligneur);color:var(--surligne-texte)}
+.menu-entree:focus-visible{outline:3px solid var(--tampon);outline-offset:-3px}
+</style>
+      </helmet>
+      <div
+        class="{{classe}}"
+        style="
+          min-height: 900px;
+          display: flex;
+          flex-direction: column;
+          padding: 22px 24px 28px;
+          box-sizing: border-box;
+          background: var(--bureau);
+          font-family: Archivo, system-ui, sans-serif;
+          color: var(--encre);
+        "
+      >
+<div class="menubar" role="menubar" aria-label="Menu de l'application"><a class="menu-entree" href="Dossier-Menu.dc.html" role="menuitem" aria-haspopup="menu" aria-expanded="false">Fichier</a><a class="menu-entree" href="Dossier-Menu.dc.html" role="menuitem" aria-haspopup="menu" aria-expanded="false">Aide</a></div>
+        <div
+          style="
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px 20px;
+            padding: 0 6px 18px;
+          "
+        >
+          <span
+            class="tampon"
+            style="
+              color: var(--logo);
+              font-size: 26px;
+              transform: rotate(-3deg);
+              mix-blend-mode: normal;
+              outline: 1.5px solid var(--logo);
+              outline-offset: 3px;
+            "
+            >Tamponné</span
+          >
+          <span style="color: var(--sous-logo); font-size: 15px"
+            >Offres de la fonction publique · 4 sources</span
+          >
+          <button
+            class="lampe"
+            type="button"
+            aria-pressed="{{pressee}}"
+            onClick="{{basculer}}"
+            style="margin-left: auto"
+          >{{libelleLampe}}</button>
+        </div>
+
+        <nav
+          aria-label="Navigation principale"
+          style="
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-end;
+            gap: 4px;
+            padding: 0 20px;
+          "
+        >
+          <a class="onglet" href="Dossier-Accueil.dc.html"
+            >Profils</a
+          >
+          <a class="onglet" href="Dossier-Recherche.dc.html"
+            >Recherche</a
+          >
+          <a class="onglet" href="Dossier-Suivi.dc.html"
+            >Suivi</a
+          >
+          <a
+            class="onglet onglet-actif"
+            href="Dossier-Aide.dc.html"
+            aria-current="page"
+            >Aide</a
+          >
+          <a class="onglet" href="Dossier-Parametres.dc.html"
+            >Réglages
+            <span class="point" aria-hidden="true"></span
+            ><span class="sr">(mise à jour disponible)</span></a
+          >
+        </nav>
+
+        <div
+          style="
+            flex: 1;
+            background: var(--kraft);
+            border-radius: 4px 12px 12px 12px;
+            padding: 28px;
+            display: flex;
+            flex-direction: column;
+            gap: 22px;
+          "
+        >
+          <div
+            style="
+              display: flex;
+              flex-wrap: wrap;
+              align-items: flex-end;
+              gap: 8px 18px;
+              color: var(--texte-kraft);
+            "
+          >
+            <h1
+              style="
+                margin: 0;
+                font-size: 40px;
+                font-weight: 800;
+                font-stretch: 80%;
+                text-transform: uppercase;
+                line-height: 1;
+              "
+            >
+              Notice d'utilisation
+            </h1>
+            <span class="mono">à conserver soigneusement</span>
+          </div>
+
+          <div
+            style="
+              display: grid;
+              grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+              gap: 22px;
+              align-items: start;
+            "
+          >
+            <section class="feuille" aria-labelledby="aide-cases">
+              <h2 id="aide-cases">Les cases du formulaire</h2>
+              <h3 class="terme">Catégorie</h3>
+              <p class="definition">
+                Niveau hiérarchique du poste : A+ (encadrement supérieur), A
+                (cadre), B (profession intermédiaire), C (employé). Le corps /
+                grade affine la catégorie : Attaché, Attaché principal, Attaché
+                hors classe, Adjoint administratif…
+              </p>
+              <h3 class="terme">Versant</h3>
+              <p class="definition">
+                La branche de la fonction publique : État, Hospitalier,
+                Territorial. Plusieurs cases à la fois possibles ; aucune cochée
+                = tous les versants.
+              </p>
+              <h3 class="terme">Poste et Lieu</h3>
+              <p class="definition">
+                Domaines, localisations et organisations s'ouvrent dans une
+                fenêtre de sélection avec un champ de recherche : pratique avec
+                114 localisations et environ 2 400 sous-organisations.
+              </p>
+              <h3 class="terme">Type de poste</h3>
+              <p class="definition">
+                Par défaut, seuls les postes ouverts aux titulaires sont
+                affichés (titulaires + postes ouverts aux deux statuts). Choisir
+                « Tous » pour voir aussi les postes réservés aux contractuels.
+              </p>
+              <h3 class="terme">Options</h3>
+              <p class="definition">
+                Management et Télétravail : cochés = seulement les postes
+                concernés. Le mot-clé cherche dans le titre et le corps de
+                l'offre, pas seulement l'intitulé.
+              </p>
+            </section>
+
+            <div style="display: flex; flex-direction: column; gap: 22px">
+              <section class="feuille" aria-labelledby="aide-exemples">
+                <h2 id="aide-exemples">Exemples de demande</h2>
+                <h3 class="terme">Attaché principal territorial (Hérault)</h3>
+                <p class="exemple">
+Catégorie → A<br />Corps / grade → Attaché principal<br />Versant → Territorial<br />Lieu → Localisation Hérault
+                </p>
+                <p class="definition">
+                  Le grade repère « attaché principal » dans le titre, quel que
+                  soit le versant.
+                </p>
+                <h3 class="terme">Chef de projet informatique (État)</h3>
+                <p class="exemple">
+Catégorie → A<br />Versant → État<br />Poste → Domaine « Numérique »<br />Options → mot-clé « chef de projet »
+                </p>
+                <p class="definition">
+                  Pas de grade statutaire pour ce métier : le mot-clé resserre
+                  sur l'intitulé.
+                </p>
+              </section>
+
+              <section class="feuille" aria-labelledby="aide-grades">
+                <h2 id="aide-grades">Grades supérieurs (IDIV / IP / AFIPA)</h2>
+                <p class="definition">
+                  Par défaut, les offres dont le titre commence par un grade
+                  d'encadrement supérieur de la DGFiP (IDIV, AFIPA, IP suivi
+                  d'une majuscule, ex. IPFiP) sont écartées du registre : postes
+                  très spécifiques, peu pertinents pour une recherche large.
+                  Cocher « Grades supérieurs » dans la demande pour les voir
+                  quand même.
+                </p>
+              </section>
+            </div>
+
+            <section class="feuille" aria-labelledby="aide-fiches">
+              <h2 id="aide-fiches">Les fiches de recherche</h2>
+              <p class="definition">
+                Une fiche, c'est une demande de recherche classée sous un nom,
+                avec « Classer en profil ».
+              </p>
+              <h3 class="terme">Lancer</h3>
+              <p class="definition">
+                Lance la recherche immédiatement (double-clic sur la fiche
+                aussi).
+              </p>
+              <h3 class="terme">modifier · dupliquer · supprimer</h3>
+              <p class="definition">
+                Change les cases sans lancer, copie la fiche sous un autre nom,
+                ou la jette (confirmation demandée).
+              </p>
+            </section>
+
+            <section class="feuille" aria-labelledby="aide-dossiers">
+              <h2 id="aide-dossiers">Les dossiers de suivi</h2>
+              <p class="definition">
+                Dans le registre, sélectionner une offre puis « Tamponner pour
+                suivi » ouvre un dossier et archive la fiche de poste en PDF. Le
+                statut est toujours celui du dernier tampon de l'historique.
+              </p>
+              <h3 class="terme">Relance suggérée</h3>
+              <p class="definition">
+                Post-it collé quand rien ne s'est passé depuis 3 semaines et que
+                le dossier n'est pas clos (réponse positive ou refus).
+              </p>
+              <h3 class="terme">Offre dépubliée</h3>
+              <p class="definition">
+                L'offre a disparu du site (« Vérifier les offres ») ; la copie
+                archivée reste consultable.
+              </p>
+              <h3 class="terme">Clavier</h3>
+              <p class="definition">
+                Entrée ouvre le détail du dossier sélectionné, Suppr arrête son
+                suivi ; clic droit pour toutes les actions.
+              </p>
+            </section>
+          </div>
+        </div>
+      </div>
+    </x-dc>
+    <script
+      type="text/x-dc"
+      data-dc-script
+      data-props='{"theme":{"editor":"enum","options":["sombre","clair"],"default":"sombre"},"$preview":{"width":1280,"height":1400}}'
+    >
+      class Component extends DCLogic {
+        renderVals() {
+          const choisi = this.state && typeof this.state.nuit === 'boolean' ? this.state.nuit : null;
+          const nuit = choisi !== null ? choisi : (this.props.theme ?? 'sombre') !== 'clair';
+          return {
+            classe: nuit ? 'app nuit' : 'app',
+            pressee: nuit ? 'true' : 'false',
+      libelleLampe: nuit ? 'Bureau de jour' : 'Bureau de nuit',
+            basculer: () => this.setState({ nuit: !nuit })
+          };
+        }
+      }
+    </script>
+  </body>
+</html>

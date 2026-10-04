@@ -9,7 +9,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pytest  # noqa: E402
 
-from src import parametres_affichage  # noqa: E402
+from src import candidatures, parametres_affichage  # noqa: E402
 from src.gui import travailleurs  # noqa: E402
 
 
@@ -31,3 +31,15 @@ def _rediriger_affichage_vers_tmp(
     monkeypatch.setattr(
         parametres_affichage, "CHEMIN_AFFICHAGE", tmp_path / "affichage.json"
     )
+
+
+@pytest.fixture(autouse=True)
+def _rediriger_candidatures_vers_tmp(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Le `Pont` de l'interface QML charge les candidatures dès sa
+    construction : jamais le vrai data/candidatures.json pendant les tests."""
+    monkeypatch.setattr(
+        candidatures, "CHEMIN_CANDIDATURES", tmp_path / "candidatures.json"
+    )
+    monkeypatch.setattr(candidatures, "DOSSIER_ARCHIVES", tmp_path / "archives")

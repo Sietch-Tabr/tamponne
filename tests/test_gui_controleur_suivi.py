@@ -1,0 +1,155 @@
+"""Tests de src/gui/controleur_suivi.py : dossiers exposés au QML,
+vérification en arrière-plan (QThread) et actions."""
+
+import pytest
+from PySide6.QtCore import QModelIndex, Qt
+from PySide6.QtWidgets import QApplication
+from pytestqt.qtbot import QtBot
+
+from src import candidatures
+from src.gui import travailleurs
+from src.gui.controleur_suivi import (
+    LIBELLE_VERIFIER,
+    ControleurSuivi,
+    ModeleDossiers,
+    nombre_dossiers,
+)
+from src.types import Candidature
+
+
+def _candidature(titre: str, url: str = "https://example.org/offre") -> Candidature:
+    return {
+        "offre_titre": titre,
+        "offre_employeur": "Préfecture de région",
+        "offre_url": url,
+        "offre_reference": titre,
+        "offre_domaine": "",
+        "offre_localisation": "Paris 75",
+        "offre_versant": "",
+        "offre_date": "",
+        "date_candidature": "2026-09-11",
+        "historique": [
+            {"date": "2026-09-11", "type": "candidature_envoyee", "note": ""}
+        ],
+        "disponible": True,
+        "derniere_verification": "",
+        "detail": {
+            "description": "",
+            "salaire": "",
+            "experience_requise": "",
+            "formation_requise": "",
+            "secteur": "",
+            "date_publication": "",
+            "a_propos_employeur": "",
+            "sections_complementaires": {},
+            "page_html": "",
+            "lien_postuler": "",
+            "date_limite": "",
+        },
+    }
+
+
+def _modele(controleur: ControleurSuivi) -> ModeleDossiers:
+    modele = controleur.property("modele")
+    assert isinstance(modele, ModeleDossiers)
+    return modele
+
+
+def _valeur(controleur: ControleurSuivi, ligne: int, nom: bytes) -> object:
+    modele = _modele(controleur)
+    role = next(r for r, n in modele.roleNames().items() if n.data() == nom)
+    return modele.data(modele.index(ligne, 0, QModelIndex()), role)
+
+
+@pytest.fixture
+def deux_dossiers() -> None:
+    candidatures.sauvegarder_candidatures(
+        {"REF-A": _candidature("Premier suivi"), "REF-B": _candidature("Dernier suivi")}
+    )
+
+
+def test_nombre_dossiers_accorde_au_pluriel() -> None:
+    assert nombre_dossiers(1) == "1 candidature suivie"
+    assert nombre_dossiers(3) == "3 candidatures suivies"
+
+
+@pytest.mark.usefixtures("deux_dossiers")
+def test_rafraichir_expose_dossier_le_plus_recent_en_premier(
+    qapp: QApplication,
+) -> None:
+    controleur = ControleurSuivi(qapp)
+    assert controleur.property("nombre") == 2
+    assert _valeur(controleur, 0, b"titre") == "Dernier suivi"
+    assert _valeur(controleur, 0, b"statut") == "candidature envoyée le 11/09/2026"
+    tampons = _valeur(controleur, 0, b"tampons")
+    assert isinstance(tampons, list) and tampons[0]["libelle"] == "Envoyée"
+
+
+@pytest.mark.usefixtures("deux_dossiers")
+def test_verifier_offres_relaie_progression_et_marque_depubliee(
+    qapp: QApplication, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    textes: list[str] = []
+    monkeypatch.setattr(travailleurs, "verifier_disponibilite", lambda _url: False)
+    controleur = ControleurSuivi(qapp)
+    controleur.etat_change.connect(lambda: textes.append(controleur.property("texte_verification")))
+
+    controleur.verifier_offres()
+    assert controleur.property("verification_en_cours") is True
+    qtbot.waitUntil(lambda: not controleur.property("verification_en_cours"), timeout=5000)
+
+    assert "Vérification… 2/2" in textes
+    assert controleur.property("texte_verification") == LIBELLE_VERIFIER
+    assert all(
+        not c["disponible"] for c in candidatures.charger_candidatures().values()
+    )
+    assert _valeur(controleur, 0, b"disponible") is False
+
+
+@pytest.mark.usefixtures("deux_dossiers")
+def test_verifier_offres_ignore_echec_reseau(
+    qapp: QApplication, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(travailleurs, "verifier_disponibilite", lambda _url: None)
+    controleur = ControleurSuivi(qapp)
+    controleur.verifier_offres()
+    qtbot.waitUntil(lambda: not controleur.property("verification_en_cours"), timeout=5000)
+    assert all(c["disponible"] for c in candidatures.charger_candidatures().values())
+
+
+@pytest.mark.usefixtures("deux_dossiers")
+def test_ajouter_evenement_met_a_jour_le_statut(qapp: QApplication) -> None:
+    controleur = ControleurSuivi(qapp)
+    controleur.ajouter_evenement("REF-B", "entretien_planifie", "2026-10-01", " visio ")
+    assert (
+        _valeur(controleur, 0, b"statut") == "entretien planifié le 01/10/2026 (visio)"
+    )
+
+
+@pytest.mark.usefixtures("deux_dossiers")
+def test_ajouter_evenement_ignore_type_inconnu_et_dossier_absent(
+    qapp: QApplication,
+) -> None:
+    controleur = ControleurSuivi(qapp)
+    controleur.ajouter_evenement("REF-B", "inconnu", "2026-10-01", "")
+    controleur.ajouter_evenement("REF-ABSENTE", "relance", "2026-10-01", "")
+    assert len(candidatures.charger_candidatures()["REF-B"]["historique"]) == 1
+
+
+@pytest.mark.usefixtures("deux_dossiers")
+def test_supprimer_retire_le_dossier(qapp: QApplication) -> None:
+    controleur = ControleurSuivi(qapp)
+    controleur.supprimer("REF-A")
+    assert controleur.property("nombre") == 1
+    assert "REF-A" not in candidatures.charger_candidatures()
+
+
+def test_types_evenement_reprennent_les_huit_types(qapp: QApplication) -> None:
+    types = ControleurSuivi(qapp).property("types_evenement")
+    assert [t["cle"] for t in types] == list(candidatures.TYPES_EVENEMENT)
+
+
+def test_modele_ignore_role_inconnu(qapp: QApplication) -> None:
+    modele = _modele(ControleurSuivi(qapp))
+    index = modele.index(0, 0, QModelIndex())
+    assert modele.data(index, Qt.ItemDataRole.DisplayRole) is None

@@ -1,0 +1,551 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <title>États particuliers, variante dossier</title>
+    <script src="./support.js"></script>
+  </head>
+  <body>
+    <x-dc>
+      <helmet>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&amp;family=IBM+Plex+Mono:wght@400;600&amp;display=swap"
+        />
+        <style>
+          body {
+            margin: 0;
+            background: #0f1512;
+          }
+          .app {
+            --bureau: #23302a;
+            --kraft: #d9bf8c;
+            --texte-kraft: #3e2f12;
+            --papier: #fbfaf6;
+            --papier-2: #f2eee3;
+            --encre: #1c1a17;
+            --encre-2: #4a463e;
+            --regle: #cfc8b6;
+            --pointille: #6b5428;
+            --tampon: #4b2c9e;
+            --sur-tampon: #ffffff;
+            --rouge: #b3261e;
+            --vert: #1f7a45;
+            --ombre: #b39257;
+            --ombre-portee: rgba(28, 26, 23, 0.18);
+            --logo: #ede6d3;
+            --sous-logo: #c9d2cb;
+            --etiquette: #e9d7aa;
+            --etiquette-survol: #f1e2bc;
+            --melange: multiply;
+          }
+          .app.nuit {
+            --bureau: #0f1512;
+            --kraft: #4a3b24;
+            --texte-kraft: #eadcbe;
+            --papier: #1c221f;
+            --papier-2: #252c28;
+            --encre: #ece6d6;
+            --encre-2: #b5ae9e;
+            --regle: #3a433e;
+            --pointille: #b89d68;
+            --tampon: #ffb672;
+            --sur-tampon: #1f1408;
+            --rouge: #ff8e80;
+            --vert: #82d9a4;
+            --ombre: #080b09;
+            --ombre-portee: rgba(0, 0, 0, 0.45);
+            --logo: #e6dcc2;
+            --sous-logo: #9daea3;
+            --etiquette: #5e4c2e;
+            --etiquette-survol: #6e5a37;
+            --melange: screen;
+          }
+          .app a {
+            color: var(--tampon);
+          }
+          .lampe {
+            all: unset;
+            cursor: pointer;
+            min-height: 44px;
+            padding: 0 16px;
+            border: 1.5px solid var(--sous-logo);
+            border-radius: 999px;
+            color: var(--logo);
+            font-family: "IBM Plex Mono", monospace;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+          }
+          .lampe[aria-pressed="true"] {
+            background: var(--logo);
+            color: var(--bureau);
+            border-color: var(--logo);
+          }
+          .lampe:focus-visible {
+            outline: 3px solid var(--logo);
+            outline-offset: 3px;
+          }
+          .tampon {
+            display: inline-block;
+            padding: 2px 8px;
+            border: 2.5px solid currentColor;
+            border-radius: 4px;
+            font-weight: 800;
+            font-stretch: 85%;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            line-height: 1.3;
+            color: var(--tampon);
+            mix-blend-mode: var(--melange);
+          }
+          .mono {
+            font-family: "IBM Plex Mono", monospace;
+            font-size: 14px;
+          }
+          .legende {
+            font-family: "IBM Plex Mono", monospace;
+            font-size: 13px;
+            color: var(--texte-kraft);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+          .feuille {
+            background: var(--papier);
+            color: var(--encre);
+            padding: 20px 22px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            box-shadow:
+              0 2px 0 var(--ombre),
+              0 10px 22px var(--ombre-portee);
+            box-sizing: border-box;
+          }
+          .titre {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 800;
+            font-stretch: 80%;
+            text-transform: uppercase;
+            line-height: 1;
+            border-bottom: 2px solid var(--encre);
+            padding-bottom: 8px;
+          }
+          .vide {
+            min-height: 140px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            border: 2px dashed var(--pointille);
+            text-align: center;
+            padding: 16px;
+            font-size: 16px;
+            line-height: 1.5;
+          }
+          .sources {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+          }
+          .sources li {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            font-size: 16px;
+            border-bottom: 1px dotted var(--encre-2);
+            min-height: 34px;
+            align-items: center;
+          }
+          .btn-tampon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 48px;
+            padding: 0 22px;
+            border: 0;
+            border-radius: 3px;
+            background: var(--tampon);
+            color: var(--sur-tampon);
+            font: inherit;
+            font-weight: 800;
+            font-stretch: 85%;
+            font-size: 16px;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            cursor: pointer;
+            outline: 2px solid var(--tampon);
+            outline-offset: 3px;
+            box-shadow:
+              inset 0 0 0 3px var(--tampon),
+              inset 0 0 0 4.5px var(--sur-tampon);
+            transform: rotate(-1deg);
+          }
+          .btn-tampon[disabled] {
+            opacity: 1;
+            cursor: progress;
+            background: var(--papier-2);
+            color: var(--encre);
+            outline-color: var(--encre-2);
+            box-shadow:
+              inset 0 0 0 3px var(--papier-2),
+              inset 0 0 0 4.5px var(--encre-2);
+            transform: none;
+          }
+          .btn-tampon:focus-visible {
+            outline: 3px solid var(--encre);
+            outline-offset: 3px;
+          }
+          .btn-etiquette {
+            position: relative;
+            min-height: 44px;
+            padding: 0 16px 0 36px;
+            border: 1.5px solid var(--encre-2);
+            border-radius: 3px 8px 8px 3px;
+            background: var(--etiquette);
+            color: var(--encre);
+            font: inherit;
+            font-weight: 700;
+            font-size: 16px;
+            cursor: pointer;
+          }
+          .btn-etiquette::before {
+            content: "";
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            width: 8px;
+            height: 8px;
+            margin-top: -5.5px;
+            border-radius: 50%;
+            border: 1.5px solid currentColor;
+            background: var(--papier);
+          }
+          .btn-etiquette::after {
+            content: "";
+            position: absolute;
+            left: 26px;
+            top: 7px;
+            bottom: 7px;
+            border-left: 1.5px dashed var(--encre-2);
+          }
+          .btn-etiquette:hover {
+            background: var(--etiquette-survol);
+          }
+          .btn-etiquette:focus-visible {
+            outline: 3px solid var(--tampon);
+            outline-offset: 2px;
+          }
+          @media (forced-colors: active) {
+            .btn-tampon,
+            .btn-etiquette {
+              border: 2px solid ButtonText;
+              outline: 0;
+              box-shadow: none;
+            }
+            .btn-etiquette::before,
+            .btn-etiquette::after {
+              display: none;
+            }
+            .tampon {
+              mix-blend-mode: normal;
+            }
+            .lampe {
+              border-color: ButtonText;
+            }
+          }
+        </style>
+      </helmet>
+      <div
+        class="{{classe}}"
+        style="
+          width: 1280px;
+          min-height: 1180px;
+          box-sizing: border-box;
+          padding: 22px 24px 28px;
+          background: var(--bureau);
+          font-family: Archivo, system-ui, sans-serif;
+          color: var(--encre);
+          display: flex;
+          flex-direction: column;
+          gap: 18px;
+        "
+      >
+        <div style="display: flex; align-items: center; gap: 16px">
+          <span class="mono" style="color: var(--sous-logo)"
+            >États particuliers des écrans (même chemise, contenus
+            remplacés)</span
+          >
+          <button
+            class="lampe"
+            type="button"
+            aria-pressed="{{pressee}}"
+            onClick="{{basculer}}"
+            style="margin-left: auto"
+          >{{libelleLampe}}</button>
+        </div>
+        <div
+          style="
+            flex: 1;
+            background: var(--kraft);
+            border-radius: 12px;
+            padding: 24px;
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 22px;
+            align-content: start;
+          "
+        >
+          <div
+            style="
+              grid-column: span 2;
+              display: flex;
+              flex-direction: column;
+              gap: 8px;
+            "
+          >
+            <span class="legende">Recherche · en cours</span>
+            <section
+              class="feuille"
+              aria-busy="true"
+              aria-labelledby="t-encours"
+            >
+              <div
+                style="
+                  display: flex;
+                  flex-wrap: wrap;
+                  align-items: flex-end;
+                  gap: 8px 18px;
+                  border-bottom: 2px solid var(--encre);
+                  padding-bottom: 10px;
+                "
+              >
+                <h2 id="t-encours" class="titre" style="border: 0; padding: 0">
+                  Registre des offres
+                </h2>
+                <span class="mono" role="status" style="color: var(--encre-2)"
+                  >Recherche en cours… page 3/20</span
+                >
+                <span
+                  class="tampon"
+                  aria-hidden="true"
+                  style="
+                    margin-left: auto;
+                    transform: rotate(3deg);
+                    font-size: 14px;
+                  "
+                  >En cours</span
+                >
+              </div>
+              <ul class="sources" aria-label="Avancement par source">
+                <li>
+                  <span>Choisir le service public</span
+                  ><span class="mono">page 3/20</span>
+                </li>
+                <li>
+                  <span>Fonction publique territoriale (emploi-territorial.fr)</span
+                  ><span class="mono" style="color: var(--vert)"
+                    >terminé · 41 offres</span
+                  >
+                </li>
+                <li>
+                  <span>Passerelles - Bercy (passerelles.economie.gouv.fr)</span
+                  ><span class="mono" style="color: var(--vert)"
+                    >terminé · 3 offres</span
+                  >
+                </li>
+                <li><span>Fonction publique hospitalière (emploi.fhf.fr)</span><span class="mono">en cours…</span></li>
+              </ul>
+              <div>
+                <button
+                  class="btn-tampon"
+                  type="button"
+                  disabled="disabled"
+                  style="margin: 4px"
+                >
+                  Page 3/20…
+                </button>
+              </div>
+            </section>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 8px">
+            <span class="legende">Recherche · rien de lancé</span>
+            <section class="feuille" aria-label="Registre vide">
+              <h2 class="titre">Registre des offres</h2>
+              <div class="vide">
+                <span
+                  class="tampon"
+                  aria-hidden="true"
+                  style="transform: rotate(-4deg); font-size: 16px"
+                  >Néant</span
+                >Aucune recherche lancée.<br />Remplir la demande puis « Lancer
+                la recherche ».
+              </div>
+            </section>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 8px">
+            <span class="legende">Recherche · aucun résultat</span>
+            <section class="feuille" aria-label="Registre sans résultat">
+              <h2 class="titre">Registre des offres</h2>
+              <span class="mono" style="color: var(--encre-2)"
+                >0 inscrite · 04/10/2026 10:12</span
+              >
+              <div class="vide">
+                <span
+                  class="tampon"
+                  aria-hidden="true"
+                  style="transform: rotate(3deg); font-size: 16px"
+                  >Néant</span
+                >Aucune offre trouvée.<br />Élargir la demande (versants, lieu,
+                mot-clé).
+              </div>
+            </section>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 8px">
+            <span class="legende">Recherche · impossible</span>
+            <section
+              class="feuille"
+              role="alert"
+              aria-label="Recherche impossible"
+            >
+              <h2 class="titre">Registre des offres</h2>
+              <div class="vide" style="border-color: var(--rouge)">
+                <span
+                  class="tampon"
+                  aria-hidden="true"
+                  style="
+                    transform: rotate(-5deg);
+                    font-size: 16px;
+                    color: var(--rouge);
+                  "
+                  >Refoulé</span
+                ><strong>Recherche impossible.</strong>Toutes les sources
+                actives sont indisponibles. Réessayer dans un moment.
+              </div>
+            </section>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 8px">
+            <span class="legende">Recherche · aucune source</span>
+            <section
+              class="feuille"
+              role="alert"
+              aria-label="Aucune source active"
+            >
+              <h2 class="titre">Registre des offres</h2>
+              <div class="vide" style="border-color: var(--rouge)">
+                <span
+                  class="tampon"
+                  aria-hidden="true"
+                  style="
+                    transform: rotate(4deg);
+                    font-size: 16px;
+                    color: var(--rouge);
+                  "
+                  >Refoulé</span
+                ><strong>Recherche impossible.</strong>Aucune source cochée :
+                voir Réglages › Sources consultées.
+              </div>
+            </section>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 8px">
+            <span class="legende">Profils · aucune fiche</span>
+            <section class="feuille" aria-label="Aucune fiche">
+              <h2 class="titre">Mes fiches de recherche</h2>
+              <div class="vide">
+                Aucune fiche classée.<br />Lancer une recherche puis « Classer
+                en profil ».<button class="btn-etiquette" type="button">
+                  Nouvelle fiche
+                </button>
+              </div>
+            </section>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 8px">
+            <span class="legende">Suivi · aucun dossier</span>
+            <section class="feuille" aria-label="Aucun dossier">
+              <h2 class="titre">Dossiers en cours</h2>
+              <div class="vide">
+                Aucun dossier en cours.<br />Dans le registre, « Tamponner pour
+                suivi ».
+              </div>
+            </section>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 8px">
+            <span class="legende">Réglages · déjà à jour</span>
+            <section class="feuille" aria-labelledby="t-ajour">
+              <h2 id="t-ajour" class="titre">Avis de mise à jour</h2>
+              <p style="margin: 0; font-size: 16px; line-height: 1.5">
+                <strong>Objet :</strong> version 2.0.1 installée, rien de plus
+                récent.
+              </p>
+              <span
+                class="tampon"
+                aria-hidden="true"
+                style="
+                  align-self: flex-start;
+                  transform: rotate(-3deg);
+                  font-size: 15px;
+                  color: var(--vert);
+                "
+                >À jour</span
+              >
+            </section>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 8px">
+            <span class="legende">Suivi · vérification en cours</span>
+            <section
+              class="feuille"
+              aria-busy="true"
+              aria-label="Vérification des offres"
+            >
+              <h2 class="titre">Dossiers en cours</h2>
+              <span class="mono" role="status">Vérification… 2/3</span>
+              <div>
+                <button
+                  class="btn-etiquette"
+                  type="button"
+                  disabled="disabled"
+                  style="cursor: progress"
+                >
+                  Vérification… 2/3
+                </button>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </x-dc>
+    <script
+      type="text/x-dc"
+      data-dc-script
+      data-props='{"theme":{"editor":"enum","options":["sombre","clair"],"default":"sombre"},"$preview":{"width":1280,"height":1180}}'
+    >
+      class Component extends DCLogic {
+        renderVals() {
+          const choisi = this.state && typeof this.state.nuit === 'boolean' ? this.state.nuit : null;
+          const nuit = choisi !== null ? choisi : (this.props.theme ?? 'sombre') !== 'clair';
+          return {
+            classe: nuit ? 'app nuit' : 'app',
+            pressee: nuit ? 'true' : 'false',
+      libelleLampe: nuit ? 'Bureau de jour' : 'Bureau de nuit',
+            basculer: () => this.setState({ nuit: !nuit })
+          };
+        }
+      }
+    </script>
+  </body>
+</html>

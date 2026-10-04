@@ -1,0 +1,893 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <title>Recherche, variante dossier</title>
+    <script src="./support.js"></script>
+  </head>
+  <body>
+    <x-dc>
+      <helmet>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&amp;family=IBM+Plex+Mono:wght@400;600&amp;display=swap"
+        />
+        <style>
+          body {
+            margin: 0;
+            background: #0f1512;
+          }
+          .app {
+--bristol:#FFFFFF;--bristol-ligne:#C9D6EE;--bristol-tete:#C8423B;--surligneur:#F4E27A;--surligne-texte:#1C1A17;
+            --bureau: #23302a;
+            --kraft: #d9bf8c;
+            --onglet: #c4a66c;
+            --onglet-survol: #d0b57e;
+            --texte-kraft: #3e2f12;
+            --num: #3e2f12;
+            --papier: #fbfaf6;
+            --papier-2: #f2eee3;
+            --encre: #1c1a17;
+            --encre-2: #4a463e;
+            --regle: #cfc8b6;
+            --tampon: #4b2c9e;
+            --sur-tampon: #ffffff;
+            --rouge: #b3261e;
+            --surligneur: #f4e27a;
+            --surligne-texte: #1c1a17;
+            --ombre: #b39257;
+            --ombre-portee: rgba(28, 26, 23, 0.18);
+            --logo: #ede6d3;
+            --sous-logo: #c9d2cb;
+            --etiquette: #e9d7aa;
+            --etiquette-survol: #f1e2bc;
+            --melange: multiply;
+          }
+          .app.nuit {
+--bristol:#1E2530;--bristol-ligne:#2D3A50;--bristol-tete:#E36A60;--surligneur:#5B521C;--surligne-texte:#FFF4C2;
+            --bureau: #0f1512;
+            --kraft: #4a3b24;
+            --onglet: #33291a;
+            --onglet-survol: #4d3e27;
+            --texte-kraft: #eadcbe;
+            --num: #d9c08c;
+            --papier: #1c221f;
+            --papier-2: #252c28;
+            --encre: #ece6d6;
+            --encre-2: #b5ae9e;
+            --regle: #3a433e;
+            --tampon: #ffb672;
+            --sur-tampon: #1f1408;
+            --rouge: #ff8e80;
+            --surligneur: #5b521c;
+            --surligne-texte: #fff4c2;
+            --ombre: #080b09;
+            --ombre-portee: rgba(0, 0, 0, 0.45);
+            --logo: #e6dcc2;
+            --sous-logo: #9daea3;
+            --etiquette: #5e4c2e;
+            --etiquette-survol: #6e5a37;
+            --melange: screen;
+          }
+          .sr {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+          }
+          .app a {
+            color: var(--tampon);
+          }
+          .app .onglet {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 44px;
+            padding: 0 18px;
+            background: var(--onglet);
+            color: var(--encre);
+            border-radius: 10px 10px 0 0;
+            text-decoration: none;
+            font-weight: 700;
+            font-stretch: 90%;
+            font-size: 16px;
+          }
+          .app .onglet:hover {
+            background: var(--onglet-survol);
+          }
+          .app .onglet:focus-visible {
+            outline: 3px solid var(--tampon);
+            outline-offset: 2px;
+          }
+          .app .onglet-actif {
+            background: var(--kraft);
+            min-height: 52px;
+          }
+          .num {
+            font-family: "IBM Plex Mono", monospace;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--num);
+          }
+          .point {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--rouge);
+            display: inline-block;
+          }
+          .lampe {
+            all: unset;
+            cursor: pointer;
+            min-height: 44px;
+            padding: 0 16px;
+            border: 1.5px solid var(--sous-logo);
+            border-radius: 999px;
+            color: var(--logo);
+            font-family: "IBM Plex Mono", monospace;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+          }
+          .lampe[aria-pressed="true"] {
+            background: var(--logo);
+            color: var(--bureau);
+            border-color: var(--logo);
+          }
+          .lampe:focus-visible {
+            outline: 3px solid var(--logo);
+            outline-offset: 3px;
+          }
+          .tampon {
+            display: inline-block;
+            padding: 2px 8px;
+            border: 2.5px solid currentColor;
+            border-radius: 4px;
+            font-weight: 800;
+            font-stretch: 85%;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            line-height: 1.3;
+            color: var(--tampon);
+            mix-blend-mode: var(--melange);
+          }
+          .feuille {
+            background: var(--papier);
+            color: var(--encre);
+            box-shadow:
+              0 2px 0 var(--ombre),
+              0 10px 24px var(--ombre-portee);
+            box-sizing: border-box;
+          }
+          .case-cerfa {
+            border: 1.5px solid var(--encre);
+            padding: 10px 12px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background: var(--papier);
+            margin: 0;
+          }
+          .case-cerfa legend,
+          .etiquette-champ {
+            font-family: "IBM Plex Mono", monospace;
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--encre-2);
+          }
+          .coche {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-height: 36px;
+            font-size: 16px;
+          }
+          .coche input {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            margin: 0;
+            border: 2px solid var(--encre);
+            background: var(--papier);
+            display: grid;
+            place-content: center;
+            flex: none;
+          }
+          .coche input:checked::before {
+            content: "";
+            width: 13px;
+            height: 13px;
+            background: var(--tampon);
+            clip-path: polygon(
+              14% 44%,
+              0 65%,
+              50% 100%,
+              100% 16%,
+              80% 0,
+              43% 62%
+            );
+          }
+          .coche input:focus-visible {
+            outline: 3px solid var(--tampon);
+            outline-offset: 2px;
+          }
+          .ligne-choix {
+            all: unset;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            min-height: 40px;
+            align-items: center;
+            border-bottom: 1px dotted var(--encre-2);
+            font-size: 16px;
+          }
+          .ligne-choix:focus-visible {
+            outline: 3px solid var(--tampon);
+            outline-offset: 2px;
+          }
+          .champ {
+            min-height: 40px;
+            border: 0;
+            border-bottom: 2px solid var(--encre);
+            background: transparent;
+            color: var(--encre);
+            font: inherit;
+            font-size: 16px;
+            padding: 0 2px;
+          }
+          .champ::placeholder {
+            color: var(--encre-2);
+          }
+          .champ:focus-visible {
+            outline: 3px solid var(--tampon);
+            outline-offset: 2px;
+          }
+          .selection {
+            min-height: 40px;
+            border: 0;
+            border-bottom: 2px solid var(--encre);
+            background: var(--papier);
+            color: var(--encre);
+            font: inherit;
+            font-size: 16px;
+            width: 100%;
+          }
+          .selection:focus-visible {
+            outline: 3px solid var(--tampon);
+            outline-offset: 2px;
+          }
+          .btn-tampon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 48px;
+            padding: 0 22px;
+            border: 0;
+            border-radius: 3px;
+            background: var(--tampon);
+            color: var(--sur-tampon);
+            font: inherit;
+            font-weight: 800;
+            font-stretch: 85%;
+            font-size: 16px;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            text-decoration: none;
+            cursor: pointer;
+            outline: 2px solid var(--tampon);
+            outline-offset: 3px;
+            box-shadow:
+              inset 0 0 0 3px var(--tampon),
+              inset 0 0 0 4.5px var(--sur-tampon);
+            transform: rotate(-1deg);
+            transition: transform 0.12s;
+          }
+          .btn-tampon:hover {
+            transform: rotate(0);
+          }
+          .btn-tampon:active {
+            transform: scale(0.97);
+          }
+          .btn-tampon:focus-visible {
+            outline: 3px solid var(--encre);
+            outline-offset: 3px;
+          }
+          .btn-etiquette {
+            position: relative;
+            min-height: 44px;
+            padding: 0 16px 0 36px;
+            border: 1.5px solid var(--encre-2);
+            border-radius: 3px 8px 8px 3px;
+            background: var(--etiquette);
+            color: var(--encre);
+            font: inherit;
+            font-weight: 700;
+            font-size: 16px;
+            cursor: pointer;
+          }
+          .btn-etiquette::before {
+            content: "";
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            width: 8px;
+            height: 8px;
+            margin-top: -5.5px;
+            border-radius: 50%;
+            border: 1.5px solid currentColor;
+            background: var(--papier);
+          }
+          .btn-etiquette::after {
+            content: "";
+            position: absolute;
+            left: 26px;
+            top: 7px;
+            bottom: 7px;
+            border-left: 1.5px dashed var(--encre-2);
+          }
+          .btn-etiquette:hover {
+            background: var(--etiquette-survol);
+          }
+          .btn-etiquette:focus-visible {
+            outline: 3px solid var(--tampon);
+            outline-offset: 2px;
+          }
+          .registre {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 820px;
+          }
+          .registre th {
+            font-family: "IBM Plex Mono", monospace;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            text-align: left;
+            color: var(--encre-2);
+            padding: 8px 10px;
+            border-bottom: 2px solid var(--encre);
+            border-right: 1px solid var(--regle);
+            white-space: nowrap;
+          }
+          .registre td {
+            padding: 10px;
+            border-bottom: 1px solid var(--regle);
+            border-right: 1px solid var(--regle);
+            font-size: 16px;
+            vertical-align: top;
+          }
+          .registre th:last-child,
+          .registre td:last-child {
+            border-right: 0;
+          }
+          .mono {
+            font-family: "IBM Plex Mono", monospace;
+            font-size: 14px;
+          }
+          .surligne td {
+            background: var(--surligneur);
+            color: var(--surligne-texte);
+          }
+          .surligne .tampon {
+            color: var(--surligne-texte);
+          }
+          @media (prefers-reduced-motion: reduce) {
+            .btn-tampon,
+            .btn-tampon:hover,
+            .btn-tampon:active {
+              transform: none;
+              transition: none;
+            }
+          }
+          @media (forced-colors: active) {
+            .coche input {
+              appearance: auto;
+              -webkit-appearance: auto;
+            }
+            .btn-tampon,
+            .btn-etiquette {
+              border: 2px solid ButtonText;
+              outline: 0;
+              box-shadow: none;
+            }
+            .btn-etiquette::before,
+            .btn-etiquette::after {
+              display: none;
+            }
+            .tampon {
+              mix-blend-mode: normal;
+            }
+            .lampe {
+              border-color: ButtonText;
+            }
+          }
+        
+
+.menubar{display:flex;align-items:stretch;gap:2px;margin:-22px -24px 16px;padding:0 18px;min-height:40px;background:var(--bristol);border-top:3px solid var(--bristol-tete);border-bottom:1px solid var(--bristol-ligne)}
+.menu-entree{all:unset;cursor:pointer;padding:0 14px;display:inline-flex;align-items:center;font-family:Archivo,system-ui,sans-serif;font-weight:800;font-stretch:85%;font-size:15px;text-transform:uppercase;letter-spacing:1px;color:var(--encre)}
+.menu-entree:hover,.menu-entree[aria-expanded="true"]{background:var(--surligneur);color:var(--surligne-texte)}
+.menu-entree:focus-visible{outline:3px solid var(--tampon);outline-offset:-3px}
+</style>
+      </helmet>
+      <div
+        class="{{classe}}"
+        style="
+          min-height: 900px;
+          display: flex;
+          flex-direction: column;
+          padding: 22px 24px 28px;
+          box-sizing: border-box;
+          background: var(--bureau);
+          font-family: Archivo, system-ui, sans-serif;
+          color: var(--encre);
+        "
+      >
+<div class="menubar" role="menubar" aria-label="Menu de l'application"><a class="menu-entree" href="Dossier-Menu.dc.html" role="menuitem" aria-haspopup="menu" aria-expanded="false">Fichier</a><a class="menu-entree" href="Dossier-Menu.dc.html" role="menuitem" aria-haspopup="menu" aria-expanded="false">Aide</a></div>
+        <div
+          style="
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px 20px;
+            padding: 0 6px 18px;
+          "
+        >
+          <span
+            class="tampon"
+            style="
+              color: var(--logo);
+              font-size: 26px;
+              transform: rotate(-3deg);
+              mix-blend-mode: normal;
+              outline: 1.5px solid var(--logo);
+              outline-offset: 3px;
+            "
+            >Tamponné</span
+          >
+          <span style="color: var(--sous-logo); font-size: 15px"
+            >Offres de la fonction publique · 4 sources</span
+          >
+          <button
+            class="lampe"
+            type="button"
+            aria-pressed="{{pressee}}"
+            onClick="{{basculer}}"
+            style="margin-left: auto"
+          >{{libelleLampe}}</button>
+        </div>
+
+        <nav
+          aria-label="Navigation principale"
+          style="
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-end;
+            gap: 4px;
+            padding: 0 20px;
+          "
+        >
+          <a class="onglet" href="Dossier-Accueil.dc.html"
+            >Profils</a
+          >
+          <a
+            class="onglet onglet-actif"
+            href="Dossier-Recherche.dc.html"
+            aria-current="page"
+            >Recherche</a
+          >
+          <a class="onglet" href="Dossier-Suivi.dc.html"
+            >Suivi</a
+          >
+          <a class="onglet" href="Dossier-Aide.dc.html"
+            >Aide</a
+          >
+          <a class="onglet" href="Dossier-Parametres.dc.html"
+            >Réglages
+            <span class="point" aria-hidden="true"></span
+            ><span class="sr">(mise à jour disponible)</span></a
+          >
+        </nav>
+
+        <div
+          style="
+            flex: 1;
+            background: var(--kraft);
+            border-radius: 4px 12px 12px 12px;
+            padding: 18px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 18px;
+            align-items: flex-start;
+          "
+        >
+          <form
+            class="feuille"
+            aria-label="Critères de recherche"
+            style="
+              flex: 1 1 300px;
+              max-width: 380px;
+              padding: 18px;
+              display: flex;
+              flex-direction: column;
+              gap: 12px;
+            "
+          >
+            <div
+              style="
+                display: flex;
+                justify-content: space-between;
+                align-items: baseline;
+                gap: 8px;
+                border-bottom: 2px solid var(--encre);
+                padding-bottom: 8px;
+              "
+            >
+              <strong
+                style="
+                  font-size: 18px;
+                  font-stretch: 90%;
+                  text-transform: uppercase;
+                  letter-spacing: 0.6px;
+                "
+                >Demande de recherche</strong
+              >
+              <span
+                class="mono"
+                style="color: var(--encre-2)"
+                aria-hidden="true"
+                >Form. R-02</span
+              >
+            </div>
+            <fieldset class="case-cerfa">
+              <legend>Catégorie</legend>
+              <div style="display: flex; flex-wrap: wrap; gap: 2px 18px">
+                <label class="coche"
+                  ><input type="checkbox" /> A+ (direction)</label
+                >
+                <label class="coche"
+                  ><input type="checkbox" /> A+ (autres)</label
+                >
+              </div>
+              <div style="display: flex; flex-wrap: wrap; gap: 2px 18px">
+                <label class="coche"
+                  ><input type="checkbox" checked="checked" /> A</label
+                >
+                <label class="coche"><input type="checkbox" /> B</label>
+                <label class="coche"><input type="checkbox" /> C</label>
+              </div>
+              <button class="ligne-choix" type="button">
+                <span>Corps / grade</span><span class="mono">tous ›</span>
+              </button>
+            </fieldset>
+            <fieldset class="case-cerfa">
+              <legend>Versant</legend>
+              <div style="display: flex; flex-wrap: wrap; gap: 2px 18px">
+                <label class="coche"
+                  ><input type="checkbox" checked="checked" /> État</label
+                >
+                <label class="coche"
+                  ><input type="checkbox" /> Hospitalier</label
+                >
+                <label class="coche"
+                  ><input type="checkbox" checked="checked" />
+                  Territorial</label
+                >
+              </div>
+            </fieldset>
+            <fieldset class="case-cerfa">
+              <legend>Poste</legend>
+              <button class="ligne-choix" type="button">
+                <span>Domaines</span><span class="mono">2 cochés ›</span>
+              </button>
+              <label style="display: flex; flex-direction: column; gap: 2px"
+                ><span class="etiquette-champ">Type de poste</span>
+                <select class="selection">
+                  <option>
+                    Titulaire-éligible (titulaires + postes ouverts aux deux
+                    statuts)
+                  </option>
+                  <option>Titulaire uniquement</option>
+                  <option>Contractuel uniquement</option>
+                  <option>Tous (y compris contractuels)</option>
+                </select>
+              </label>
+              <label style="display: flex; flex-direction: column; gap: 2px"
+                ><span class="etiquette-champ">Expérience souhaitée</span>
+                <select class="selection">
+                  <option>Indifférente</option>
+                  <option>Débutant</option>
+                  <option>Confirmé</option>
+                  <option>Expert</option>
+                </select>
+              </label>
+              <label style="display: flex; flex-direction: column; gap: 2px"
+                ><span class="etiquette-champ">Date de publication</span>
+                <select class="selection">
+                  <option>Indifférente</option>
+                  <option>Dernières 48 heures</option>
+                  <option>7 derniers jours</option>
+                  <option>14 derniers jours</option>
+                </select>
+              </label>
+            </fieldset>
+            <fieldset class="case-cerfa">
+              <legend>Lieu</legend>
+              <button class="ligne-choix" type="button">
+                <span>Localisations</span
+                ><span class="mono">Île-de-France ›</span>
+              </button>
+              <button class="ligne-choix" type="button">
+                <span>Organisations</span><span class="mono">tous ›</span>
+              </button>
+            </fieldset>
+            <fieldset class="case-cerfa">
+              <legend>Options</legend>
+              <label class="coche"><input type="checkbox" /> Management</label>
+              <label class="coche"
+                ><input type="checkbox" checked="checked" /> Télétravail</label
+              >
+              <label class="coche"
+                ><input type="checkbox" /> Grades supérieurs</label
+              >
+              <label style="display: flex; flex-direction: column; gap: 4px"
+                ><span class="etiquette-champ">Mot-clé</span>
+                <input class="champ mono" type="text" placeholder="ex. IDIV" />
+              </label>
+            </fieldset>
+            <button
+              class="btn-tampon"
+              type="button"
+              style="margin: 6px 4px 4px"
+            >
+              Lancer la recherche
+            </button>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap">
+              <button
+                class="btn-etiquette"
+                type="button"
+                style="flex: 1 1 auto"
+              >
+                Classer en profil
+              </button>
+              <button
+                class="btn-etiquette"
+                type="button"
+                title="Réinitialise tous les filtres de cet écran"
+              >
+                RAZ
+              </button>
+            </div>
+          </form>
+
+          <section
+            class="feuille"
+            aria-labelledby="titre-registre"
+            style="
+              flex: 999 1 560px;
+              min-width: 0;
+              padding: 18px 20px;
+              display: flex;
+              flex-direction: column;
+              gap: 14px;
+            "
+          >
+            <div
+              style="
+                display: flex;
+                flex-wrap: wrap;
+                align-items: flex-end;
+                gap: 8px 18px;
+                border-bottom: 2px solid var(--encre);
+                padding-bottom: 10px;
+              "
+            >
+              <h1
+                id="titre-registre"
+                style="
+                  margin: 0;
+                  font-size: 34px;
+                  font-weight: 800;
+                  font-stretch: 80%;
+                  text-transform: uppercase;
+                  line-height: 1;
+                "
+              >
+                Registre des offres
+              </h1>
+              <span
+                class="mono"
+                style="color: var(--encre-2); padding-bottom: 3px"
+                >6 inscrites · 2 nouvelles · 1 écartée (grades supérieurs) · 04/10/2026 10:12</span
+              >
+              <span
+                class="tampon"
+                aria-hidden="true"
+                style="
+                  margin-left: auto;
+                  transform: rotate(3deg);
+                  font-size: 14px;
+                "
+                >Dédoublonné</span
+              >
+            </div>
+            <div
+              style="
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px 18px;
+                align-items: center;
+              "
+            >
+              <label
+                style="
+                  flex: 1 1 260px;
+                  display: flex;
+                  align-items: center;
+                  gap: 8px;
+                "
+                ><span class="etiquette-champ">Filtrer</span>
+                <input
+                  class="champ"
+                  type="search"
+                  placeholder="titre, employeur, lieu…"
+                  style="flex: 1"
+                />
+              </label>
+              <label class="coche"
+                ><input type="checkbox" /> Nouvelles seulement</label
+              >
+            </div>
+            <div style="overflow-x: auto">
+              <table class="registre">
+                <caption class="sr">
+                  Offres trouvées, ligne 002 sélectionnée
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">N°</th>
+                    <th scope="col">Intitulé</th>
+                    <th scope="col">Employeur</th>
+                    <th scope="col">Lieu</th>
+                    <th scope="col">Publiée</th>
+                    <th scope="col">Source</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="mono">001</td>
+                    <td>
+                      <strong>Chargé(e) de mission politiques agricoles</strong>
+                      <span
+                        class="tampon"
+                        style="
+                          font-size: 13px;
+                          transform: rotate(-2deg);
+                          margin-left: 6px;
+                        "
+                        >Nouveau</span
+                      >
+                    </td>
+                    <td>DRAAF Île-de-France</td>
+                    <td>Paris 75</td>
+                    <td class="mono">02/10/26</td>
+                    <td>Ministère de l'Agriculture</td>
+                  </tr>
+                  <tr class="surligne" aria-selected="true">
+                    <td class="mono">002</td>
+                    <td>
+                      <strong>Attaché(e) d'administration RH</strong>
+                      <span
+                        class="tampon"
+                        style="
+                          font-size: 13px;
+                          transform: rotate(2deg);
+                          margin-left: 6px;
+                        "
+                        >Nouveau</span
+                      >
+                    </td>
+                    <td>Préfecture de région</td>
+                    <td>Paris 75</td>
+                    <td class="mono">01/10/26</td>
+                    <td>Ministère de l'Intérieur</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">003</td>
+                    <td><strong>Responsable du service finances</strong></td>
+                    <td>Commune [exemple]</td>
+                    <td>Versailles 78</td>
+                    <td class="mono">30/09/26</td>
+                    <td>Fonction publique territoriale</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">004</td>
+                    <td><strong>Acheteur(se) public(que)</strong></td>
+                    <td>Centre hospitalier [exemple]</td>
+                    <td>Créteil 94</td>
+                    <td class="mono">29/09/26</td>
+                    <td>FHF</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">005</td>
+                    <td><strong>Chef(fe) de bureau budget</strong></td>
+                    <td>Direction ministérielle [exemple]</td>
+                    <td>Paris 75</td>
+                    <td class="mono">28/09/26</td>
+                    <td>MEF</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">006</td>
+                    <td><strong>Chargé(e) d'études statistiques</strong></td>
+                    <td>Service statistique [exemple]</td>
+                    <td>Montrouge 92</td>
+                    <td class="mono">27/09/26</td>
+                    <td>Choisir le service public</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div
+              style="
+                display: flex;
+                flex-wrap: wrap;
+                gap: 12px;
+                align-items: center;
+                border-top: 1px solid var(--regle);
+                padding-top: 14px;
+              "
+            >
+              <span class="mono" style="color: var(--encre-2)"
+                >Sélection : ligne 002</span
+              >
+              <a
+                class="btn-etiquette"
+                href="Dossier-Detail.dc.html"
+                style="
+                  margin-left: auto;
+                  display: inline-flex;
+                  align-items: center;
+                  text-decoration: none;
+                  color: var(--encre);
+                "
+                >Consulter</a
+              >
+              <button class="btn-etiquette" type="button">Exporter</button>
+              <button class="btn-tampon" type="button" style="margin: 4px">
+                Tamponner pour suivi
+              </button>
+            </div>
+          </section>
+        </div>
+      </div>
+    </x-dc>
+    <script
+      type="text/x-dc"
+      data-dc-script
+      data-props='{"theme":{"editor":"enum","options":["sombre","clair"],"default":"sombre"},"$preview":{"width":1280,"height":1200}}'
+    >
+      class Component extends DCLogic {
+        renderVals() {
+          const choisi = this.state && typeof this.state.nuit === 'boolean' ? this.state.nuit : null;
+          const nuit = choisi !== null ? choisi : (this.props.theme ?? 'sombre') !== 'clair';
+          return {
+            classe: nuit ? 'app nuit' : 'app',
+            pressee: nuit ? 'true' : 'false',
+      libelleLampe: nuit ? 'Bureau de jour' : 'Bureau de nuit',
+            basculer: () => this.setState({ nuit: !nuit })
+          };
+        }
+      }
+    </script>
+  </body>
+</html>
