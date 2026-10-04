@@ -24,6 +24,8 @@ Item {
     Accessible.role: Accessible.Table
     Accessible.name: "Registre des offres"
 
+    implicitHeight: entete.height + table.contentHeight
+
     Flickable {
         id: horizontal
         anchors.fill: parent
@@ -111,30 +113,50 @@ Item {
 
                 readonly property bool selectionnee: racine.recherche.ligne_selectionnee === row
                 implicitHeight: contenu.implicitHeight + 20 + 1
+                // Le TableView ne remesure pas seul une ligne dont le texte s'est replié.
+                onImplicitHeightChanged: Qt.callLater(table.forceLayout)
                 color: selectionnee ? Theme.surligneur : Theme.papier
 
                 Accessible.role: Accessible.Cell
                 Accessible.name: display + (nouvelle ? ", nouvelle" : "")
                 Accessible.selected: selectionnee
 
-                Flow {
+                Item {
                     id: contenu
                     x: 10
                     y: 10
                     width: cellule.width - 20
-                    spacing: 6
+                    // Tampon « Nouveau » à la suite de la dernière ligne de l'intitulé, ou dessous s'il n'y tient pas.
+                    readonly property bool tamponALaSuite: texteCellule.largeurDerniereLigne + 6 + tamponNouveau.implicitWidth <= width
+                    implicitHeight: tamponNouveau.visible
+                        ? Math.max(texteCellule.height, tamponNouveau.y + tamponNouveau.implicitHeight)
+                        : texteCellule.height
 
                     Texte {
-                        width: Math.min(implicitWidth, contenu.width)
+                        id: texteCellule
+                        property real largeurDerniereLigne: 0
+                        property real yDerniereLigne: 0
+                        width: contenu.width
                         text: cellule.display
                         color: cellule.selectionnee ? Theme.surligneTexte : Theme.encre
                         font.family: cellule.column === 0 || cellule.column === 4 ? Theme.policeMono : Theme.policeTexte
                         font.pixelSize: cellule.column === 0 || cellule.column === 4 ? 14 : 16
                         font.weight: cellule.column === 1 ? Font.Bold : Font.Normal
                         Accessible.ignored: true
+                        onLineLaidOut: (ligne) => {
+                            if (ligne.isLast) {
+                                largeurDerniereLigne = ligne.implicitWidth
+                                yDerniereLigne = ligne.y
+                            }
+                        }
                     }
                     Tampon {
+                        id: tamponNouveau
                         visible: cellule.nouvelle
+                        x: contenu.tamponALaSuite ? texteCellule.largeurDerniereLigne + 6 : 0
+                        y: contenu.tamponALaSuite
+                            ? texteCellule.yDerniereLigne + (texteCellule.lineHeight - implicitHeight) / 2
+                            : texteCellule.height + 4
                         rotation: cellule.row % 2 === 0 ? -2 : 2
                         texte: "Nouveau"
                         taille: 13

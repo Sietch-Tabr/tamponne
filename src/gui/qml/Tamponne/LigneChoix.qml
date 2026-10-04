@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls.Basic
+import QtQuick.Layouts
 import QtQuick.Shapes
 import Tamponne
 
@@ -17,27 +18,33 @@ AbstractButton {
     Accessible.role: Accessible.Button
     Accessible.name: text + " : " + valeur
 
-    contentItem: Item {
+    contentItem: RowLayout {
+        spacing: 12
         Texte {
-            anchors.left: parent.left
-            anchors.verticalCenter: parent.verticalCenter
             text: racine.text
             wrapMode: Text.NoWrap
             Accessible.ignored: true
         }
         Texte {
-            anchors.right: parent.right
-            anchors.verticalCenter: parent.verticalCenter
+            Layout.fillWidth: true
+            Layout.minimumWidth: 0
+            Layout.preferredWidth: 0
+            horizontalAlignment: Text.AlignRight
             text: racine.valeur + " ›"
             font.family: Theme.policeMono
             font.pixelSize: 14
             wrapMode: Text.NoWrap
+            // Une organisation au long nom ne doit jamais chevaucher l'intitulé.
+            elide: Text.ElideLeft
             Accessible.ignored: true
         }
     }
 
     background: Item {
         Shape {
+            // Rendue en texture : une Shape échappe sinon au découpage d'une zone défilante.
+            layer.enabled: true
+            layer.samples: 4
             anchors.bottom: parent.bottom
             width: parent.width
             height: 1

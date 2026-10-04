@@ -6,6 +6,10 @@ import Tamponne
 Shape {
     id: racine
 
+    // Rendue en texture : une Shape échappe sinon au découpage d'une zone défilante.
+    layer.enabled: true
+    layer.samples: 4
+
     property color couleur: Theme.encre2
 
     implicitHeight: 1

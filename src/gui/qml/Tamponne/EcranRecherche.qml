@@ -116,12 +116,15 @@ Item {
         Feuille {
             id: feuilleRegistre
             Layout.fillWidth: true
-            Layout.fillHeight: true
+            // Hauteur du contenu comme la maquette, bornée par la chemise (le tableau défile alors).
+            Layout.preferredHeight: colonneRegistre.implicitHeight + 36
+            Layout.maximumHeight: parent.height
             Layout.alignment: Qt.AlignTop
             halo: Theme.ombrePortee
             flou: 24
 
             ColumnLayout {
+                id: colonneRegistre
                 anchors.fill: parent
                 anchors.topMargin: 18
                 anchors.bottomMargin: 18
@@ -133,40 +136,93 @@ Item {
                     Layout.fillWidth: true
                     implicitHeight: enteteRegistre.implicitHeight + 10
 
-                    RowLayout {
+                    // Retour à la ligne de la maquette (flex-wrap) : titre seul, puis résumé et tampon.
+                    ColumnLayout {
                         id: enteteRegistre
                         width: parent.width
-                        spacing: 18
+                        spacing: 8
 
-                        Texte {
-                            text: "Registre des offres"
-                            font.pixelSize: 34
-                            font.capitalization: Font.AllUppercase
-                            font.variableAxes: { "wdth": 80, "wght": 800 }
-                            lineHeight: 34
-                            wrapMode: Text.NoWrap
-                            Layout.preferredHeight: 34
-                            Layout.alignment: Qt.AlignBottom
-                            Accessible.role: Accessible.Heading
-                        }
-                        Texte {
+                        readonly property bool surUneLigne: titreRegistre.implicitWidth + 18
+                            + resumeRegistre.implicitWidth + 18 + tamponRegistre.implicitWidth <= width
+
+                        RowLayout {
                             Layout.fillWidth: true
-                            Layout.alignment: Qt.AlignBottom
-                            bottomPadding: 3
-                            text: racine.phase === "en_cours" ? racine.recherche.statut : racine.recherche.resume
-                            color: Theme.encre2
-                            font.family: Theme.policeMono
-                            font.pixelSize: 14
-                            Accessible.role: racine.phase === "en_cours" ? Accessible.StatusBar : Accessible.StaticText
+                            spacing: 18
+
+                            Texte {
+                                id: titreRegistre
+                                text: "Registre des offres"
+                                font.pixelSize: 34
+                                font.capitalization: Font.AllUppercase
+                                font.variableAxes: { "wdth": 80, "wght": 800 }
+                                lineHeight: 34
+                                wrapMode: Text.NoWrap
+                                Layout.preferredHeight: 34
+                                Layout.alignment: Qt.AlignBottom
+                                Accessible.role: Accessible.Heading
+                            }
+                            Item {
+                                Layout.fillWidth: true
+                                visible: !enteteRegistre.surUneLigne
+                            }
+                            Loader {
+                                active: enteteRegistre.surUneLigne
+                                visible: active
+                                Layout.fillWidth: true
+                                Layout.alignment: Qt.AlignBottom
+                                sourceComponent: resumeEtTampon
+                            }
                         }
-                        Tampon {
-                            visible: racine.phase === "resultats" || racine.phase === "en_cours"
-                            Layout.alignment: Qt.AlignBottom
-                            rotation: 3
-                            texte: racine.phase === "en_cours" ? "En cours" : "Dédoublonné"
-                            taille: 14
-                            Accessible.ignored: true
+                        Loader {
+                            Layout.fillWidth: true
+                            active: !enteteRegistre.surUneLigne && resumeRegistre.text !== ""
+                            visible: active
+                            sourceComponent: resumeEtTampon
                         }
+                    }
+
+                    Component {
+                        id: resumeEtTampon
+                        RowLayout {
+                            spacing: 18
+                            Texte {
+                                Layout.fillWidth: true
+                                Layout.alignment: Qt.AlignBottom
+                                bottomPadding: 3
+                                text: resumeRegistre.text
+                                color: Theme.encre2
+                                font.family: Theme.policeMono
+                                font.pixelSize: 14
+                                Accessible.role: racine.phase === "en_cours" ? Accessible.StatusBar : Accessible.StaticText
+                            }
+                            Tampon {
+                                visible: tamponRegistre.affiche
+                                Layout.alignment: Qt.AlignBottom
+                                rotation: 3
+                                texte: tamponRegistre.texte
+                                taille: 14
+                                Accessible.ignored: true
+                            }
+                        }
+                    }
+
+                    // Mesures seulement : textes invisibles servant à choisir la disposition.
+                    Texte {
+                        id: resumeRegistre
+                        visible: false
+                        text: racine.phase === "en_cours" ? racine.recherche.statut : racine.recherche.resume
+                        font.family: Theme.policeMono
+                        font.pixelSize: 14
+                        wrapMode: Text.NoWrap
+                        Accessible.ignored: true
+                    }
+                    Tampon {
+                        id: tamponRegistre
+                        visible: false
+                        readonly property bool affiche: racine.phase === "resultats" || racine.phase === "en_cours"
+                        texte: racine.phase === "en_cours" ? "En cours" : "Dédoublonné"
+                        taille: 14
+                        Accessible.ignored: true
                     }
                     Rectangle {
                         anchors.bottom: parent.bottom
@@ -303,6 +359,8 @@ Item {
                 Registre {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
+                    Layout.preferredHeight: implicitHeight
+                    Layout.maximumHeight: implicitHeight
                     visible: racine.phase === "resultats"
                     recherche: racine.recherche
                 }

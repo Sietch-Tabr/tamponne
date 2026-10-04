@@ -29,6 +29,9 @@ AbstractButton {
             font.pixelSize: 14
         }
         Shape {
+            // Rendue en texture : une Shape échappe sinon au découpage d'une zone défilante.
+            layer.enabled: true
+            layer.samples: 4
             x: libelle.x
             y: libelle.y + libelle.baselineOffset + 4
             width: libelle.implicitWidth

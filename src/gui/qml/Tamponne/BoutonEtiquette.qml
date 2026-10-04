@@ -44,6 +44,9 @@ AbstractButton {
             border.width: 1.5
         }
         Shape {
+            // Rendue en texture : une Shape échappe sinon au découpage d'une zone défilante.
+            layer.enabled: true
+            layer.samples: 4
             x: 27.5
             y: 8.5
             width: 1.5

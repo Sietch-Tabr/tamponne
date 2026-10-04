@@ -60,15 +60,16 @@ Feuille {
                     font.capitalization: Font.AllUppercase
                     font.letterSpacing: 0.6
                     font.variableAxes: { "wdth": 90, "wght": 700 }
-                    wrapMode: Text.NoWrap
                     Accessible.role: Accessible.Heading
                 }
                 Texte {
+                    // Le cartouche se replie comme dans la maquette quand la place manque.
+                    Layout.maximumWidth: 50
+                    Layout.alignment: Qt.AlignTop
                     text: "Form. R-02"
                     color: Theme.encre2
                     font.family: Theme.policeMono
                     font.pixelSize: 14
-                    wrapMode: Text.NoWrap
                     Accessible.ignored: true
                 }
             }
@@ -94,10 +95,12 @@ Feuille {
 
             Flow {
                 Layout.fillWidth: true
-                spacing: 18
+                // « gap: 2px 18px » de la maquette : 2 px entre lignes, 16 px ajoutés par case.
+                spacing: 2
                 Repeater {
                     model: racine.choix.categories.slice(0, 2)
                     CaseCerfa {
+                        ecartApres: 16
                         required property string modelData
                         text: modelData
                         coche: racine.etat.categories.indexOf(modelData) >= 0
@@ -107,10 +110,12 @@ Feuille {
             }
             Flow {
                 Layout.fillWidth: true
-                spacing: 18
+                // « gap: 2px 18px » de la maquette : 2 px entre lignes, 16 px ajoutés par case.
+                spacing: 2
                 Repeater {
                     model: racine.choix.categories.slice(2)
                     CaseCerfa {
+                        ecartApres: 16
                         required property string modelData
                         text: modelData
                         coche: racine.etat.categories.indexOf(modelData) >= 0
@@ -132,10 +137,12 @@ Feuille {
 
             Flow {
                 Layout.fillWidth: true
-                spacing: 18
+                // « gap: 2px 18px » de la maquette : 2 px entre lignes, 16 px ajoutés par case.
+                spacing: 2
                 Repeater {
                     model: racine.choix.versants
                     CaseCerfa {
+                        ecartApres: 16
                         required property var modelData
                         text: modelData.libelle
                         coche: racine.etat.versants.indexOf(modelData.cle) >= 0

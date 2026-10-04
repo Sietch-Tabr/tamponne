@@ -17,9 +17,12 @@ AbstractButton {
     property bool partiel: false
     /*! Libellé de groupe (fenêtres de sélection) : graisse 800, largeur 90 %. */
     property bool gras: false
+    /*! Écart réservé après la case dans un `Flow` (colonnes à 18 px, lignes à 2 px). */
+    property real ecartApres: 0
 
     implicitHeight: Math.max(hauteurMinimale, libelle.implicitHeight)
-    implicitWidth: 20 + 10 + libelle.implicitWidth
+    // Le libellé porte déjà la marge de 30 px réservée à la case.
+    implicitWidth: libelle.implicitWidth + ecartApres
     focusPolicy: Qt.StrongFocus
 
     Accessible.role: Accessible.CheckBox
@@ -38,6 +41,9 @@ AbstractButton {
         border.width: 2
 
         Shape {
+            // Rendue en texture : une Shape échappe sinon au découpage d'une zone défilante.
+            layer.enabled: true
+            layer.samples: 4
             // Coche de la maquette : polygone clip-path dans un carré de 13 px.
             visible: racine.coche
             x: 3.5
