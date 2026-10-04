@@ -41,3 +41,13 @@ def test_charger_mode_theme_fichier_corrompu_retourne_auto(
     parametres_affichage.CHEMIN_AFFICHAGE.write_text("{pas du json", encoding="utf-8")
     assert charger_mode_theme() == "auto"
     assert "affichage.json" in capsys.readouterr().err
+
+
+def test_reduire_animations_conserve_le_theme() -> None:
+    parametres_affichage.sauvegarder_mode_theme("clair")
+    assert parametres_affichage.charger_reduire_animations() is False
+    parametres_affichage.sauvegarder_reduire_animations(True)
+    assert parametres_affichage.charger_reduire_animations() is True
+    assert parametres_affichage.charger_mode_theme() == "clair"
+    parametres_affichage.sauvegarder_mode_theme("sombre")
+    assert parametres_affichage.charger_reduire_animations() is True

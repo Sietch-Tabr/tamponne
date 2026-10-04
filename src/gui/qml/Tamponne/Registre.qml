@@ -154,12 +154,13 @@ Item {
                         id: tamponNouveau
                         visible: cellule.nouvelle
                         x: contenu.tamponALaSuite ? texteCellule.largeurDerniereLigne + 6 : 0
+                        // Aligné sur le bas de la dernière ligne pour ne pas mordre sur la ligne du dessus.
                         y: contenu.tamponALaSuite
-                            ? texteCellule.yDerniereLigne + (texteCellule.lineHeight - implicitHeight) / 2
+                            ? texteCellule.yDerniereLigne + texteCellule.lineHeight - implicitHeight
                             : texteCellule.height + 4
                         rotation: cellule.row % 2 === 0 ? -2 : 2
                         texte: "Nouveau"
-                        taille: 13
+                        taille: 11
                         encre: cellule.selectionnee ? Theme.surligneTexte : Theme.tampon
                         fond: cellule.selectionnee ? Theme.surligneur : Theme.papier
                         Accessible.ignored: true
