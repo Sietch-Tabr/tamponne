@@ -10,6 +10,8 @@ AbstractButton {
 
     /*! Couleur vue à travers l'œillet (le support de l'étiquette). */
     property color trou: Theme.papier
+    /*! Couleur du texte et de l'œillet (rouge pour une action destructrice). */
+    property color encre: Theme.encre
 
     implicitHeight: 44
     implicitWidth: libelle.implicitWidth + leftPadding + rightPadding + 3
@@ -38,7 +40,7 @@ AbstractButton {
             height: 11
             radius: 5.5
             color: racine.trou
-            border.color: Theme.encre
+            border.color: racine.encre
             border.width: 1.5
         }
         Shape {
@@ -71,7 +73,7 @@ AbstractButton {
     contentItem: Text {
         id: libelle
         text: racine.text
-        color: Theme.encre
+        color: racine.encre
         font.family: Theme.policeTexte
         font.pixelSize: 16
         font.weight: Font.Bold

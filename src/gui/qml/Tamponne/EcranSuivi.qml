@@ -23,15 +23,30 @@ Item {
     }
 
     function ouvrirEvenement(reference: string) {
-        evenement.ouvrirPour(reference, titreDe(reference))
+        const proposition = suivi.proposition(reference)
+        evenement.ouvrirPour(reference, titreDe(reference), proposition.type || "", proposition.date || "")
+    }
+
+    function modifierEvenement(reference: string, indice: int) {
+        evenement.modifier(reference, titreDe(reference), indice, suivi.evenement(reference, indice))
     }
 
     function demanderSuppression(reference: string) {
         if (reference === "")
             return
-        confirmation.reference = reference
+        confirmation.action = () => racine.suivi.supprimer(reference)
         confirmation.demander("Arrêter le suivi",
             "Retirer le dossier « " + titreDe(reference) + " » du suivi ? Son historique et sa copie archivée seront jetés.")
+    }
+
+    function demanderSuppressionEvenement(reference: string, indice: int) {
+        const fiche = suivi.evenement(reference, indice)
+        confirmation.action = () => {
+            racine.suivi.supprimer_evenement(reference, indice)
+            evenement.close()
+        }
+        confirmation.demander("Supprimer l'événement",
+            "Retirer « " + (fiche.libelle || "") + " » du " + (fiche.dateAffichee || "") + " de l'historique de ce dossier ?")
     }
 
     DialogueDetail {
@@ -44,14 +59,28 @@ Item {
     DialogueEvenement {
         id: evenement
         types: racine.suivi.types_evenement
-        onTamponne: (reference, typeEvenement, dateIso, note) =>
-            racine.suivi.ajouter_evenement(reference, typeEvenement, dateIso, note)
+        onTamponne: (reference, typeEvenement, dateIso, note) => {
+            const erreur = racine.suivi.ajouter_evenement(reference, typeEvenement, dateIso, note)
+            if (erreur === "")
+                close()
+            else
+                refuser(erreur)
+        }
+        onEnregistre: (reference, indice, typeEvenement, dateIso, note) => {
+            const erreur = racine.suivi.modifier_evenement(reference, indice, typeEvenement, dateIso, note)
+            if (erreur === "")
+                close()
+            else
+                refuser(erreur)
+        }
+        onSuppressionDemandee: (reference, indice) => racine.demanderSuppressionEvenement(reference, indice)
     }
 
     DialogueConfirmation {
         id: confirmation
-        property string reference: ""
-        onConfirme: racine.suivi.supprimer(reference)
+        /*! Action exécutée sur « Oui ». */
+        property var action: null
+        onConfirme: if (action) action()
     }
 
     MenuDossier {
@@ -74,7 +103,7 @@ Item {
             spacing: 18
 
             Texte {
-                text: "Dossiers en cours"
+                text: racine.suivi.titre
                 color: Theme.texteKraft
                 font.pixelSize: 40
                 font.capitalization: Font.AllUppercase
@@ -146,6 +175,7 @@ Item {
                 onDetail: (reference) => racine.ouvrirDetail(reference)
                 onAjouterEvenement: (reference) => racine.ouvrirEvenement(reference)
                 onSupprimer: (reference) => racine.demanderSuppression(reference)
+                onModifierEvenement: (reference, indice) => racine.modifierEvenement(reference, indice)
                 onMenuDemande: (reference, disponible, x, y) => {
                     liste.currentIndex = index
                     menu.reference = reference

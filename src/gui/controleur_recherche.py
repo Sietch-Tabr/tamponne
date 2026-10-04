@@ -186,6 +186,14 @@ class ControleurRecherche(QObject):
     def _lire_ligne_selectionnee(self) -> int:
         return self._ligne_selectionnee
 
+    def _lire_numero_selection(self) -> str:
+        if self._ligne_selectionnee < 0:
+            return ""
+        source = self._proxy.mapToSource(
+            self._proxy.index(self._ligne_selectionnee, 0, QModelIndex())
+        )
+        return f"{source.row() + 1:03d}" if source.isValid() else ""
+
     def _lire_choix(self) -> dict[str, Any]:
         return {
             "categories": CATEGORIES,
@@ -215,6 +223,8 @@ class ControleurRecherche(QObject):
     )
     ligne_selectionnee = Property(int, _lire_ligne_selectionnee, notify=etat_change)
     """Ligne du registre (après tri et filtre) sélectionnée, -1 sinon."""
+    numero_selection = Property(str, _lire_numero_selection, notify=etat_change)
+    """N° (colonne du registre) de l'offre sélectionnée, vide sinon."""
     choix = Property(dict, _lire_choix, constant=True)
 
     # --- Formulaire ---

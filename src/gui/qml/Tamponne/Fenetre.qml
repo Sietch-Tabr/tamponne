@@ -138,7 +138,12 @@ ApplicationWindow {
                     profils: fenetre.pont.profils
                     onNouvelleFiche: fenetre.nouvelleRecherche()
                 }
-                Item { objectName: "ecranRecherche" }
+                EcranRecherche {
+                    objectName: "ecranRecherche"
+                    recherche: fenetre.pont.recherche
+                    suivi: fenetre.pont.suivi
+                    onSuiviDemande: fenetre.ongletCourant = 2
+                }
                 EcranSuivi {
                     objectName: "ecranSuivi"
                     suivi: fenetre.pont.suivi

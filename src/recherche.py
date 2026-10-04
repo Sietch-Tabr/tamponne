@@ -117,7 +117,9 @@ def rechercher_toutes_sources(
     """
     sources = sources_a_interroger(filtres, orgas_cache)
     if not sources:
-        raise RechercheImpossible("Aucune source active — voir l'onglet Sources.")
+        raise RechercheImpossible(
+            "Aucune source cochée : voir Réglages › Sources consultées."
+        )
 
     def _interroger(
         nom_affiche: str, source: SourceOffres
@@ -159,7 +161,9 @@ def rechercher_toutes_sources(
                 arret_anticipe_reference = arret_anticipe
 
     if nb_echecs == len(sources):
-        raise RechercheImpossible("Toutes les sources actives sont indisponibles.")
+        raise RechercheImpossible(
+            "Toutes les sources actives sont indisponibles. Réessayer dans un moment."
+        )
 
     return (
         deduplique_offres(toutes_offres),

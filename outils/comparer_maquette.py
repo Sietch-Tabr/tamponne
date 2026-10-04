@@ -42,6 +42,7 @@ ECRANS: dict[str, tuple[str, int, int, str]] = {
         620,
         "ecranProfils:ouvrirDuplication:attache-paris",
     ),
+    "recherche": ("Dossier-Recherche.dc.html", 1, 1200, "registre"),
     "suivi": ("Dossier-Suivi.dc.html", 2, 900, ""),
     "detail": ("Dossier-Detail.dc.html", 2, 1100, "ecranSuivi:ouvrirDetail:MINT_2026-31544"),
     "evenement": (
@@ -59,7 +60,8 @@ ECRANS: dict[str, tuple[str, int, int, str]] = {
 }
 """Écran → (fichier de maquette, index d'onglet QML, hauteur de fenêtre,
 action « objectName:fonction:argument » appelée dans le QML avant la
-capture, vide si aucune)."""
+capture, « registre » pour remplir la recherche de démonstration, vide si
+aucune)."""
 
 _POLICES_LOCALES = f"""<style>
 @font-face{{font-family:'Archivo';src:url('{(DOSSIER_POLICES / "Archivo-Variable.ttf").as_uri()}');font-weight:100 900;font-stretch:62% 125%}}
@@ -138,7 +140,11 @@ def capturer_qml(onglet: int, nuit: bool, hauteur: int, action: str) -> QImage:
     assert app is not None
     for _ in range(30):
         app.processEvents()
-    if action:
+    if action == "registre":
+        donnees_demo.remplir_registre(pont.property("recherche"))
+        for _ in range(30):
+            app.processEvents()
+    elif action:
         nom_objet, fonction, argument = action.split(":")
         ecran = fenetre.findChild(QObject, nom_objet)
         assert ecran is not None

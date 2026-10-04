@@ -22,13 +22,22 @@ from PySide6.QtGui import QDesktopServices
 from src.candidatures import (
     TYPES_EVENEMENT,
     ajouter_evenement,
+    evenement_en_double,
+    modifier_evenement,
+    supprimer_evenement,
     charger_candidatures,
     chemin_archive_pdf,
     marquer_disponibilite,
     source_candidature,
     supprimer_candidature,
 )
-from src.gui.presentation import ContenuDossier, contenu_detail, contenu_dossier
+from src.gui.presentation import (
+    ContenuDossier,
+    contenu_detail,
+    contenu_dossier,
+    evenement_propose,
+    reformater_date_iso,
+)
 from src.gui.travailleurs import VerificateurDisponibilite
 
 type _Index = QModelIndex | QPersistentModelIndex
@@ -50,6 +59,11 @@ def date_du_jour() -> date:
     """Date de référence des jours sans nouvelles (remplaçable pour les
     captures de comparaison avec la maquette, datée du 04/10/2026)."""
     return date.today()
+
+
+def titre_ecran(total: int) -> str:
+    """Titre de l'écran Suivi, au pluriel seulement s'il y a plusieurs dossiers."""
+    return "Dossiers en cours" if total > 1 else "Dossier en cours"
 
 
 def nombre_dossiers(total: int) -> str:
@@ -88,6 +102,8 @@ class ModeleDossiers(QAbstractListModel):
                     "date": t.date,
                     "courant": t.courant,
                     "refus": t.refus,
+                    "positif": t.positif,
+                    "indice": t.indice,
                 }
                 for t in dossier.tampons
             ]
@@ -130,6 +146,9 @@ class ControleurSuivi(QObject):
     def _lire_texte_nombre(self) -> str:
         return nombre_dossiers(self._nombre)
 
+    def _lire_titre(self) -> str:
+        return titre_ecran(self._nombre)
+
     def _lire_verification_en_cours(self) -> bool:
         return self._thread is not None
 
@@ -144,6 +163,7 @@ class ControleurSuivi(QObject):
     modele = Property(QObject, _lire_modele, constant=True)
     nombre = Property(int, _lire_nombre, notify=etat_change)
     texte_nombre = Property(str, _lire_texte_nombre, notify=etat_change)
+    titre = Property(str, _lire_titre, notify=etat_change)
     verification_en_cours = Property(
         bool, _lire_verification_en_cours, notify=etat_change
     )
@@ -278,16 +298,89 @@ class ControleurSuivi(QObject):
         if chemin.exists():
             QDesktopServices.openUrl(QUrl.fromLocalFile(str(chemin)))
 
-    @Slot(str, str, str, str)
+    @Slot(str, result=dict)
+    def proposition(self, reference: str) -> dict[str, str]:
+        """Type et date proposés pour le prochain événement du dossier."""
+        candidature = charger_candidatures().get(reference)
+        if candidature is None:
+            return {}
+        type_evenement, date_iso = evenement_propose(candidature, date_du_jour())
+        return {"type": type_evenement, "date": date_iso}
+
+    @Slot(str, int, result=dict)
+    def evenement(self, reference: str, indice: int) -> dict[str, str]:
+        """Événement `indice` de l'historique, pour la fenêtre de modification."""
+        candidature = charger_candidatures().get(reference)
+        historique = candidature["historique"] if candidature else []
+        if not 0 <= indice < len(historique):
+            return {}
+        evenement = historique[indice]
+        return {
+            "type": evenement["type"],
+            "date": evenement["date"],
+            "note": evenement.get("note", ""),
+            "libelle": TYPES_EVENEMENT.get(evenement["type"], evenement["type"]),
+            "dateAffichee": reformater_date_iso(evenement["date"]),
+        }
+
+    def _verifier(
+        self, reference: str, type_evenement: str, date_iso: str, sauf: int | None
+    ) -> str:
+        candidature = charger_candidatures().get(reference)
+        if candidature is None:
+            return "Ce dossier n'existe plus."
+        if type_evenement not in TYPES_EVENEMENT:
+            return "Type d'événement inconnu."
+        if evenement_en_double(candidature, type_evenement, date_iso, sauf):
+            return (
+                f"Déjà tamponné : un événement « {TYPES_EVENEMENT[type_evenement]} »"
+                " existe à cette date."
+            )
+        return ""
+
+    @Slot(str, str, str, str, result=str)
     def ajouter_evenement(
         self, reference: str, type_evenement: str, date_iso: str, note: str
-    ) -> None:
-        """Tamponne un nouvel événement dans l'historique du dossier."""
-        if type_evenement not in TYPES_EVENEMENT:
-            return
-        if reference not in charger_candidatures():
-            return  # dossier supprimé entre-temps
+    ) -> str:
+        """Tamponne un nouvel événement dans l'historique du dossier.
+
+        Returns:
+            Message d'erreur (doublon, dossier disparu), vide si ajouté.
+        """
+        erreur = self._verifier(reference, type_evenement, date_iso, None)
+        if erreur:
+            return erreur
         ajouter_evenement(reference, type_evenement, date_iso, note.strip())
+        self.rafraichir()
+        return ""
+
+    @Slot(str, int, str, str, str, result=str)
+    def modifier_evenement(
+        self, reference: str, indice: int, type_evenement: str, date_iso: str, note: str
+    ) -> str:
+        """Remplace l'événement `indice` du dossier.
+
+        Returns:
+            Message d'erreur (doublon, dossier disparu), vide si enregistré.
+        """
+        erreur = self._verifier(reference, type_evenement, date_iso, indice)
+        if erreur:
+            return erreur
+        try:
+            modifier_evenement(reference, indice, type_evenement, date_iso, note.strip())
+        except IndexError:
+            return "Cet événement n'existe plus."
+        self.rafraichir()
+        return ""
+
+    @Slot(str, int)
+    def supprimer_evenement(self, reference: str, indice: int) -> None:
+        """Retire l'événement `indice` de l'historique du dossier."""
+        if reference in charger_candidatures():
+            try:
+                supprimer_evenement(reference, indice)
+            except IndexError:
+                pass
         self.rafraichir()
 
     @Slot(str)

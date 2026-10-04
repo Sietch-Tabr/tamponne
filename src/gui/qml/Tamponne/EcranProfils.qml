@@ -20,7 +20,7 @@ Item {
     }
 
     function demanderSuppression(nom: string) {
-        confirmation.nom = nom
+        confirmation.action = () => racine.profils.supprimer(nom)
         confirmation.demander("Supprimer la fiche",
             "Supprimer la fiche « " + profils.intitule(nom) + " » ?")
     }
@@ -38,8 +38,9 @@ Item {
 
     DialogueConfirmation {
         id: confirmation
-        property string nom: ""
-        onConfirme: racine.profils.supprimer(nom)
+        /*! Action exécutée sur « Oui ». */
+        property var action: null
+        onConfirme: if (action) action()
     }
 
     ColumnLayout {

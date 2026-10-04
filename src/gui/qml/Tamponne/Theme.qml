@@ -47,7 +47,8 @@ QtObject {
     readonly property color tampon: nuit ? "#FFB672" : "#4B2C9E"
     readonly property color surTampon: nuit ? "#1F1408" : "#FFFFFF"
     readonly property color rouge: nuit ? "#FF8E80" : "#B3261E"
-    readonly property color vert: nuit ? "#82D9A4" : "#1F7A45"
+    // Vert de jour un peu plus foncé que la maquette (#1F7A45) : 4,5:1 sur le papier grisé.
+    readonly property color vert: nuit ? "#82D9A4" : "#1C7240"
     /*! Fusion des tampons avec le papier : produit le jour, écran la nuit. */
     readonly property bool fusionEcran: nuit
 
@@ -63,6 +64,9 @@ QtObject {
     // Étiquettes kraft (boutons secondaires)
     readonly property color etiquette: nuit ? "#5E4C2E" : "#E9D7AA"
     readonly property color etiquetteSurvol: nuit ? "#6E5A37" : "#F1E2BC"
+    /*! Rouge d'une action destructrice sur étiquette : le rouge de nuit
+        n'y atteint que 3,7:1, d'où une teinte plus claire. */
+    readonly property color rougeEtiquette: nuit ? "#FFCFC8" : "#B3261E"
 
     // Logotype et texte posés directement sur le bureau
     readonly property color logo: nuit ? "#E6DCC2" : "#EDE6D3"

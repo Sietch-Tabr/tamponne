@@ -262,3 +262,15 @@ def test_versants_compatibles_lit_l_ancien_format_singulier() -> None:
     ancien: FiltresRecherche = {}
     ancien["versant"] = "hospitalier"  # type: ignore[typeddict-unknown-key]
     assert versants_compatibles(ancien) == ["hospitalier"]
+
+
+def test_numero_de_selection_suit_le_registre_apres_tri(
+    controleur: ControleurRecherche, qtbot: QtBot
+) -> None:
+    controleur.definir("versants", ["etat", "territorial"])
+    controleur.lancer()
+    _attendre(controleur, qtbot)
+    assert controleur.property("numero_selection") == ""
+    controleur.trier(4)
+    controleur.selectionner(0)
+    assert controleur.property("numero_selection") == "002"

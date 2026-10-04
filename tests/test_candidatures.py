@@ -391,3 +391,21 @@ def test_source_candidature_memorisee_puis_deduite_du_prefixe() -> None:
     assert candidatures.source_candidature(ancienne) == "Ministère de l'Intérieur"
     ancienne["offre_reference"] = "2026-30871"
     assert candidatures.source_candidature(ancienne) == ""
+
+
+def test_evenements_doublon_modification_et_suppression() -> None:
+    candidatures.ajouter_candidature("R", "Titre", "Employeur", "https://example.org")
+    candidatures.ajouter_evenement("R", "relance", "2026-10-01", "")
+    candidatures.ajouter_evenement("R", "entretien_planifie", "2026-10-03", "visio")
+    dossier = candidatures.charger_candidatures()["R"]
+    assert candidatures.evenement_en_double(dossier, "relance", "2026-10-01")
+    assert not candidatures.evenement_en_double(dossier, "relance", "2026-10-01", sauf_indice=0)
+    assert not candidatures.evenement_en_double(dossier, "relance", "2026-10-02")
+
+    candidatures.modifier_evenement("R", 1, "entretien_passe", "2026-10-03", "fait")
+    candidatures.supprimer_evenement("R", 0)
+    assert candidatures.charger_candidatures()["R"]["historique"] == [
+        {"date": "2026-10-03", "type": "entretien_passe", "note": "fait"}
+    ]
+    with pytest.raises(IndexError):
+        candidatures.supprimer_evenement("R", 5)

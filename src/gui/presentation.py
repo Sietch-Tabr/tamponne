@@ -46,6 +46,10 @@ class TamponHistorique:
     """Dernier événement (celui qui donne le statut) : tampon plein et encadré."""
     refus: bool
     """Encre rouge plutôt que l'encre de tampon."""
+    positif: bool
+    """Réponse positive : encre verte."""
+    indice: int
+    """Position de l'événement dans l'historique enregistré (modification)."""
 
 
 @dataclass(frozen=True)
@@ -100,20 +104,25 @@ def contenu_dossier(
         Référence, titre, employeur et lieu, phrase de statut, tampons de
         l'historique et jours sans nouvelles si une relance est suggérée.
     """
-    historique = sorted(candidature.get("historique") or [], key=lambda e: e["date"])
+    # Tri stable par date, en gardant la position d'origine de chaque événement.
+    historique = sorted(
+        enumerate(candidature.get("historique") or []), key=lambda paire: paire[1]["date"]
+    )
     tampons = tuple(
         TamponHistorique(
             libelle=LIBELLES_TAMPON.get(evenement["type"], evenement["type"]),
             date=reformater_date_iso(evenement["date"], annee_courte=True),
             courant=rang == len(historique) - 1,
             refus=evenement["type"] == "refus",
+            positif=evenement["type"] == "reponse_positive",
+            indice=indice,
         )
-        for rang, evenement in enumerate(historique)
+        for rang, (indice, evenement) in enumerate(historique)
     )
 
     jours: int | None = None
     if relance_suggeree(candidature) and historique:
-        jours = (aujourd_hui - date.fromisoformat(historique[-1]["date"])).days
+        jours = (aujourd_hui - date.fromisoformat(historique[-1][1]["date"])).days
 
     lieu = candidature.get("offre_localisation") or ""
     employeur = candidature.get("offre_employeur") or ""
@@ -312,3 +321,18 @@ def date_courte(date_affichee: str) -> str:
     if len(morceaux) == 3 and len(morceaux[2]) == 4 and morceaux[2].isdigit():
         return f"{morceaux[0]}/{morceaux[1]}/{morceaux[2][2:]}"
     return date_affichee
+
+
+def evenement_propose(candidature: Candidature, aujourd_hui: date) -> tuple[str, str]:
+    """Type et date (ISO) proposés à l'ouverture de « Ajouter un événement ».
+
+    La suite d'un dossier vient toujours après son dernier événement : la
+    date proposée est celle du plus récent, le type celui qui le suit dans
+    `TYPES_EVENEMENT`. Sans historique : « Candidature envoyée » du jour.
+    """
+    dernier = dernier_evenement(candidature)
+    types = list(TYPES_EVENEMENT)
+    if dernier is None:
+        return types[0], aujourd_hui.isoformat()
+    rang = types.index(dernier["type"]) if dernier["type"] in types else len(types) - 1
+    return types[min(rang + 1, len(types) - 1)], dernier["date"]

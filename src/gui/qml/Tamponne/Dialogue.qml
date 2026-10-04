@@ -14,8 +14,11 @@ Popup {
     property bool alerte: false
     /*! Contenu entre le titre et le pied. */
     default property alias contenu: corps.data
-    /*! Boutons du pied, de gauche à droite. */
+    /*! Boutons du pied, de gauche à droite, alignés à droite. */
     property alias boutons: rangeeBoutons.data
+    /*! Vrai si l'appelant place lui-même un ressort parmi ses boutons
+        (bouton détaché à gauche). */
+    property bool ressortManuel: false
 
     parent: Overlay.overlay
     anchors.centerIn: parent
@@ -100,9 +103,13 @@ Popup {
 
         RowLayout {
             id: rangeeBoutons
-            Layout.alignment: Qt.AlignRight
-            Layout.topMargin: 0
+            Layout.fillWidth: true
             spacing: 14
+
+            Item {
+                visible: !racine.ressortManuel
+                Layout.fillWidth: true
+            }
         }
     }
 }

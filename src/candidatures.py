@@ -213,6 +213,47 @@ def ajouter_evenement(
     sauvegarder_candidatures(candidatures)
 
 
+def evenement_en_double(
+    candidature: Candidature,
+    type_evenement: str,
+    evenement_date: str,
+    sauf_indice: int | None = None,
+) -> bool:
+    """Vrai si l'historique contient déjà un événement de ce type à cette
+    date (l'événement `sauf_indice`, en cours de modification, est ignoré)."""
+    return any(
+        evenement["type"] == type_evenement and evenement["date"] == evenement_date
+        for indice, evenement in enumerate(candidature.get("historique") or [])
+        if indice != sauf_indice
+    )
+
+
+def modifier_evenement(
+    reference: str,
+    indice: int,
+    type_evenement: str,
+    evenement_date: str,
+    note: str = "",
+) -> None:
+    """Remplace l'événement `indice` (position dans l'historique enregistré)."""
+    candidatures = charger_candidatures()
+    historique = candidatures[reference]["historique"]
+    if not 0 <= indice < len(historique):
+        raise IndexError(f"Événement introuvable : {indice}")
+    historique[indice] = {"date": evenement_date, "type": type_evenement, "note": note}
+    sauvegarder_candidatures(candidatures)
+
+
+def supprimer_evenement(reference: str, indice: int) -> None:
+    """Retire l'événement `indice` (position dans l'historique enregistré)."""
+    candidatures = charger_candidatures()
+    historique = candidatures[reference]["historique"]
+    if not 0 <= indice < len(historique):
+        raise IndexError(f"Événement introuvable : {indice}")
+    del historique[indice]
+    sauvegarder_candidatures(candidatures)
+
+
 def supprimer_candidature(reference: str) -> None:
     """Arrête le suivi d'une candidature et supprime son archive PDF
     éventuelle (pas d'orphelin laissé dans data/archives/)."""

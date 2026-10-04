@@ -13,6 +13,7 @@ from src.gui.controleur_suivi import (
     ControleurSuivi,
     ModeleDossiers,
     nombre_dossiers,
+    titre_ecran,
 )
 from src.types import Candidature
 
@@ -164,3 +165,41 @@ def test_detail_renvoie_fiche_archivee_et_vide_si_absent(qapp: QApplication) -> 
     assert fiche["peutPostuler"] is False
     assert fiche["enLigne"] is True
     assert controleur.detail("REF-ABSENTE") == {}
+
+
+def test_titre_au_pluriel_seulement_s_il_y_a_plusieurs_dossiers() -> None:
+    assert titre_ecran(0) == "Dossier en cours"
+    assert titre_ecran(1) == "Dossier en cours"
+    assert titre_ecran(2) == "Dossiers en cours"
+
+
+@pytest.mark.usefixtures("deux_dossiers")
+def test_ajout_d_un_evenement_en_double_est_refuse(qapp: QApplication) -> None:
+    controleur = ControleurSuivi(qapp)
+    erreur = controleur.ajouter_evenement("REF-B", "candidature_envoyee", "2026-09-11", "")
+    assert erreur == (
+        "Déjà tamponné : un événement « Candidature envoyée » existe à cette date."
+    )
+    assert len(candidatures.charger_candidatures()["REF-B"]["historique"]) == 1
+
+
+@pytest.mark.usefixtures("deux_dossiers")
+def test_modifier_puis_supprimer_un_evenement(qapp: QApplication) -> None:
+    controleur = ControleurSuivi(qapp)
+    assert controleur.ajouter_evenement("REF-B", "relance", "2026-09-30", "") == ""
+    assert controleur.evenement("REF-B", 1)["libelle"] == "Relance"
+    assert controleur.modifier_evenement("REF-B", 1, "candidature_envoyee", "2026-09-11", "") == (
+        "Déjà tamponné : un événement « Candidature envoyée » existe à cette date."
+    )
+    assert controleur.modifier_evenement("REF-B", 1, "accuse_reception", "2026-09-30", "ok") == ""
+    assert candidatures.charger_candidatures()["REF-B"]["historique"][1]["type"] == "accuse_reception"
+    controleur.supprimer_evenement("REF-B", 1)
+    assert len(candidatures.charger_candidatures()["REF-B"]["historique"]) == 1
+    assert controleur.evenement("REF-B", 7) == {}
+
+
+@pytest.mark.usefixtures("deux_dossiers")
+def test_proposition_suit_le_dernier_evenement(qapp: QApplication) -> None:
+    controleur = ControleurSuivi(qapp)
+    assert controleur.proposition("REF-B") == {"type": "accuse_reception", "date": "2026-09-11"}
+    assert controleur.proposition("REF-ABSENTE") == {}

@@ -3,9 +3,13 @@ dans un dossier temporaire pour les captures de comparaison (jamais dans
 data/)."""
 
 from pathlib import Path
+from typing import cast
+
+from PySide6.QtCore import QObject
 
 from src import candidatures, profils
-from src.types import Candidature, DetailOffre, EvenementCandidature
+from src.gui.controleur_recherche import ControleurRecherche
+from src.types import Candidature, DetailOffre, EvenementCandidature, Offre
 
 _DETAIL_VIDE: DetailOffre = {
     "description": "",
@@ -129,3 +133,41 @@ def installer(dossier: Path) -> None:
             ),
         }
     )
+
+
+def _offre(reference: str, titre: str, employeur: str, lieu: str, date: str, source: str) -> Offre:
+    return {
+        "titre": titre,
+        "url": f"https://example.org/{reference}",
+        "reference": reference,
+        "domaine": "",
+        "employeur": employeur,
+        "localisation": lieu,
+        "versant": "",
+        "date": date,
+        "source": source,
+    }
+
+
+def remplir_registre(recherche: QObject) -> None:
+    """Formulaire et registre de la maquette dans l'écran Recherche, sans
+    lancer de vraie recherche (outil de comparaison uniquement)."""
+    controleur = cast(ControleurRecherche, recherche)
+    controleur.definir("categories", ["A"])
+    controleur.definir("versants", ["etat", "territorial"])
+    controleur.definir("domaines", ["Achats", "Finances"])
+    controleur.definir("localisations", ["Île-de-France"])
+    controleur.definir("teletravail", True)
+    offres = [
+        _offre("AGRI_1", "Chargé(e) de mission politiques agricoles", "DRAAF Île-de-France", "Paris 75", "02/10/2026", "Ministère de l'Agriculture"),
+        _offre("MINT_2", "Attaché(e) d'administration RH", "Préfecture de région", "Paris 75", "01/10/2026", "Ministère de l'Intérieur"),
+        _offre("T3", "Responsable du service finances", "Commune [exemple]", "Versailles 78", "30/09/2026", "Fonction publique territoriale"),
+        _offre("FHF_4", "Acheteur(se) public(que)", "Centre hospitalier [exemple]", "Créteil 94", "29/09/2026", "FHF"),
+        _offre("MEF_5", "Chef(fe) de bureau budget", "Direction ministérielle [exemple]", "Paris 75", "28/09/2026", "MEF"),
+        _offre("2026-6", "Chargé(e) d'études statistiques", "Service statistique [exemple]", "Montrouge 92", "27/09/2026", ""),
+    ]
+    controleur._modele.definir_offres(offres, {"AGRI_1", "MINT_2"})
+    controleur._nb_nouvelles = 2
+    controleur._resume = "6 inscrites · 2 nouvelles · 1 écartée (grades supérieurs) · 04/10/2026 10:12"
+    controleur._phase = "resultats"
+    controleur.selectionner(1)

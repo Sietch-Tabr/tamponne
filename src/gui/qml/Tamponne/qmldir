@@ -27,3 +27,13 @@ MenuDossier 1.0 MenuDossier.qml
 FicheBristol 1.0 FicheBristol.qml
 DialogueDupliquer 1.0 DialogueDupliquer.qml
 EcranProfils 1.0 EcranProfils.qml
+CaseCerfa 1.0 CaseCerfa.qml
+CadreCerfa 1.0 CadreCerfa.qml
+LigneChoix 1.0 LigneChoix.qml
+LignePointillee 1.0 LignePointillee.qml
+FormulaireRecherche 1.0 FormulaireRecherche.qml
+Registre 1.0 Registre.qml
+DialogueSelection 1.0 DialogueSelection.qml
+DialogueClasser 1.0 DialogueClasser.qml
+DialogueAvis 1.0 DialogueAvis.qml
+EcranRecherche 1.0 EcranRecherche.qml

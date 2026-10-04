@@ -6,6 +6,7 @@ from src.gui.presentation import (
     contenu_detail,
     contenu_dossier,
     date_courte,
+    evenement_propose,
     libelle_selection,
     lignes_fiche,
     reformater_date_iso,
@@ -228,3 +229,34 @@ def test_resume_registre_omet_les_compteurs_nuls() -> None:
 def test_date_courte_raccourcit_l_annee() -> None:
     assert date_courte("02/10/2026") == "02/10/26"
     assert date_courte("—") == "—"
+
+
+def test_tampons_gardent_la_position_d_origine_dans_l_historique() -> None:
+    contenu = contenu_dossier(
+        "R",
+        _candidature(
+            [_evt("2026-09-24", "accuse_reception"), _evt("2026-09-20", "candidature_envoyee")]
+        ),
+        aujourd_hui=date(2026, 10, 4),
+        archive_presente=False,
+    )
+    assert [(t.libelle, t.indice) for t in contenu.tampons] == [
+        ("Envoyée", 1),
+        ("Accusé de réception", 0),
+    ]
+
+
+def test_evenement_propose_suit_le_dernier_evenement() -> None:
+    assert evenement_propose(_candidature([]), date(2026, 10, 4)) == (
+        "candidature_envoyee",
+        "2026-10-04",
+    )
+    assert evenement_propose(
+        _candidature(
+            [_evt("2026-10-01", "entretien_planifie"), _evt("2026-09-20", "candidature_envoyee")]
+        ),
+        date(2026, 10, 4),
+    ) == ("entretien_passe", "2026-10-01")
+    assert evenement_propose(
+        _candidature([_evt("2026-09-26", "autre")]), date(2026, 10, 4)
+    ) == ("autre", "2026-09-26")

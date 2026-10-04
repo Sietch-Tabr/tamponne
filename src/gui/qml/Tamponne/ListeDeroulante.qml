@@ -6,7 +6,7 @@ import Tamponne
 
 /*! Liste déroulante soulignée ; la liste ouverte est une petite feuille
     cerclée d'encre où le choix courant est surligné. Modèle : liste de
-    `{ cle, libelle }`. */
+    `{ cle, libelle }` ou de simples textes. */
 ComboBox {
     id: racine
 
@@ -65,7 +65,7 @@ ComboBox {
         highlighted: racine.highlightedIndex === index
 
         contentItem: Text {
-            text: choix.modelData.libelle
+            text: typeof choix.modelData === "string" ? choix.modelData : choix.modelData.libelle
             color: choix.highlighted || racine.currentIndex === choix.index ? Theme.surligneTexte : Theme.encre
             font.family: Theme.policeTexte
             font.pixelSize: 16

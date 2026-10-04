@@ -1,5 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
+import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import Tamponne
 
@@ -21,6 +22,8 @@ Feuille {
     signal voirArchive(string reference)
     signal detail(string reference)
     signal ajouterEvenement(string reference)
+    /*! Clic sur un tampon de l'historique : modifier ou supprimer l'événement. */
+    signal modifierEvenement(string reference, int indice)
     signal supprimer(string reference)
     /*! Clic droit : position dans le dossier, pour ouvrir le menu. */
     signal menuDemande(string reference, bool disponible, real x, real y)
@@ -136,18 +139,42 @@ Feuille {
 
             Repeater {
                 model: racine.tampons
-                Tampon {
+                AbstractButton {
+                    id: boutonTampon
                     required property var modelData
                     required property int index
 
-                    // Inclinaisons de la maquette : premier à -3°, courant à -1° (-2° en refus), suivants alternés.
-                    rotation: index === 0 ? -3 : (modelData.courant ? (modelData.refus ? -2 : -1) : (index % 2 === 1 ? 2 : -2))
-                    texte: modelData.libelle
-                    date: modelData.date
-                    fond: racine.fondDossier
-                    encre: modelData.refus ? Theme.rouge : (modelData.courant ? Theme.tampon : Theme.encre2)
-                    taille: modelData.courant ? (racine.tampons.length === 1 ? 16 : 17) : 14
-                    doubleFilet: modelData.courant && !modelData.refus
+                    implicitWidth: tampon.implicitWidth
+                    implicitHeight: tampon.implicitHeight
+                    focusPolicy: Qt.StrongFocus
+                    hoverEnabled: true
+                    Accessible.role: Accessible.Button
+                    Accessible.name: "Modifier l'événement " + modelData.libelle + " du " + modelData.date
+                    onClicked: racine.modifierEvenement(racine.reference, modelData.indice)
+
+                    contentItem: Tampon {
+                        id: tampon
+                        // Inclinaisons de la maquette : premier à -3°, courant à -1° (-2° en refus), suivants alternés.
+                        rotation: boutonTampon.index === 0 ? -3 : (boutonTampon.modelData.courant ? (boutonTampon.modelData.refus ? -2 : -1) : (boutonTampon.index % 2 === 1 ? 2 : -2))
+                        texte: boutonTampon.modelData.libelle
+                        date: boutonTampon.modelData.date
+                        fond: racine.fondDossier
+                        encre: boutonTampon.modelData.refus ? Theme.rouge
+                             : (boutonTampon.modelData.positif ? Theme.vert
+                                : (boutonTampon.modelData.courant ? Theme.tampon : Theme.encre2))
+                        taille: boutonTampon.modelData.courant ? (racine.tampons.length === 1 ? 16 : 17) : 14
+                        doubleFilet: boutonTampon.modelData.courant && !boutonTampon.modelData.refus
+                        Accessible.ignored: true
+                    }
+                    background: Rectangle {
+                        visible: boutonTampon.visualFocus || boutonTampon.hovered
+                        anchors.fill: parent
+                        anchors.margins: -6
+                        color: "transparent"
+                        border.color: Theme.tampon
+                        border.width: boutonTampon.visualFocus ? 3 : 1
+                        radius: 4
+                    }
                 }
             }
         }
