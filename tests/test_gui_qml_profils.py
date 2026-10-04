@@ -9,11 +9,22 @@ from PySide6.QtCore import Q_ARG, QMetaObject, QObject, QUrl
 from PySide6.QtGui import QAccessible, QAccessibleInterface
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtWidgets import QApplication
+from pytestqt.qtbot import QtBot
 
 from outils import donnees_demo
-from src import profils
+from src import parametres_sources, profils
 from src.gui import application
 from src.gui.pont import Pont
+
+
+@pytest.fixture(autouse=True)
+def _sans_sources_reseau(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """« Lancer » démarre une vraie recherche : aucune source réseau active
+    (CLAUDE.md), la recherche échoue alors immédiatement sans appel."""
+    monkeypatch.setattr(parametres_sources, "CHEMIN_SOURCES", tmp_path / "sources.json")
+    parametres_sources.sauvegarder_sources_actives(
+        {cle: False for cle in parametres_sources.SOURCES_DISPONIBLES}
+    )
 
 
 def _charger(qapp: QApplication) -> tuple[QQmlApplicationEngine, list[str]]:
@@ -80,7 +91,9 @@ def test_ecran_profils_expose_fiches_et_actions(
 
 
 def test_lancer_une_fiche_ouvre_l_onglet_recherche(
-    ecran_avec_fiches: tuple[QQmlApplicationEngine, list[str]], qapp: QApplication
+    ecran_avec_fiches: tuple[QQmlApplicationEngine, list[str]],
+    qapp: QApplication,
+    qtbot: QtBot,
 ) -> None:
     moteur, _ = ecran_avec_fiches
     racine, _ = _fenetre_et_ecran(moteur)
@@ -89,6 +102,9 @@ def test_lancer_une_fiche_ouvre_l_onglet_recherche(
     pont.property("profils").lancer("attache-paris")
     qapp.processEvents()
     assert racine.property("ongletCourant") == 1
+    recherche = pont.property("recherche")
+    qtbot.waitUntil(lambda: recherche.property("phase") == "erreur", timeout=5000)
+    qtbot.waitUntil(lambda: recherche.property("texte_bouton") == "Lancer la recherche")
 
 
 def test_dupliquer_cree_la_copie_et_refuse_un_doublon(

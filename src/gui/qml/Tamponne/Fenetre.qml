@@ -26,12 +26,37 @@ ApplicationWindow {
 
     Connections {
         target: fenetre.pont.profils
-        function onLancement_demande() { fenetre.ongletCourant = 1 }
-        function onModification_demandee() { fenetre.ongletCourant = 1 }
+        function onLancement_demande(nom: string) {
+            fenetre.ongletCourant = 1
+            fenetre.pont.recherche.lancer_profil(nom)
+        }
+        function onModification_demandee(nom: string) {
+            fenetre.ongletCourant = 1
+            fenetre.pont.recherche.modifier_profil(nom)
+        }
+    }
+
+    Connections {
+        target: fenetre.pont.recherche
+        function onRetour_profils() { fenetre.ongletCourant = 0 }
+    }
+
+    // Les écrans relisent leurs données à chaque retour : une recherche
+    // met à jour les nouvelles d'une fiche, « Tamponner pour suivi » ajoute un dossier.
+    onOngletCourantChanged: {
+        if (ongletCourant === 0)
+            pont.profils.rafraichir()
+        else if (ongletCourant === 2)
+            pont.suivi.rafraichir()
+    }
+
+    function nouvelleRecherche() {
+        pont.recherche.nouvelle_recherche()
+        ongletCourant = 1
     }
 
     menuBar: BandeMenus {
-        onNouvelleRecherche: fenetre.ongletCourant = 1
+        onNouvelleRecherche: fenetre.nouvelleRecherche()
         onOuvrirSuivi: fenetre.ongletCourant = 2
         onOuvrirAide: fenetre.ongletCourant = 3
     }
@@ -111,7 +136,7 @@ ApplicationWindow {
                 EcranProfils {
                     objectName: "ecranProfils"
                     profils: fenetre.pont.profils
-                    onNouvelleFiche: fenetre.ongletCourant = 1
+                    onNouvelleFiche: fenetre.nouvelleRecherche()
                 }
                 Item { objectName: "ecranRecherche" }
                 EcranSuivi {

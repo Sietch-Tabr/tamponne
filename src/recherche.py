@@ -82,6 +82,7 @@ def rechercher_toutes_sources(
     on_progression: Callable[[str, int, int], None] = _ignorer,
     on_source_terminee: Callable[[str], None] = _ignorer,
     on_avertissement: Callable[[str], None] = _ignorer,
+    on_offres_source: Callable[[str, int], None] = _ignorer,
 ) -> tuple[list[Offre], int, bool]:
     """Interroge les sources actives en parallèle, puis fusionne et
     dédoublonne leurs résultats.
@@ -102,6 +103,9 @@ def rechercher_toutes_sources(
             échec) — depuis les threads du pool.
         on_avertissement: Appelé pour chaque source en échec, sans
             interrompre les autres.
+        on_offres_source: Appelé avec (nom affiché, nombre d'offres
+            trouvées avant dédoublonnage) quand une source réussit —
+            depuis les threads du pool.
 
     Returns:
         ``(offres, nb_pages, arret_anticipe)`` ; ``nb_pages`` et
@@ -122,7 +126,9 @@ def rechercher_toutes_sources(
             on_progression(nom_affiche, page, total)
 
         try:
-            return source.rechercher(filtres, on_page=_on_page)
+            resultat = source.rechercher(filtres, on_page=_on_page)
+            on_offres_source(nom_affiche, len(resultat[0]))
+            return resultat
         finally:
             on_source_terminee(nom_affiche)
 

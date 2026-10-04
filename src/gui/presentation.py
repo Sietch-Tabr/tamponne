@@ -2,7 +2,7 @@
 sans rendu : l'interface QML ne fait que les afficher."""
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 
 from src.candidatures import (
     TYPES_EVENEMENT,
@@ -271,3 +271,44 @@ def texte_nouvelles(nombre: int) -> str:
 def texte_nombre_fiches(nombre: int) -> str:
     """Compteur sous le titre « Mes fiches de recherche »."""
     return f"{nombre} fiche{'s' if nombre > 1 else ''} classée{'s' if nombre > 1 else ''}"
+
+
+def libelle_selection(selection: list[str]) -> str:
+    """Valeur affichée à droite d'une ligne de choix du formulaire
+    (« tous », le nom de l'unique élément choisi, ou « N cochés »)."""
+    if not selection:
+        return "tous"
+    if len(selection) == 1:
+        return selection[0].split(" - ")[-1]
+    return f"{len(selection)} cochés"
+
+
+def resume_registre(
+    nombre: int, nouvelles: int, ecartees: int, horodatage: datetime
+) -> str:
+    """Ligne sous le titre « Registre des offres » après une recherche.
+
+    Args:
+        nombre: Offres inscrites au registre.
+        nouvelles: Offres jamais vues pour la fiche lancée.
+        ecartees: Offres écartées par le filtre des grades supérieurs.
+        horodatage: Fin de la recherche.
+    """
+    parties = [f"{nombre} inscrite{'s' if nombre > 1 else ''}"]
+    if nouvelles:
+        parties.append(f"{nouvelles} nouvelle{'s' if nouvelles > 1 else ''}")
+    if ecartees:
+        parties.append(
+            f"{ecartees} écartée{'s' if ecartees > 1 else ''} (grades supérieurs)"
+        )
+    parties.append(horodatage.strftime("%d/%m/%Y %H:%M"))
+    return " · ".join(parties)
+
+
+def date_courte(date_affichee: str) -> str:
+    """JJ/MM/AAAA → JJ/MM/AA pour la colonne « Publiée » du registre ;
+    toute autre valeur est rendue telle quelle."""
+    morceaux = date_affichee.split("/")
+    if len(morceaux) == 3 and len(morceaux[2]) == 4 and morceaux[2].isdigit():
+        return f"{morceaux[0]}/{morceaux[1]}/{morceaux[2][2:]}"
+    return date_affichee

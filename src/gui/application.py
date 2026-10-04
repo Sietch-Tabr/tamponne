@@ -1,12 +1,15 @@
 """Point d'entrée de l'interface QML (thème « dossier administratif »)."""
 
+import json
 import sys
+import urllib.error
 from pathlib import Path
 
 from PySide6.QtCore import QObject, Qt, QUrl
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
 
+from src.cache import obtenir_organisations
 from src.gui.pont import Pont
 from src.parametres_affichage import charger_mode_theme
 
@@ -51,7 +54,12 @@ def main() -> int:
     app.setApplicationDisplayName("Tamponné")
     app.setOrganizationName("Tamponné")
 
-    pont = Pont()
+    try:
+        orgas_cache = obtenir_organisations()
+    except OSError, json.JSONDecodeError, urllib.error.URLError, RuntimeError:
+        orgas_cache = {}
+
+    pont = Pont(orgas_cache=orgas_cache)
     app.aboutToQuit.connect(pont.arreter)
     moteur = creer_moteur(pont)
     moteur.load(QUrl.fromLocalFile(str(DOSSIER_QML / "Tamponne" / "Fenetre.qml")))

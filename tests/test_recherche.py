@@ -457,6 +457,7 @@ def test_rechercher_remonte_progression_et_sources_terminees(
     monkeypatch.setattr(EmploiTerritorial, "rechercher", _echec)
     progressions: list[tuple[str, int, int]] = []
     terminees: list[str] = []
+    comptes: list[tuple[str, int]] = []
     offres, nb_pages, _ = rechercher_toutes_sources(
         {},
         {},
@@ -464,6 +465,7 @@ def test_rechercher_remonte_progression_et_sources_terminees(
             (nom, page, total)
         ),
         on_source_terminee=terminees.append,
+        on_offres_source=lambda nom, nombre: comptes.append((nom, nombre)),
     )
 
     nom_csp = parametres_sources.SOURCES_DISPONIBLES["choisirleservicepublic"]
@@ -474,6 +476,8 @@ def test_rechercher_remonte_progression_et_sources_terminees(
     )
     assert nb_pages == 2
     assert [o["reference"] for o in offres] == ["O1"]
+    # Seule la source qui a réussi annonce son nombre d'offres.
+    assert comptes == [(nom_csp, 1)]
 
 
 # --- Post-traitement ---

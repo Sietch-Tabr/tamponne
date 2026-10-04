@@ -7,6 +7,8 @@ connexion à une fonction/lambda ordinaire ne garantit pas l'exécution
 sur le bon thread.
 """
 
+from collections.abc import Callable
+
 from PySide6.QtCore import QObject, Signal
 
 from src.candidatures import verifier_disponibilite
@@ -35,6 +37,8 @@ class TravailleurRecherche(QObject):
     """Nom affiché d'une source dont l'interrogation démarre."""
     source_terminee = Signal(str)
     """Nom affiché d'une source dont l'interrogation est finie (succès ou échec)."""
+    offres_source = Signal(str, int)
+    """(nom affiché, nombre d'offres trouvées) d'une source qui a réussi."""
 
     def __init__(self, filtres: FiltresRecherche, orgas_cache: Organisations) -> None:
         super().__init__()
@@ -53,6 +57,7 @@ class TravailleurRecherche(QObject):
                 on_progression=self.progression.emit,
                 on_source_terminee=self.source_terminee.emit,
                 on_avertissement=self.avertissement.emit,
+                on_offres_source=self.offres_source.emit,
             )
         except RechercheImpossible as erreur:
             self.erreur.emit(str(erreur))
@@ -108,3 +113,26 @@ class VerificateurMiseAJour(QObject):
         if info is not None:
             ecrire_maj_disponible(info)
         self.resultat.emit(info)
+
+
+class TacheReseau(QObject):
+    """Appel réseau ponctuel (détail d'une offre, suivi) exécuté dans un
+    `QThread`, pour ne pas figer l'interface pendant l'attente."""
+
+    termine = Signal(object)
+    """Valeur renvoyée par la fonction."""
+    echec = Signal(str)
+    """Message d'erreur si la fonction a levé une exception attendue."""
+
+    def __init__(self, fonction: Callable[[], object]) -> None:
+        super().__init__()
+        self._fonction = fonction
+
+    def executer(self) -> None:
+        """Slot à connecter à `QThread.started`."""
+        try:
+            resultat = self._fonction()
+        except (RuntimeError, OSError) as erreur:
+            self.echec.emit(str(erreur))
+            return
+        self.termine.emit(resultat)

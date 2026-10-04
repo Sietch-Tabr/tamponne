@@ -6,8 +6,10 @@ from typing import cast
 from PySide6.QtCore import Property, QObject, Signal, Slot
 
 from src.gui.controleur_profils import ControleurProfils
+from src.gui.controleur_recherche import ControleurRecherche
 from src.gui.controleur_suivi import ControleurSuivi
 from src.parametres_affichage import MODES_THEME, ModeTheme, sauvegarder_mode_theme
+from src.types import Organisations
 
 
 class Pont(QObject):
@@ -16,11 +18,14 @@ class Pont(QObject):
 
     mise_a_jour_disponible_changee = Signal()
 
-    def __init__(self, parent: QObject | None = None) -> None:
+    def __init__(
+        self, parent: QObject | None = None, orgas_cache: Organisations | None = None
+    ) -> None:
         super().__init__(parent)
         self._mise_a_jour_disponible = False
         self._suivi = ControleurSuivi(self)
         self._profils = ControleurProfils(self)
+        self._recherche = ControleurRecherche(orgas_cache or {}, self)
 
     def _lire_suivi(self) -> QObject:
         return self._suivi
@@ -34,9 +39,16 @@ class Pont(QObject):
     profils = Property(QObject, _lire_profils, constant=True)
     """Contrôleur de l'écran Profils (`ControleurProfils`)."""
 
+    def _lire_recherche(self) -> QObject:
+        return self._recherche
+
+    recherche = Property(QObject, _lire_recherche, constant=True)
+    """Contrôleur de l'écran Recherche (`ControleurRecherche`)."""
+
     def arreter(self) -> None:
         """Attend la fin des traitements en arrière-plan avant de quitter."""
         self._suivi.arreter()
+        self._recherche.arreter()
 
     def _lire_mise_a_jour_disponible(self) -> bool:
         return self._mise_a_jour_disponible

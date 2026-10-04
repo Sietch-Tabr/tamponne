@@ -1,12 +1,15 @@
 """Tests de src/gui/presentation.py : textes des dossiers de suivi."""
 
-from datetime import date
+from datetime import date, datetime
 
 from src.gui.presentation import (
     contenu_detail,
     contenu_dossier,
+    date_courte,
+    libelle_selection,
     lignes_fiche,
     reformater_date_iso,
+    resume_registre,
     texte_nombre_fiches,
     texte_nouvelles,
 )
@@ -205,3 +208,23 @@ def test_textes_nouvelles_et_nombre_de_fiches_accordes() -> None:
     assert texte_nouvelles(2) == "2 nouvelles"
     assert texte_nombre_fiches(1) == "1 fiche classée"
     assert texte_nombre_fiches(2) == "2 fiches classées"
+
+
+def test_libelle_selection_tous_unique_ou_nombre() -> None:
+    assert libelle_selection([]) == "tous"
+    assert libelle_selection(["Île-de-France"]) == "Île-de-France"
+    assert libelle_selection(["Ministère - Direction des achats"]) == "Direction des achats"
+    assert libelle_selection(["A", "B"]) == "2 cochés"
+
+
+def test_resume_registre_omet_les_compteurs_nuls() -> None:
+    quand = datetime(2026, 10, 4, 10, 12)
+    assert resume_registre(6, 2, 1, quand) == (
+        "6 inscrites · 2 nouvelles · 1 écartée (grades supérieurs) · 04/10/2026 10:12"
+    )
+    assert resume_registre(0, 0, 0, quand) == "0 inscrite · 04/10/2026 10:12"
+
+
+def test_date_courte_raccourcit_l_annee() -> None:
+    assert date_courte("02/10/2026") == "02/10/26"
+    assert date_courte("—") == "—"
