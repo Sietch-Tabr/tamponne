@@ -4,6 +4,55 @@ Toutes les évolutions notables de Tamponné, de la plus récente à la plus
 ancienne. Le détail de chaque version est aussi publié sur la page
 [Releases](https://codeberg.org/Kwaite/tamponne/releases) du dépôt.
 
+## [1.1.0] — 2026-10-05
+
+### Nouvelle interface
+
+- Interface entièrement redessinée façon « dossier administratif » : chemise kraft, fiches bristol, registre des offres, dossiers tamponnés
+- Bureau de jour et bureau de nuit, en suivant le système ou au choix dans Réglages
+- Onglets Profils, Recherche, Suivi, Aide et Réglages, menus Fichier et Aide dans la fenêtre
+- Contrastes vérifiés (WCAG AA), navigation au clavier, option « Réduire les animations »
+- Typographie française soignée (espaces insécables avant la ponctuation double)
+
+### Recherche
+
+- Formulaire de demande regroupé par cases : catégorie, corps et grade, versant, poste, lieu, options
+- Registre des offres : tri par colonne, filtre en direct, tampon « Nouveau » sur les offres jamais vues pour la fiche, filtre « Nouvelles seulement »
+- Détail d'une offre consultable sans quitter le registre, suivi d'une offre en un clic (« Tamponner pour suivi »)
+- L'export HTML résume les critères de la recherche affichée
+
+### Fiches de recherche
+
+- Une fiche modifiée garde son intitulé
+- L'option « Grades supérieurs » est enregistrée avec la fiche et rappelée sur sa carte quand la catégorie A+ est concernée
+- La duplication demande aussi l'intitulé de la copie
+
+### Suivi de candidature
+
+- Historique en tampons datés : un clic sur un tampon permet de modifier ou de supprimer l'événement
+- Un même événement ne peut plus être ajouté deux fois à la même date
+- La date et le type du prochain événement sont proposés d'après l'historique
+- Réponse positive en vert, refus en rouge
+
+### Réglages
+
+- Avis de mise à jour avec notes de version, « Installer et redémarrer » ou « Au prochain lancement »
+- Sources consultées, thème, réduction des animations, rafraîchissement du cache des organisations
+
+### Corrections
+
+- La catégorie « A+ (autres emplois fonctionnels) » n'était pas transmise aux sites et la recherche portait sur toutes les catégories
+- Une recherche lancée depuis une fiche puis modifiée n'est plus comptée pour la fiche
+
+### Mise à jour
+
+- Les fichiers de l'ancienne interface sont retirés automatiquement au premier lancement ; vos données ne sont pas touchées
+- Les mises à jour suivantes suppriment aussi les fichiers retirés d'une version à l'autre
+
+### Maintenance
+
+- Dépendances à jour
+
 ## [1.0.5] — 2026-10-03
 
 ### Fiabilité
