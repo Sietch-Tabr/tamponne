@@ -1,5 +1,6 @@
 """Point d'entrée de l'interface QML (thème « dossier administratif »)."""
 
+import ctypes
 import json
 import sys
 import urllib.error
@@ -17,6 +18,9 @@ from src.parametres_affichage import charger_mode_theme, charger_reduire_animati
 
 DOSSIER_QML = Path(__file__).parent / "qml"
 ICONE = Path(__file__).parent / "icones" / "tamponne.png"
+IDENTIFIANT_WINDOWS = "Kwaite.Tamponne"
+"""Identifiant d'application Windows (AppUserModelID) : regroupement et
+icône dans la barre des tâches."""
 
 
 def creer_moteur(pont: Pont) -> QQmlApplicationEngine:
@@ -68,6 +72,12 @@ def main() -> int:
         la boucle Qt.
     """
     nettoyer_fichiers_obsoletes()
+    if sys.platform == "win32":
+        # Sans identifiant propre, Windows range la fenêtre sous python.exe
+        # et la barre des tâches montre l'icône de Python.
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
+            IDENTIFIANT_WINDOWS
+        )
     # Menus Fichier/Aide dessinés dans la fenêtre (bande bristol) plutôt
     # que dans la barre système de macOS ; à poser avant l'application.
     QGuiApplication.setAttribute(Qt.ApplicationAttribute.AA_DontUseNativeMenuBar)

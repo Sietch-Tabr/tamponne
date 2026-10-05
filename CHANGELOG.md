@@ -10,6 +10,8 @@ ancienne. Le détail de chaque version est aussi publié sur la page
 
 - Linux : lancé par double-clic (KDE, GNOME), le premier lancement s'ouvre dans un terminal pour montrer l'installation de uv et des composants ; en cas d'erreur, le terminal reste ouvert jusqu'à Entrée
 - Sur un petit écran (portable), la fenêtre s'ouvre agrandie au lieu de déborder
+- Windows : l'avertissement de sécurité ne s'affiche plus qu'au premier lancement (marque du Web retirée des fichiers de Tamponné)
+- Windows : l'icône de Tamponné s'affiche dans la barre des tâches au lieu de celle de Python
 
 ## [1.2.0] — 2026-10-05
 

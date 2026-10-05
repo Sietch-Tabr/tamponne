@@ -9,10 +9,12 @@ peut donc remplacer les scripts et `src/` pendant qu'il tourne.
 Sans dépendance à Qt : l'interface n'est importée que par le sous-processus.
 """
 
+import os
 import shutil
 import subprocess
 import sys
 from collections.abc import Callable, Sequence
+from pathlib import Path
 
 from src.maj import CHEMIN_MARQUEUR, CHEMIN_RACINE
 
@@ -24,7 +26,37 @@ MESSAGE_MAJ_INDISPONIBLE = (
 )
 MESSAGE_RELANCER = "Relancez Tamponné pour terminer la mise à jour."
 
+FLUX_MARQUE_DU_WEB = ":Zone.Identifier"
+"""Flux NTFS posé par Windows sur un fichier téléchargé (ou extrait d'un zip
+téléchargé) : il fait afficher un avertissement à chaque ouverture."""
+DOSSIERS_SANS_MARQUE = {".git", ".venv", "data"}
+
 type Executer = Callable[[Sequence[str]], int]
+
+
+def retirer_marque_du_web(racine: Path = CHEMIN_RACINE) -> int:
+    """Retire la marque du Web des fichiers de l'installation, comme
+    `Unblock-File` : l'utilisateur a déjà accepté de lancer Tamponné, les
+    lancements suivants ne l'avertissent plus. Sans effet si `Tamponne.bat`
+    n'est pas marqué (déjà fait, ou installation non téléchargée).
+
+    Returns:
+        Nombre de fichiers débloqués.
+    """
+    if not os.path.exists(str(racine / "Tamponne.bat") + FLUX_MARQUE_DU_WEB):
+        return 0
+    debloques = 0
+    for dossier, sous_dossiers, fichiers in os.walk(racine):
+        sous_dossiers[:] = [d for d in sous_dossiers if d not in DOSSIERS_SANS_MARQUE]
+        for nom in fichiers:
+            if ":" in nom:
+                continue
+            try:
+                os.remove(os.path.join(dossier, nom) + FLUX_MARQUE_DU_WEB)
+            except OSError:
+                continue
+            debloques += 1
+    return debloques
 
 
 def _executer(commande: Sequence[str]) -> int:
@@ -69,4 +101,6 @@ def lancer(executer: Executer = _executer) -> int:
 
 
 if __name__ == "__main__":
+    if sys.platform == "win32":
+        retirer_marque_du_web()
     raise SystemExit(lancer())
