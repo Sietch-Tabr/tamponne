@@ -3,6 +3,7 @@
 classement en profil, mode édition et actions sur une offre."""
 
 from collections.abc import Callable, Iterator
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -10,7 +11,7 @@ from PySide6.QtCore import QModelIndex, Qt
 from PySide6.QtWidgets import QApplication
 from pytestqt.qtbot import QtBot
 
-from src import parametres_sources, profils
+from src import cache, parametres_sources, profils
 from src.gui import controleur_recherche
 from src.filtres import CATEGORIES, resumer_filtres
 from src.gui.controleur_recherche import ControleurRecherche
@@ -324,30 +325,33 @@ def test_grades_superieurs_enregistres_avec_la_fiche_et_relus(qapp: QApplication
     assert autre.property("etat")["grades_superieurs"] is True
 
 
-def test_fiche_lancee_telle_quelle_est_consultee(
+def test_fiche_lancee_telle_quelle_note_son_lancement(
     controleur: ControleurRecherche, qtbot: QtBot
 ) -> None:
     profils.sauvegarder_profils({"f": {"label": "F", "versants": ["etat"]}})
     controleur.lancer_profil("f")
     _attendre(controleur, qtbot)
-    fiche = profils.charger_profils()["f"]
-    assert fiche.get("dernier_lancement") is not None
-    assert fiche.get("nb_nouvelles") == 0
+    assert profils.charger_profils()["f"].get("dernier_lancement") == date.today().isoformat()
+    assert cache.obtenir_offres_cachetees("f")
 
 
 def test_fiche_aux_criteres_modifies_n_est_pas_touchee(
     controleur: ControleurRecherche, qtbot: QtBot
 ) -> None:
     profils.sauvegarder_profils(
-        {"f": {"label": "F", "versants": ["etat"], "nb_nouvelles": 3, "nouvelles_le": "2026-10-05"}}
+        {"f": {"label": "F", "versants": ["etat"], "dernier_lancement": "2000-01-01"}}
     )
     controleur.lancer_profil("f")
     _attendre(controleur, qtbot)
-    profils.mettre_a_jour_stats("f", 3, consultation=False)
+    profils.sauvegarder_profils(
+        {"f": {"label": "F", "versants": ["etat"], "dernier_lancement": "2000-01-01"}}
+    )
+    cache._sauvegarder_offres({})
     controleur.basculer("categories", "B", True)
     controleur.lancer()
     _attendre(controleur, qtbot)
-    assert profils.charger_profils()["f"].get("nb_nouvelles") == 3
+    assert profils.charger_profils()["f"].get("dernier_lancement") == "2000-01-01"
+    assert cache.obtenir_offres_cachetees("f") == {}
     assert "nouvelle" not in controleur.property("resume")
 
 

@@ -57,11 +57,6 @@ class Pont(QObject):
     """Contrôleur de l'écran Réglages (`ControleurReglages`)."""
 
     @property
-    def profils_controleur(self) -> ControleurProfils:
-        """Contrôleur des Profils typé, pour `main()` (relevé quotidien)."""
-        return self._profils
-
-    @property
     def reglages_controleur(self) -> ControleurReglages:
         """Contrôleur des Réglages typé, pour `main()` (vérification, sortie)."""
         return self._reglages
@@ -71,7 +66,6 @@ class Pont(QObject):
         self._suivi.arreter()
         self._recherche.arreter()
         self._reglages.arreter()
-        self._profils.arreter()
 
     def _lire_mise_a_jour_disponible(self) -> bool:
         return bool(self._reglages.pastille)

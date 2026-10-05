@@ -61,7 +61,7 @@ uv run python -m src.gui.application
 - **Multi-source** — choisirleservicepublic.gouv.fr, emploi-territorial.fr, Passerelles/MEF, FHF, chacune activable depuis Réglages › Sources consultées ; dédoublonnage automatique des offres communes
 - **Demande de recherche** — catégorie (dont A+), corps et grade (Attaché, Adjoint administratif), versant, domaines, type de poste, expérience, date de publication, localisations, organisations, management, télétravail, grades supérieurs, mot-clé libre
 - **Fiches de recherche** — classer une demande, la lancer, la modifier, la dupliquer ou la supprimer depuis l'onglet Profils
-- **Nouvelles offres** — chaque jour, au premier lancement, les fiches sont relevées en arrière-plan : le tampon rouge compte les offres pas encore consultées, daté du relevé ; dans le registre, elles portent le tampon « Nouveau » et un filtre permet de ne voir qu'elles
+- **Nouvelles offres** — à chaque lancement d'une fiche, les offres jamais vues pour elle portent le tampon « Nouveau » dans le registre, avec un filtre pour ne voir qu'elles
 - **Registre des offres** — pagination complète (jusqu'à 20 pages par source), tri par colonne, filtre en direct, export HTML des offres affichées
 - **Filtre grades supérieurs** — offres IDIV/IP/AFIPA écartées par défaut, réintégrables
 - **Suivi de candidature** — dossiers tamponnés depuis le registre avec fiche de poste archivée en PDF, historique d'événements modifiable, relance suggérée après 3 semaines sans nouvelles, vérification des offres dépubliées
@@ -85,14 +85,14 @@ Ce mécanisme repose sur `lancer.sh`/`lancer.bat` (voir ci-dessus) — un lancem
 ```
 src/
   gui/
-    application.py           point d'entrée : moteur QML, mise à jour, relevé quotidien
+    application.py           point d'entrée : moteur QML, vérification de mise à jour
     app.py                   ancien point d'entrée (lanceurs 1.0.x), délègue à application
     pont.py                  objet unique exposé au QML (contrôleurs)
     controleur_*.py          un contrôleur par écran : Profils, Recherche, Suivi, Réglages
     presentation.py          textes affichés, calculés sans Qt
     modele_offres.py         registre : modèle, tri et filtres
     modele_registre.py       colonnes du registre des offres
-    travailleurs.py          tâches réseau sur QThread (recherche, vérifications, relevé)
+    travailleurs.py          tâches réseau sur QThread (recherche, vérifications)
     qml/Tamponne/            interface QML : Theme.qml (couleurs jour/nuit), écrans,
                              dialogues, composants, polices embarquées
   sources/
@@ -102,7 +102,6 @@ src/
     passerellesmef/          portail Talentsoft des ministères économiques et financiers
     fhf/                     portail de la Fédération Hospitalière de France (FPH)
   recherche.py               orchestration multi-source (sans Qt)
-  releve.py                  relevé quotidien des nouvelles des fiches (sans Qt)
   cache.py                   cache organisations (7 j) + offres vues par fiche (30 j)
   candidatures.py            suivi de candidature
   filtres.py                 constantes IDs API (catégories, grades, versants, domaines, localisations)
@@ -112,7 +111,7 @@ src/
   maj.py                     vérification/application des mises à jour (publications Codeberg)
   nettoyage.py               retrait des fichiers de l'ancienne interface après mise à jour
   export.py                  export HTML inline
-  utils.py                   écriture JSON atomique, verrou des données
+  utils.py                   écriture JSON atomique
   types.py                   structures de données partagées (TypedDict)
 data/
   profils.json               fiches de recherche

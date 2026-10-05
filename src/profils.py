@@ -8,7 +8,7 @@ from typing import Any, cast
 
 from src.filtres import categorie_normalisee, resumer_filtres
 from src.types import FiltresRecherche, Profil
-from src.utils import VERROU_DONNEES, ecriture_atomique
+from src.utils import ecriture_atomique
 
 CHEMIN_PROFILS = Path(__file__).parent.parent / "data" / "profils.json"
 
@@ -37,10 +37,9 @@ def sauvegarder_profils(profils: dict[str, Profil]) -> None:
 
 def ajouter_profil(nom: str, filtres: Profil) -> None:
     """Crée ou remplace un profil."""
-    with VERROU_DONNEES:
-        profils = charger_profils()
-        profils[nom] = {**filtres, "cree_le": date.today().isoformat()}
-        sauvegarder_profils(profils)
+    profils = charger_profils()
+    profils[nom] = {**filtres, "cree_le": date.today().isoformat()}
+    sauvegarder_profils(profils)
 
 
 _METADONNEES_CONSERVEES = ("label", "cree_le", "dernier_lancement")
@@ -48,24 +47,21 @@ _METADONNEES_CONSERVEES = ("label", "cree_le", "dernier_lancement")
 
 def modifier_profil(nom: str, filtres: FiltresRecherche) -> None:
     """Remplace les critères d'un profil en gardant son intitulé, sa date
-    de création et celle du dernier lancement ; le compte des nouvelles,
-    établi pour les anciens critères, est effacé (le relevé le refera)."""
-    with VERROU_DONNEES:
-        profils = charger_profils()
-        ancien = cast(dict[str, Any], profils.get(nom, {}))
-        conserve = {cle: ancien[cle] for cle in _METADONNEES_CONSERVEES if cle in ancien}
-        profils[nom] = cast(
-            Profil, {"cree_le": date.today().isoformat(), **conserve, **filtres}
-        )
-        sauvegarder_profils(profils)
+    de création et celle du dernier lancement."""
+    profils = charger_profils()
+    ancien = cast(dict[str, Any], profils.get(nom, {}))
+    conserve = {cle: ancien[cle] for cle in _METADONNEES_CONSERVEES if cle in ancien}
+    profils[nom] = cast(
+        Profil, {"cree_le": date.today().isoformat(), **conserve, **filtres}
+    )
+    sauvegarder_profils(profils)
 
 
 def supprimer_profil(nom: str) -> None:
     """Supprime un profil."""
-    with VERROU_DONNEES:
-        profils = charger_profils()
-        profils.pop(nom, None)
-        sauvegarder_profils(profils)
+    profils = charger_profils()
+    profils.pop(nom, None)
+    sauvegarder_profils(profils)
 
 
 def dupliquer_profil(
@@ -78,38 +74,26 @@ def dupliquer_profil(
         nouveau_nom: Nom de la copie.
         label: Intitulé de la copie ; `None` garde celui du profil source.
     """
-    with VERROU_DONNEES:
-        profils = charger_profils()
-        if nom_source not in profils:
-            raise KeyError(f"Profil introuvable\u00a0: {nom_source}")
-        profils[nouveau_nom] = {
-            **profils[nom_source],
-            "cree_le": date.today().isoformat(),
-        }
-        if label:
-            profils[nouveau_nom]["label"] = label
-        sauvegarder_profils(profils)
+    profils = charger_profils()
+    if nom_source not in profils:
+        raise KeyError(f"Profil introuvable\u00a0: {nom_source}")
+    profils[nouveau_nom] = {
+        **profils[nom_source],
+        "cree_le": date.today().isoformat(),
+    }
+    if label:
+        profils[nouveau_nom]["label"] = label
+    sauvegarder_profils(profils)
 
 
-def mettre_a_jour_stats(nom: str, nb_nouvelles: int, consultation: bool = True) -> None:
-    """Enregistre le nombre d'offres pas encore consultées et sa date.
-
-    Args:
-        nom: Profil concerné (ignoré s'il n'existe plus).
-        nb_nouvelles: Offres pas encore consultées dans le registre.
-        consultation: Vrai pour un lancement depuis l'interface (date du
-            dernier lancement aussi mise à jour), faux pour un relevé.
-    """
-    with VERROU_DONNEES:
-        profils = charger_profils()
-        if nom not in profils:
-            return
-        aujourd_hui = date.today().isoformat()
-        if consultation:
-            profils[nom]["dernier_lancement"] = aujourd_hui
-        profils[nom]["nb_nouvelles"] = nb_nouvelles
-        profils[nom]["nouvelles_le"] = aujourd_hui
-        sauvegarder_profils(profils)
+def noter_lancement(nom: str) -> None:
+    """Enregistre la date du dernier lancement d'une fiche (ignorée si elle
+    n'existe plus)."""
+    profils = charger_profils()
+    if nom not in profils:
+        return
+    profils[nom]["dernier_lancement"] = date.today().isoformat()
+    sauvegarder_profils(profils)
 
 
 def categories_compatibles(profil: FiltresRecherche) -> list[str]:

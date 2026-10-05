@@ -12,9 +12,7 @@ from src.gui.presentation import (
     notes_en_html,
     reformater_date_iso,
     resume_registre,
-    tampon_nouvelles,
     texte_nombre_fiches,
-    texte_nouvelles,
 )
 from src.types import Candidature, EvenementCandidature, Profil
 
@@ -215,10 +213,7 @@ def test_lignes_fiche_profil_vide() -> None:
     ]
 
 
-def test_textes_nouvelles_et_nombre_de_fiches_accordes() -> None:
-    assert texte_nouvelles(0) == ""
-    assert texte_nouvelles(1) == "1 nouvelle"
-    assert texte_nouvelles(2) == "2 nouvelles"
+def test_texte_nombre_de_fiches_accorde() -> None:
     assert texte_nombre_fiches(1) == "1 fiche classée"
     assert texte_nombre_fiches(2) == "2 fiches classées"
 
@@ -306,19 +301,6 @@ def test_notes_en_html_liens_https_seulement() -> None:
     html = notes_en_html("[README](https://codeberg.org/r) et [local](file:///etc)")
     assert '<a href="https://codeberg.org/r">README</a>' in html
     assert "local" in html and "file://" not in html
-
-
-def test_tampon_nouvelles_date_du_comptage() -> None:
-    assert tampon_nouvelles({"nb_nouvelles": 3, "nouvelles_le": "2026-10-05"}) == (
-        "3 nouvelles",
-        "05/10/26",
-    )
-
-
-def test_tampon_nouvelles_absent_sans_date_ou_sans_nouvelles() -> None:
-    # Ancien compte (avant le relevé) : il ne mesurait pas les non consultées.
-    assert tampon_nouvelles({"nb_nouvelles": 3}) == ("", "")
-    assert tampon_nouvelles({"nb_nouvelles": 0, "nouvelles_le": "2026-10-05"}) == ("", "")
 
 
 def test_lignes_fiche_categories_en_libelle_court() -> None:

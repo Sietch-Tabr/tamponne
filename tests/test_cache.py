@@ -117,29 +117,10 @@ def test_maj_cache_offres_toutes_nouvelles_au_premier_passage() -> None:
     assert nouvelles == {"REF1", "REF2"}
 
 
-def test_maj_cache_offres_consultee_n_est_plus_nouvelle() -> None:
+def test_maj_cache_offres_deja_vue_n_est_plus_nouvelle() -> None:
     cache.maj_cache_offres("mon-profil", [_offre("REF1")])
     nouvelles = cache.maj_cache_offres("mon-profil", [_offre("REF1"), _offre("REF2")])
     assert nouvelles == {"REF2"}
-
-
-def test_maj_cache_offres_releve_compte_sans_consulter() -> None:
-    assert cache.maj_cache_offres("mon-profil", [_offre("REF1")], False) == {"REF1"}
-    assert cache.maj_cache_offres("mon-profil", [_offre("REF1")], False) == {"REF1"}
-    assert cache.obtenir_offres_cachetees("mon-profil")["REF1"].get("consultee") is False
-    # Affichée dans le registre : nouvelle une dernière fois, puis consultée.
-    assert cache.maj_cache_offres("mon-profil", [_offre("REF1")]) == {"REF1"}
-    assert cache.maj_cache_offres("mon-profil", [_offre("REF1")], False) == set()
-
-
-def test_maj_cache_offres_ancienne_entree_sans_drapeau_consultee() -> None:
-    toutes: dict[str, dict[str, OffreCache]] = {
-        "mon-profil": {
-            "REF1": {**_offre("REF1"), "vu_le": _iso_il_y_a(60), "derniere_vue": _iso_il_y_a(60)}
-        }
-    }
-    cache._sauvegarder_offres(toutes)
-    assert cache.maj_cache_offres("mon-profil", [_offre("REF1")], False) == set()
 
 
 def test_maj_cache_offres_purge_offre_disparue_depuis_longtemps() -> None:

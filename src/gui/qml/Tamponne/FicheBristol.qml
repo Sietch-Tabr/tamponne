@@ -5,17 +5,14 @@ import QtQuick.Layouts
 import Tamponne
 
 /*! Fiche bristol d'un profil de recherche : filet rouge en tête, lignes
-    bleues tous les 28 px, intitulé, tampon des nouvelles offres, résumé
-    à chasse fixe calé sur les lignes et actions. */
+    bleues tous les 28 px, intitulé, résumé à chasse fixe calé sur les
+    lignes et actions. */
 Item {
     id: racine
 
     required property string nom
     required property string intitule
     required property var lignes
-    required property string nouvelles
-    /*! Date JJ/MM/AA du comptage des nouvelles (relevé ou lancement). */
-    required property string dateNouvelles
 
     signal lancer(string nom)
     signal modifier(string nom)
@@ -91,35 +88,23 @@ Item {
                 font.variableAxes: { "wdth": 90, "wght": 800 }
                 Accessible.role: Accessible.Heading
             }
-            Item {
-                id: emplacementTampon
-                Layout.alignment: Qt.AlignTop
-                visible: racine.nouvelles !== ""
-                implicitWidth: tamponNouvelles.implicitWidth
-                implicitHeight: tamponNouvelles.implicitHeight
-
-                Tampon {
-                    id: tamponNouvelles
-                    rotation: 3
-                    texte: racine.nouvelles
-                    date: racine.dateNouvelles
-                    encre: Theme.rouge
-                    fond: Theme.bristol
-                }
-            }
         }
 
-        Texte {
+        // Occupe la hauteur restante (« margin-top: auto » des actions) sans
+        // l'écart d'un élément d'espacement ; le texte garde sa hauteur propre.
+        Item {
             Layout.fillWidth: true
-            text: racine.lignes.join("\n")
-            color: Theme.encre2
-            font.family: Theme.policeMono
-            font.pixelSize: 14
-            lineHeight: 28
-            // Occupe la hauteur restante (« margin-top: auto » des actions)
-            // sans ajouter l'écart d'un élément d'espacement.
             Layout.fillHeight: true
-            verticalAlignment: Text.AlignTop
+            implicitHeight: resume.implicitHeight
+            Texte {
+                id: resume
+                width: parent.width
+                text: racine.lignes.join("\n")
+                color: Theme.encre2
+                font.family: Theme.policeMono
+                font.pixelSize: 14
+                lineHeight: 28
+            }
         }
 
         // « gap: 6px 8px », « align-items: center » de la maquette.
@@ -153,34 +138,6 @@ Item {
                 text: "supprimer"
                 encre: Theme.rouge
                 onClicked: racine.supprimer(racine.nom)
-            }
-        }
-    }
-
-    // Encre du tampon mélangée aux lignes bleues qu'il traverse : copie du tampon
-    // découpée à la hauteur de chaque ligne, mélangée à la couleur de la ligne.
-    Repeater {
-        model: emplacementTampon.visible ? 6 : 0
-        Item {
-            id: bande
-            required property int index
-            readonly property point origine: emplacementTampon.mapToItem(racine, 0, 0)
-            readonly property real premiere: Math.ceil((origine.y - 6 - racine.premiereLigne) / racine.pasLignes)
-            y: racine.premiereLigne + (premiere + index) * racine.pasLignes
-            width: racine.width
-            height: 1
-            clip: true
-            visible: y >= origine.y - 6 && y <= origine.y + emplacementTampon.height + 6
-
-            Tampon {
-                x: bande.origine.x
-                y: bande.origine.y - bande.y
-                rotation: 3
-                texte: racine.nouvelles
-                date: racine.dateNouvelles
-                encre: Theme.rouge
-                fond: Theme.bristolLigne
-                Accessible.ignored: true
             }
         }
     }
