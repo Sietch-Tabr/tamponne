@@ -2,12 +2,14 @@
 dans un dossier temporaire pour les captures de comparaison (jamais dans
 data/)."""
 
+from datetime import date
 from pathlib import Path
 from typing import cast
 
 from PySide6.QtCore import QObject
 
 from src import candidatures, profils
+from src.gui import controleur_reglages
 from src.gui.controleur_recherche import ControleurRecherche
 from src.types import Candidature, DetailOffre, EvenementCandidature, Offre
 
@@ -171,3 +173,17 @@ def remplir_registre(recherche: QObject) -> None:
     controleur._resume = "6 inscrites · 2 nouvelles · 1 écartée (grades supérieurs) · 04/10/2026 10:12"
     controleur._phase = "resultats"
     controleur.selectionner(1)
+
+
+def poser_avis(reglages: controleur_reglages.ControleurReglages) -> None:
+    """Avis de mise à jour de la maquette : 2.0.1 disponible, 2.0.0 installée."""
+    controleur_reglages.version_locale = lambda: "2.0.0"
+    controleur_reglages.date_avis = lambda: date(2026, 10, 4)
+    reglages.afficher_avis(
+        {
+            "version": "2.0.1",
+            "notes": "[Notes de version reprises de la publication Codeberg]",
+            "url_zip": "",
+            "url_publication": "",
+        }
+    )

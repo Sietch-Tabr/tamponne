@@ -46,6 +46,7 @@ Item {
 
     DialogueSelection {
         id: selection
+        objectName: "dialogueSelection"
         onValide: (liste, valeurs) => racine.recherche.definir(liste, valeurs)
     }
 

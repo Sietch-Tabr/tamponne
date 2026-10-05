@@ -16,6 +16,7 @@ from PySide6.QtCore import (
     Slot,
 )
 from PySide6.QtGui import QDesktopServices
+from PySide6.QtQml import QJSValue
 
 from src.candidatures import chemin_archive_pdf, suivre_offre
 from src.export import exporter_html
@@ -231,9 +232,12 @@ class ControleurRecherche(QObject):
 
     @Slot(str, "QVariant")
     def definir(self, champ: str, valeur: Any) -> None:
-        """Modifie une valeur du formulaire (case, liste, texte)."""
+        """Modifie une valeur du formulaire (case, liste, texte). Un tableau
+        JavaScript arrive en `QJSValue`, converti ici en liste Python."""
         if champ not in self._etat:
             return
+        if isinstance(valeur, QJSValue):
+            valeur = valeur.toVariant()
         self._etat[champ] = (
             list(valeur) if isinstance(self._etat[champ], list) else valeur
         )
@@ -509,6 +513,11 @@ class ControleurRecherche(QObject):
         self._thread = None
         self._travailleur = None
         self.etat_change.emit()
+
+    def remplacer_organisations(self, organisations: Organisations) -> None:
+        """Nouveau cache des organisations (Réglages › Rafraîchir le cache),
+        utilisé dès la prochaine sélection ou recherche."""
+        self._orgas_cache = organisations
 
     def arreter(self) -> None:
         """Attend la fin d'une recherche ou d'un appel réseau en cours :

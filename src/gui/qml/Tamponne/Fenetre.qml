@@ -148,8 +148,12 @@ ApplicationWindow {
                     objectName: "ecranSuivi"
                     suivi: fenetre.pont.suivi
                 }
-                Item { objectName: "ecranAide" }
-                Item { objectName: "ecranReglages" }
+                EcranAide { objectName: "ecranAide" }
+                EcranReglages {
+                    objectName: "ecranReglages"
+                    reglages: fenetre.pont.reglages
+                    onModeThemeChoisi: mode => fenetre.pont.enregistrer_mode_theme(mode)
+                }
             }
         }
     }

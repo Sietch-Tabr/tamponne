@@ -14,7 +14,8 @@ AbstractButton {
     property color encre: Theme.encre
 
     implicitHeight: 44
-    implicitWidth: libelle.implicitWidth + leftPadding + rightPadding + 3
+    // Les marges incluent déjà la bordure de 1,5 px (36 + 1,5 et 16 + 1,5).
+    implicitWidth: libelle.implicitWidth + leftPadding + rightPadding
     leftPadding: 37.5
     rightPadding: 17.5
     focusPolicy: Qt.StrongFocus

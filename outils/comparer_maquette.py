@@ -27,6 +27,7 @@ from PySide6.QtQuick import QQuickWindow  # noqa: E402
 from shiboken6 import Shiboken  # noqa: E402
 
 from outils import donnees_demo  # noqa: E402
+from src import parametres_affichage, parametres_sources  # noqa: E402
 
 RACINE = Path(__file__).parent.parent
 DOSSIER_MAQUETTE = Path(__file__).parent / "maquette"
@@ -44,6 +45,8 @@ ECRANS: dict[str, tuple[str, int, int, str]] = {
     ),
     "recherche": ("Dossier-Recherche.dc.html", 1, 1200, "registre"),
     "suivi": ("Dossier-Suivi.dc.html", 2, 900, ""),
+    "aide": ("Dossier-Aide.dc.html", 3, 1400, ""),
+    "reglages": ("Dossier-Parametres.dc.html", 4, 900, "avis"),
     "detail": ("Dossier-Detail.dc.html", 2, 1100, "ecranSuivi:ouvrirDetail:MINT_2026-31544"),
     "evenement": (
         "Dossier-Dialogues.dc.html",
@@ -60,8 +63,8 @@ ECRANS: dict[str, tuple[str, int, int, str]] = {
 }
 """Écran → (fichier de maquette, index d'onglet QML, hauteur de fenêtre,
 action « objectName:fonction:argument » appelée dans le QML avant la
-capture, « registre » pour remplir la recherche de démonstration, vide si
-aucune)."""
+capture, « registre » pour remplir la recherche de démonstration, « avis »
+pour l'avis de mise à jour de démonstration, vide si aucune)."""
 
 _POLICES_LOCALES = f"""<style>
 @font-face{{font-family:'Archivo';src:url('{(DOSSIER_POLICES / "Archivo-Variable.ttf").as_uri()}');font-weight:100 900;font-stretch:62% 125%}}
@@ -144,6 +147,10 @@ def capturer_qml(onglet: int, nuit: bool, hauteur: int, action: str) -> QImage:
         donnees_demo.remplir_registre(pont.property("recherche"))
         for _ in range(30):
             app.processEvents()
+    elif action == "avis":
+        donnees_demo.poser_avis(pont.reglages_controleur)
+        for _ in range(30):
+            app.processEvents()
     elif action:
         nom_objet, fonction, argument = action.split(":")
         ecran = fenetre.findChild(QObject, nom_objet)
@@ -199,6 +206,9 @@ def main() -> int:
     with tempfile.TemporaryDirectory(prefix="tamponne-comparaison-") as temporaire:
         dossier = Path(temporaire)
         donnees_demo.installer(dossier / "donnees")
+        # Sources toutes cochées comme la maquette, sans toucher à data/.
+        parametres_sources.CHEMIN_SOURCES = dossier / "donnees" / "sources.json"
+        parametres_affichage.CHEMIN_AFFICHAGE = dossier / "donnees" / "affichage.json"
         for nuit in (False, True):
             theme = "nuit" if nuit else "jour"
             maquette = capturer_maquette(fichier, nuit, hauteur, dossier)

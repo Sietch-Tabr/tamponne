@@ -7,6 +7,7 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 
 from src.gui.controleur_profils import ControleurProfils
 from src.gui.controleur_recherche import ControleurRecherche
+from src.gui.controleur_reglages import ControleurReglages
 from src.gui.controleur_suivi import ControleurSuivi
 from src.parametres_affichage import MODES_THEME, ModeTheme, sauvegarder_mode_theme
 from src.types import Organisations
@@ -22,10 +23,14 @@ class Pont(QObject):
         self, parent: QObject | None = None, orgas_cache: Organisations | None = None
     ) -> None:
         super().__init__(parent)
-        self._mise_a_jour_disponible = False
         self._suivi = ControleurSuivi(self)
         self._profils = ControleurProfils(self)
         self._recherche = ControleurRecherche(orgas_cache or {}, self)
+        self._reglages = ControleurReglages(self)
+        self._reglages.etat_change.connect(self.mise_a_jour_disponible_changee)
+        self._reglages.organisations_rafraichies.connect(
+            self._recherche.remplacer_organisations
+        )
 
     def _lire_suivi(self) -> QObject:
         return self._suivi
@@ -45,13 +50,25 @@ class Pont(QObject):
     recherche = Property(QObject, _lire_recherche, constant=True)
     """Contrôleur de l'écran Recherche (`ControleurRecherche`)."""
 
+    def _lire_reglages(self) -> QObject:
+        return self._reglages
+
+    reglages = Property(QObject, _lire_reglages, constant=True)
+    """Contrôleur de l'écran Réglages (`ControleurReglages`)."""
+
+    @property
+    def reglages_controleur(self) -> ControleurReglages:
+        """Contrôleur des Réglages typé, pour `main()` (vérification, sortie)."""
+        return self._reglages
+
     def arreter(self) -> None:
         """Attend la fin des traitements en arrière-plan avant de quitter."""
         self._suivi.arreter()
         self._recherche.arreter()
+        self._reglages.arreter()
 
     def _lire_mise_a_jour_disponible(self) -> bool:
-        return self._mise_a_jour_disponible
+        return bool(self._reglages.pastille)
 
     mise_a_jour_disponible = Property(
         bool, _lire_mise_a_jour_disponible, notify=mise_a_jour_disponible_changee

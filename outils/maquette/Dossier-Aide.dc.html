@@ -209,9 +209,9 @@
         
 
 .menubar{display:flex;align-items:stretch;gap:2px;margin:-22px -24px 16px;padding:0 18px;min-height:40px;background:var(--bristol);border-top:3px solid var(--bristol-tete);border-bottom:1px solid var(--bristol-ligne)}
-.menu-entree{all:unset;cursor:pointer;padding:0 14px;display:inline-flex;align-items:center;font-family:Archivo,system-ui,sans-serif;font-weight:800;font-stretch:85%;font-size:15px;text-transform:uppercase;letter-spacing:1px;color:var(--encre)}
-.menu-entree:hover,.menu-entree[aria-expanded="true"]{background:var(--surligneur);color:var(--surligne-texte)}
-.menu-entree:focus-visible{outline:3px solid var(--tampon);outline-offset:-3px}
+.menubar .menu-entree{all:unset;cursor:pointer;padding:0 14px;display:inline-flex;align-items:center;font-family:Archivo,system-ui,sans-serif;font-weight:800;font-stretch:85%;font-size:15px;text-transform:uppercase;letter-spacing:1px;color:var(--encre)}
+.menubar .menu-entree:hover,.menubar .menu-entree[aria-expanded="true"]{background:var(--surligneur);color:var(--surligne-texte)}
+.menubar .menu-entree:focus-visible{outline:3px solid var(--tampon);outline-offset:-3px}
 </style>
       </helmet>
       <div
@@ -439,6 +439,12 @@ Catégorie → A<br />Versant → État<br />Poste → Domaine « Numérique »<
               <p class="definition">
                 L'offre a disparu du site (« Vérifier les offres ») ; la copie
                 archivée reste consultable.
+              </p>
+              <h3 class="terme">Tampons</h3>
+              <p class="definition">
+                Un clic sur un tampon de l'historique permet de modifier ou de
+                supprimer l'événement ; un même événement ne peut pas être
+                tamponné deux fois à la même date.
               </p>
               <h3 class="terme">Clavier</h3>
               <p class="definition">

@@ -184,6 +184,7 @@ Dialogue {
             onClicked: racine.close()
         },
         BoutonTampon {
+            objectName: "boutonValiderSelection"
             Layout.margins: 4
             text: "Valider"
             onClicked: {

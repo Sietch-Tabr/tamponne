@@ -19,8 +19,14 @@ AbstractButton {
     property bool gras: false
     /*! Écart réservé après la case dans un `Flow` (colonnes à 18 px, lignes à 2 px). */
     property real ecartApres: 0
+    /*! Libellé long renvoyé à la ligne au lieu d'être tronqué (Réglages). */
+    property bool retourLigne: false
+    /*! Filet pointillé sous la case (`border-bottom: 1px dotted`), compté
+        dans la hauteur comme une bordure CSS. */
+    property bool filet: false
 
-    implicitHeight: Math.max(hauteurMinimale, libelle.implicitHeight)
+    implicitHeight: Math.max(hauteurMinimale, libelle.implicitHeight) + bottomPadding
+    bottomPadding: filet ? 1 : 0
     // Le libellé porte déjà la marge de 30 px réservée à la case.
     implicitWidth: libelle.implicitWidth + ecartApres
     focusPolicy: Qt.StrongFocus
@@ -31,9 +37,16 @@ AbstractButton {
     Accessible.checked: coche
     Accessible.description: partiel && !coche ? "en partie coché" : ""
 
+    background: LignePointillee {
+        visible: racine.filet
+        y: racine.height - 1
+        width: racine.width
+        couleur: Theme.regle
+    }
+
     indicator: Rectangle {
         x: 0
-        anchors.verticalCenter: parent.verticalCenter
+        y: (racine.height - racine.bottomPadding - height) / 2
         width: 20
         height: 20
         color: Theme.papier
@@ -83,8 +96,8 @@ AbstractButton {
         id: libelle
         leftPadding: 30
         text: racine.text
-        wrapMode: Text.NoWrap
-        elide: Text.ElideRight
+        wrapMode: racine.retourLigne ? Text.Wrap : Text.NoWrap
+        elide: racine.retourLigne ? Text.ElideNone : Text.ElideRight
         font.variableAxes: racine.gras ? { "wdth": 90, "wght": 800 } : { "wdth": 100, "wght": 400 }
         Accessible.ignored: true
     }

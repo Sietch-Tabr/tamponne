@@ -11,9 +11,11 @@ from PySide6.QtQml import QQmlApplicationEngine
 
 from src.cache import obtenir_organisations
 from src.gui.pont import Pont
-from src.parametres_affichage import charger_mode_theme
+from src.parametres_affichage import charger_mode_theme, charger_reduire_animations
 
 DOSSIER_QML = Path(__file__).parent / "qml"
+CODE_RETOUR_MAJ = 42
+"""Code de sortie qui demande au lanceur d'appliquer la mise à jour et de relancer."""
 
 
 def creer_moteur(pont: Pont) -> QQmlApplicationEngine:
@@ -37,6 +39,7 @@ def creer_moteur(pont: Pont) -> QQmlApplicationEngine:
     theme = moteur.singletonInstance("Tamponne", "Theme")
     if isinstance(theme, QObject):
         theme.setProperty("mode", charger_mode_theme())
+        theme.setProperty("reduireAnimations", charger_reduire_animations())
     return moteur
 
 
@@ -44,7 +47,9 @@ def main() -> int:
     """Lance l'application QML.
 
     Returns:
-        Code de sortie de la boucle Qt.
+        `CODE_RETOUR_MAJ` si l'utilisateur a choisi « Installer et
+        redémarrer » (`lancer.sh`/`lancer.bat` appliquent alors la mise à
+        jour et relancent), sinon le code de sortie de la boucle Qt.
     """
     # Menus Fichier/Aide dessinés dans la fenêtre (bande bristol) plutôt
     # que dans la barre système de macOS ; à poser avant l'application.
@@ -61,11 +66,14 @@ def main() -> int:
 
     pont = Pont(orgas_cache=orgas_cache)
     app.aboutToQuit.connect(pont.arreter)
+    pont.reglages_controleur.quitter_demande.connect(app.quit)
     moteur = creer_moteur(pont)
     moteur.load(QUrl.fromLocalFile(str(DOSSIER_QML / "Tamponne" / "Fenetre.qml")))
     if not moteur.rootObjects():
         return 1
-    return app.exec()
+    pont.reglages_controleur.verifier_mise_a_jour()
+    code = app.exec()
+    return CODE_RETOUR_MAJ if pont.reglages_controleur.redemarrage_demande else code
 
 
 if __name__ == "__main__":
