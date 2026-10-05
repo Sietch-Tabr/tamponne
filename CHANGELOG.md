@@ -4,6 +4,12 @@ Toutes les évolutions notables de Tamponné, de la plus récente à la plus
 ancienne. Le détail de chaque version est aussi publié sur la page
 [Releases](https://codeberg.org/Kwaite/tamponne/releases) du dépôt.
 
+## [1.2.1] — 2026-10-05
+
+### Corrections
+
+- Linux : lancé par double-clic (KDE, GNOME), le premier lancement s'ouvre dans un terminal pour montrer l'installation de uv et des composants ; en cas d'erreur, le terminal reste ouvert jusqu'à Entrée
+
 ## [1.2.0] — 2026-10-05
 
 ### Installation

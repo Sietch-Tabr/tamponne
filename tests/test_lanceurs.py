@@ -17,6 +17,14 @@ def test_tamponne_command_executable_et_lu_d_un_bloc() -> None:
     assert "uv run --quiet python -m src.lanceur \\" in lignes
 
 
+def test_tamponne_command_se_relance_dans_un_terminal_sous_linux() -> None:
+    """Double-cliqué sous KDE ou GNOME, le script n'a pas de terminal :
+    il s'y relance pour montrer l'installation, une seule fois."""
+    contenu = (RACINE / "Tamponne.command").read_text(encoding="utf-8")
+    assert 'TAMPONNE_TERMINAL=1 exec "$terminal" "$option" /bin/bash' in contenu
+    assert '[ -z "${TAMPONNE_TERMINAL:-}" ]' in contenu
+
+
 def test_tamponne_bat_lu_d_un_bloc() -> None:
     """cmd relit un `.bat` ligne par ligne, sauf un bloc entre parenthèses,
     analysé en entier : tout le script y tient, sans `goto` ni `%ERRORLEVEL%`
