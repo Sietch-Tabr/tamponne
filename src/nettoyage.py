@@ -1,8 +1,9 @@
-"""Nettoyage des fichiers de l'ancienne interface après la mise à jour 1.0.x.
+"""Nettoyage des fichiers retirés que la mise à jour laisse sur le disque.
 
-La mise à jour de la 1.0.x copie la nouvelle version par-dessus l'ancienne
-sans rien supprimer : les modules de l'interface Widgets resteraient sur le
-disque. Ce nettoyage, lancé au démarrage, les retire une fois pour toutes.
+La mise à jour de la 1.0.x copiait la nouvelle version par-dessus l'ancienne
+sans rien supprimer, et `maj.py` ne purge que `src/` et `tests/` : les
+anciens lanceurs de la racine resteraient. Ce nettoyage, lancé au démarrage,
+les retire une fois pour toutes.
 """
 
 import shutil
@@ -12,6 +13,9 @@ from pathlib import Path
 CHEMIN_RACINE = Path(__file__).parent.parent
 
 FICHIERS_OBSOLETES: tuple[str, ...] = (
+    "lancer.bat",
+    "lancer.sh",
+    "src/gui/app.py",
     "src/gui/theme.py",
     "src/gui/vues",
     "src/gui/widgets",
@@ -28,7 +32,9 @@ FICHIERS_OBSOLETES: tuple[str, ...] = (
     "tests/test_gui_widgets_ligne_responsive.py",
 )
 """Chemins supprimés depuis la 1.0.5 (`git diff --diff-filter=D v1.0.5`),
-relatifs à la racine ; un dossier est retiré avec tout son contenu."""
+relatifs à la racine ; un dossier est retiré avec tout son contenu. Les
+lanceurs remplacés par `Tamponne.*` en 1.2.0 sont supprimés même en cours
+d'exécution : bash a déjà lu tout son bloc."""
 
 _DOSSIERS_INTERDITS = ("data", ".git")
 

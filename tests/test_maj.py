@@ -187,10 +187,10 @@ def test_appliquer_maj_copie_les_fichiers_de_larchive(
 
 def _construire_zip_test_avec_executable(tmp_path: Path) -> str:
     """Zip avec un fichier marqué exécutable dans `external_attr` (bit Unix
-    rwxr-xr-x), comme le produit `git archive --format=zip` pour lancer.sh."""
+    rwxr-xr-x), comme le produit `git archive --format=zip` pour Tamponne.command."""
     chemin_zip = tmp_path / "source_executable.zip"
     with zipfile.ZipFile(chemin_zip, "w") as archive:
-        info = zipfile.ZipInfo("tamponne-abc123/lancer.sh")
+        info = zipfile.ZipInfo("tamponne-abc123/Tamponne.command")
         info.external_attr = 0o100755 << 16
         archive.writestr(info, "#!/bin/sh\necho lancement\n")
     return str(chemin_zip)
@@ -200,7 +200,7 @@ def test_appliquer_maj_fichier_executable_dans_larchive_reste_executable(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """extractall() n'applique pas les bits Unix de l'archive : sans
-    restauration manuelle, lancer.sh perdrait son +x à chaque mise à jour."""
+    restauration manuelle, Tamponne.command perdrait son +x à chaque mise à jour."""
     chemin_zip = _construire_zip_test_avec_executable(tmp_path)
     monkeypatch.setattr(
         maj.urllib.request,
@@ -210,7 +210,7 @@ def test_appliquer_maj_fichier_executable_dans_larchive_reste_executable(
 
     maj.appliquer_maj(_info())
 
-    assert (maj.CHEMIN_RACINE / "lancer.sh").stat().st_mode & 0o111
+    assert (maj.CHEMIN_RACINE / "Tamponne.command").stat().st_mode & 0o111
 
 
 def test_appliquer_maj_ne_touche_pas_data(
@@ -304,12 +304,12 @@ def test_installer_archive_ne_purge_rien_dans_un_clone_git(tmp_path: Path) -> No
 def test_installer_archive_remplace_sans_reecrire_le_fichier_ouvert(
     tmp_path: Path,
 ) -> None:
-    """bash lit lancer.sh au fil de l'exécution : le remplacer par renommage
-    laisse au processus en cours l'ancien contenu."""
+    """bash lit Tamponne.command au fil de l'exécution : le remplacer par
+    renommage laisse au processus en cours l'ancien contenu."""
     racine = tmp_path / "installation"
-    _installation(racine, {"lancer.sh": "ancien contenu\n"})
-    with (racine / "lancer.sh").open(encoding="utf-8") as ouvert:
-        maj.installer_archive(_publication(tmp_path, {"lancer.sh": "nouveau\n"}), racine)
+    _installation(racine, {"Tamponne.command": "ancien contenu\n"})
+    with (racine / "Tamponne.command").open(encoding="utf-8") as ouvert:
+        maj.installer_archive(_publication(tmp_path, {"Tamponne.command": "nouveau\n"}), racine)
         assert ouvert.read() == "ancien contenu\n"
-    assert (racine / "lancer.sh").read_text(encoding="utf-8") == "nouveau\n"
+    assert (racine / "Tamponne.command").read_text(encoding="utf-8") == "nouveau\n"
     assert not list(racine.glob("*.maj"))

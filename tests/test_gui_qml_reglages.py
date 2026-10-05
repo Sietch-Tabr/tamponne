@@ -5,13 +5,13 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
-from PySide6.QtCore import QMetaObject, QObject, QUrl
+from PySide6.QtCore import Q_ARG, QMetaObject, QObject, QUrl
 from PySide6.QtGui import QAccessible, QAccessibleInterface
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuick import QQuickItem
 from PySide6.QtWidgets import QApplication
 
-from src import parametres_affichage, parametres_sources
+from src import parametres_affichage, parametres_sources, raccourci
 from src.gui import application
 from src.gui.pont import Pont
 
@@ -115,6 +115,9 @@ def test_ecran_reglages_expose_sources_et_classement(
         "Thème\u00a0: Suivre le système",
         "Réduire les animations",
         "Rafraîchir le cache",
+        "Sauvegarde",
+        "Exporter…",
+        "Importer…",
     ):
         assert nom in noms
     assert _element(racine, "boutonInstaller").isVisible() is False
@@ -170,3 +173,39 @@ def test_liste_theme_suit_le_bouton_lampe(
     theme.setProperty("mode", "sombre")
     qapp.processEvents()
     assert liste.property("displayText") == "Bureau de nuit"
+
+
+def test_question_du_raccourci_ouvre_le_dialogue_et_ajoute(
+    chargement: tuple[QQmlApplicationEngine, Pont, list[str]],
+    qapp: QApplication,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(raccourci, "systeme_courant", lambda: "linux")
+    moteur, pont, avertissements = chargement
+    racine = _afficher(moteur, 0, qapp)
+    pont.reglages_controleur.verifier_raccourci()
+    qapp.processEvents()
+    dialogue = racine.findChild(QObject, "dialogueRaccourci")
+    assert dialogue is not None and dialogue.property("opened") is True
+    assert dialogue.property("titre") == "Raccourci"
+    QMetaObject.invokeMethod(dialogue, "ajoutDemande")
+    qapp.processEvents()
+    assert raccourci.etat() == "a_jour"
+    assert avertissements == []
+
+
+def test_confirmation_import_demande_avant_de_remplacer(
+    chargement: tuple[QQmlApplicationEngine, Pont, list[str]], qapp: QApplication
+) -> None:
+    moteur, _, avertissements = chargement
+    racine = _afficher(moteur, 4, qapp)
+    ecran = racine.findChild(QObject, "ecranReglages")
+    assert ecran is not None
+    QMetaObject.invokeMethod(
+        ecran, "confirmerImport", Q_ARG(str, "file:///tmp/Tamponne-donnees.zip")
+    )
+    qapp.processEvents()
+    confirmation = racine.findChild(QObject, "confirmationImport")
+    assert confirmation is not None and confirmation.property("opened") is True
+    assert "Tamponne\u2011donnees.zip" in confirmation.property("message")
+    assert avertissements == []

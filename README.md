@@ -8,53 +8,49 @@ Application de bureau pour rechercher des offres d'emploi de la fonction publiqu
 
 ![Dossiers en cours, bureau de nuit](docs/captures/suivi-nuit.jpg)
 
-## Prérequis
+## Installation
 
-- [Python 3.14+](https://www.python.org/downloads/)
-- [uv](https://docs.astral.sh/uv/getting-started/installation/) — gestionnaire de paquets Python
+Rien à installer au préalable : au premier lancement, Tamponné installe lui-même ce dont il a besoin ([uv](https://docs.astral.sh/uv/), puis Python et ses composants). Une connexion internet est nécessaire la première fois (quelques minutes).
 
-Installation uv (si absent) :
+1. **Télécharger** : sur la page [Releases](https://codeberg.org/Kwaite/tamponne/releases), dans la dernière version, cliquer sur **« Source code (ZIP) »**.
+2. **Dézipper** le fichier où vous voulez (Documents, Bureau…). Tamponné est portable : il reste dans ce dossier, avec vos données (`data/`). Pour le déplacer, déplacez tout le dossier.
+3. **Double-cliquer** sur le lanceur :
 
-**macOS/Linux** :
+| Système | Lanceur                                                                   |
+| ------- | ------------------------------------------------------------------------- |
+| Windows | `Tamponne.bat`                                                            |
+| macOS   | `Tamponne.command`                                                        |
+| Linux   | `./Tamponne.command` dans un terminal (le double-clic dépend du bureau) |
 
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
+Au premier lancement, Tamponné propose de s'ajouter au menu des applications (voir [Raccourci](#raccourci)) : il se lance ensuite comme n'importe quelle application.
 
-**macOS (Homebrew)** :
+> **macOS : « Tamponne.command ne peut pas être ouvert »**. Au premier double-clic, macOS bloque les fichiers téléchargés qui ne viennent pas de l'App Store ou d'un développeur identifié. Ouvrez **Réglages Système › Confidentialité et sécurité**, descendez jusqu'au message sur `Tamponne.command`, cliquez sur **« Ouvrir quand même »** et confirmez avec votre mot de passe. Une seule fois : les lancements suivants (et le raccourci) ne sont plus bloqués.
 
-```bash
-brew install uv
-```
+## Raccourci
 
-**Windows** :
+Réglages › **Raccourci** ajoute ou retire Tamponné du menu des applications :
 
-```bash
-winget install astral-sh.uv
-```
+| Système | Raccourci créé                                              | Où le trouver                       |
+| ------- | ----------------------------------------------------------- | ----------------------------------- |
+| Windows | `Tamponné.lnk` dans le menu Démarrer                        | menu Démarrer, épinglable           |
+| macOS   | `Tamponné.app` dans `~/Applications`                        | Spotlight, Launchpad, Dock          |
+| Linux   | `tamponne.desktop` dans `~/.local/share/applications`       | menu des applications               |
 
-## Installation et lancement
+Si vous déplacez le dossier de Tamponné, relancez-le une fois depuis son lanceur : il propose de mettre le raccourci à jour (ou de le retirer).
 
-Téléchargez le zip depuis la page [Releases](https://codeberg.org/Kwaite/tamponne/releases) (lien « Source code (zip) » de la dernière version), puis dézippez-le.
+## Sauvegarde de vos données
 
-Dans le dossier obtenu :
+Réglages › **Sauvegarde** :
 
-| Système       | Commande      |
-| ------------- | ------------- |
-| macOS / Linux | `./lancer.sh` |
-| Windows       | `lancer.bat`  |
+- **Exporter…** réunit vos fiches de recherche, dossiers suivis (avec les fiches de poste archivées), offres déjà vues et réglages dans un fichier `Tamponne-donnees-AAAA-MM-JJ.zip`, à garder ou à copier sur un autre ordinateur.
+- **Importer…** remplace toutes les données par celles d'une sauvegarde, après confirmation, puis redémarre Tamponné. Une copie des données d'avant l'import est conservée dans `data/sauvegarde-avant-import.zip`.
 
-> **macOS/Linux** : si le terminal répond `permission denied`, le bit exécutable n'a pas été conservé à la décompression — lancez `chmod +x lancer.sh` une fois, puis relancez `./lancer.sh`.
+## Désinstaller
 
-`uv sync` installe automatiquement le virtualenv et les dépendances au premier lancement. Ces deux scripts appliquent aussi les mises à jour en attente (voir plus bas) — c'est la façon recommandée de lancer l'app.
+1. Si vous avez ajouté le raccourci, retirez-le d'abord : Réglages › Raccourci › **Retirer**.
+2. Exportez vos données si vous voulez les garder, puis supprimez le dossier de Tamponné.
 
-```bash
-# Ou manuellement (toutes plateformes) — pas de mise à jour automatique dans ce cas
-uv sync
-uv run python -m src.gui.application
-```
-
-**Dépendances** : `PySide6` (interface Qt Quick/QML), `beautifulsoup4` (parsing HTML). Polices embarquées : [Archivo](https://fonts.google.com/specimen/Archivo) et [IBM Plex Mono](https://github.com/IBM/plex), sous licence SIL OFL 1.1 (`src/gui/qml/Tamponne/polices/`).
+uv, installé au premier lancement, peut servir à d'autres logiciels : il reste en place ([le désinstaller](https://docs.astral.sh/uv/getting-started/installation/#uninstallation)).
 
 ## Fonctionnalités
 
@@ -67,6 +63,7 @@ uv run python -m src.gui.application
 - **Suivi de candidature** — dossiers tamponnés depuis le registre avec fiche de poste archivée en PDF, historique d'événements modifiable, relance suggérée après 3 semaines sans nouvelles, vérification des offres dépubliées
 - **Accessibilité** — contrastes WCAG AA vérifiés par les tests, navigation au clavier, éléments exposés aux lecteurs d'écran, option « Réduire les animations »
 - **Cache organisations** — liste des ministères et sous-organisations mise en cache 7 jours, rafraîchissable depuis Réglages
+- **Raccourci et sauvegarde** — ajout au menu des applications, export et import des données (voir plus haut)
 - **Mise à jour automatique** — voir ci-dessous
 
 ## Mise à jour automatique
@@ -78,7 +75,17 @@ Au lancement, l'app vérifie en arrière-plan s'il existe une publication ([Rele
 - « Installer et redémarrer » l'applique **immédiatement** : l'app se ferme et relance toute seule.
 - Les fichiers retirés d'une version à l'autre sont supprimés à l'installation ; vos données (`data/`) ne sont jamais touchées.
 
-Ce mécanisme repose sur `lancer.sh`/`lancer.bat` (voir ci-dessus) — un lancement via `uv run python -m src.gui.application` en direct affiche l'avis mais n'applique rien tant que l'un de ces deux scripts n'est pas utilisé au moins une fois.
+Ce mécanisme repose sur les lanceurs (`Tamponne.command`, `Tamponne.bat`, ou le raccourci) — un lancement via `uv run python -m src.gui.application` en direct affiche l'avis mais n'applique rien.
+
+## Avancé : lancement manuel
+
+```bash
+uv sync
+uv run python -m src.lanceur           # avec mises à jour et redémarrage
+uv run python -m src.gui.application   # interface seule
+```
+
+**Dépendances** : `PySide6` (interface Qt Quick/QML), `beautifulsoup4` (parsing HTML). Polices embarquées : [Archivo](https://fonts.google.com/specimen/Archivo) et [IBM Plex Mono](https://github.com/IBM/plex), sous licence SIL OFL 1.1 (`src/gui/qml/Tamponne/polices/`).
 
 ## Architecture
 
@@ -86,7 +93,6 @@ Ce mécanisme repose sur `lancer.sh`/`lancer.bat` (voir ci-dessus) — un lancem
 src/
   gui/
     application.py           point d'entrée : moteur QML, vérification de mise à jour
-    app.py                   ancien point d'entrée (lanceurs 1.0.x), délègue à application
     pont.py                  objet unique exposé au QML (contrôleurs)
     controleur_*.py          un contrôleur par écran : Profils, Recherche, Suivi, Réglages
     presentation.py          textes affichés, calculés sans Qt
@@ -95,6 +101,7 @@ src/
     travailleurs.py          tâches réseau sur QThread (recherche, vérifications)
     qml/Tamponne/            interface QML : Theme.qml (couleurs jour/nuit), écrans,
                              dialogues, composants, polices embarquées
+    icones/                  icône de l'application (SVG source, PNG, ICO, ICNS)
   sources/
     base.py                  Protocol commun aux sources d'offres + dédoublonnage
     choisirleservicepublic/  requêtes GET filtrées + parsing HTML (BeautifulSoup4)
@@ -108,8 +115,11 @@ src/
   parametres_sources.py      sources actives/inactives
   parametres_affichage.py    thème et réduction des animations
   profils.py                 fiches de recherche sauvegardées
+  lanceur.py                 boucle de lancement : mise à jour en attente, redémarrage
   maj.py                     vérification/application des mises à jour (publications Codeberg)
-  nettoyage.py               retrait des fichiers de l'ancienne interface après mise à jour
+  nettoyage.py               retrait des fichiers supprimés d'une version à l'autre
+  raccourci.py               raccourci du menu des applications (Windows, macOS, Linux)
+  sauvegarde.py              export et import des données
   export.py                  export HTML inline
   utils.py                   écriture JSON atomique
   types.py                   structures de données partagées (TypedDict)
@@ -121,11 +131,16 @@ data/
   sources.json               sources actives/inactives
   affichage.json             thème et animations
   maj_disponible.json        marqueur de mise à jour en attente
+  raccourci.json             dossier visé par le raccourci, question déjà posée
+  sauvegarde-avant-import.zip  données d'avant le dernier import
   archives/                  archives PDF des offres suivies
 exports/                     fichiers HTML générés
 outils/
   maquette/                  maquette de référence (HTML)
   comparer_maquette.py       comparaison visuelle maquette / application
+  generer_icones.py          génération des icônes depuis les SVG
+Tamponne.command             lanceur macOS / Linux
+Tamponne.bat                 lanceur Windows
 docs/captures/               captures d'écran du README
 ```
 
