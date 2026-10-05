@@ -9,6 +9,7 @@ ancienne. Le détail de chaque version est aussi publié sur la page
 ### Corrections
 
 - Linux : lancé par double-clic (KDE, GNOME), le premier lancement s'ouvre dans un terminal pour montrer l'installation de uv et des composants ; en cas d'erreur, le terminal reste ouvert jusqu'à Entrée
+- Sur un petit écran (portable), la fenêtre s'ouvre agrandie au lieu de déborder
 
 ## [1.2.0] — 2026-10-05
 

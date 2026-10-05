@@ -6,7 +6,7 @@ import urllib.error
 from pathlib import Path
 
 from PySide6.QtCore import QObject, Qt, QUrl
-from PySide6.QtGui import QGuiApplication, QIcon
+from PySide6.QtGui import QGuiApplication, QIcon, QWindow
 from PySide6.QtQml import QQmlApplicationEngine
 
 from src.cache import obtenir_organisations
@@ -44,6 +44,19 @@ def creer_moteur(pont: Pont) -> QQmlApplicationEngine:
     return moteur
 
 
+def adapter_a_l_ecran(fenetre: QWindow) -> None:
+    """Agrandit la fenêtre si sa taille d'ouverture (1280 × 900, barre de
+    titre comprise) dépasse la zone utile de son écran, sans la barre de
+    menus ni le Dock ou la barre des tâches : petit écran de portable."""
+    ecran = fenetre.screen()
+    if ecran is None:
+        return
+    zone = ecran.availableGeometry()
+    cadre = fenetre.frameGeometry()
+    if cadre.width() > zone.width() or cadre.height() > zone.height():
+        fenetre.showMaximized()
+
+
 def main() -> int:
     """Lance l'application QML, après avoir retiré les fichiers obsolètes
     laissés par les mises à jour (`src.nettoyage`).
@@ -79,6 +92,9 @@ def main() -> int:
     moteur.load(QUrl.fromLocalFile(str(DOSSIER_QML / "Tamponne" / "Fenetre.qml")))
     if not moteur.rootObjects():
         return 1
+    fenetre = moteur.rootObjects()[0]
+    if isinstance(fenetre, QWindow):
+        adapter_a_l_ecran(fenetre)
     pont.reglages_controleur.verifier_mise_a_jour()
     pont.reglages_controleur.verifier_raccourci()
     code = app.exec()
