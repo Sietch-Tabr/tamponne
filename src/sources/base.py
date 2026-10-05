@@ -5,6 +5,9 @@ from typing import Protocol
 
 from src.types import FiltresRecherche, Offre
 
+# Sites sans WAF : User-Agent identifiant l'application et son dépôt.
+USER_AGENT_IDENTIFIE = "tamponne (+https://codeberg.org/Kwaite/tamponne)"
+
 
 def deduplique_offres(offres: list[Offre]) -> list[Offre]:
     """Retire les doublons par référence (insensible à la casse), garde

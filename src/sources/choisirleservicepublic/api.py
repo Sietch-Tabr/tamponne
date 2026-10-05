@@ -6,6 +6,7 @@ import urllib.parse
 import urllib.request
 
 from src.filtres import VALEUR_TOGGLE_ACTIF
+from src.sources.base import USER_AGENT_IDENTIFIE
 from src.types import PageAPI
 
 URL_SITE = "https://choisirleservicepublic.gouv.fr"
@@ -13,12 +14,7 @@ URL_OFFRES = f"{URL_SITE}/nos-offres/"
 
 _TIMEOUT = 30
 _OPENER = urllib.request.build_opener()
-_OPENER.addheaders = [
-    (
-        "User-Agent",
-        "recherche-offres-publiques/1.0 (+https://github.com/kwaite/recherche-offres-publiques)",
-    )
-]
+_OPENER.addheaders = [("User-Agent", USER_AGENT_IDENTIFIE)]
 
 # Ordre et nommage des filtres dans l'URL WordPress (issu de url_keywords côté JS)
 _URL_KEYWORD_MAP = [
