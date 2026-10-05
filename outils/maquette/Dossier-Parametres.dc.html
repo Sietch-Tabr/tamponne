@@ -437,12 +437,19 @@
             align-items: flex-start;
           "
         >
+          <div
+            style="
+              flex: 999 1 520px;
+              min-width: 0;
+              display: flex;
+              flex-direction: column;
+              gap: 22px;
+            "
+          >
           <section
             class="feuille"
             aria-labelledby="titre-avis"
             style="
-              flex: 999 1 520px;
-              min-width: 0;
               position: relative;
               padding: 26px 28px;
             "
@@ -506,6 +513,47 @@
               </button>
             </div>
           </section>
+            <div
+              style="
+                display: flex;
+                flex-wrap: wrap;
+                gap: 22px;
+                align-items: stretch;
+              "
+            >
+            <section
+              class="feuille"
+              aria-labelledby="titre-raccourci"
+              style="flex: 1 1 260px"
+            >
+              <h2 id="titre-raccourci">Raccourci</h2>
+              <p style="margin: 0; font-size: 16px; line-height: 1.5">
+                Tamponné n'est pas encore dans le menu des applications.
+              </p>
+              <div style="display: flex; flex-wrap: wrap; gap: 8px">
+                <button class="btn-etiquette" type="button">
+                  Ajouter au menu
+                </button>
+              </div>
+            </section>
+
+            <section
+              class="feuille"
+              aria-labelledby="titre-sauvegarde"
+              style="flex: 1 1 260px"
+            >
+              <h2 id="titre-sauvegarde">Sauvegarde</h2>
+              <p style="margin: 0; font-size: 16px; line-height: 1.5">
+                Fiches, dossiers suivis et réglages réunis dans un fichier, à
+                garder ou à reprendre sur un autre ordinateur.
+              </p>
+              <div style="display: flex; flex-wrap: wrap; gap: 8px">
+                <button class="btn-etiquette" type="button">Exporter…</button>
+                <button class="btn-etiquette" type="button">Importer…</button>
+              </div>
+            </section>
+            </div>
+          </div>
 
           <div
             style="
