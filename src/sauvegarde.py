@@ -119,7 +119,7 @@ def _verifier(archive: zipfile.ZipFile) -> None:
         raise pas_une_sauvegarde
     if format_ > FORMAT:
         raise ErreurSauvegarde(
-            "Cette sauvegarde vient d'une version plus récente de Tamponné : "
+            "Cette sauvegarde vient d'une version plus récente de Tamponné\u00a0: "
             "mettez d'abord l'application à jour."
         )
 
@@ -183,7 +183,7 @@ def importer_donnees(source: Path) -> None:
                 _remplacer_archives(archive)
             except OSError as erreur:
                 raise ErreurSauvegarde(
-                    "Import interrompu : vos données d'avant l'import sont "
+                    "Import interrompu\u00a0: vos données d'avant l'import sont "
                     f"dans {NOM_COPIE_SECURITE} (dossier data)."
                 ) from erreur
     except (zipfile.BadZipFile, OSError) as erreur:

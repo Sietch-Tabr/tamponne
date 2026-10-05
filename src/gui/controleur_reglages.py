@@ -1,13 +1,21 @@
 """Contrôleur de l'écran Réglages : sources consultées, préférences
-d'affichage, avis de mise à jour et cache des organisations."""
+d'affichage, avis de mise à jour, cache des organisations, raccourci et
+sauvegarde des données."""
 
 from datetime import date
+from pathlib import Path
 from typing import cast
 
-from PySide6.QtCore import Property, QObject, QThread, Signal, Slot
+from PySide6.QtCore import Property, QObject, QThread, QUrl, Signal, Slot
+from PySide6.QtGui import QDesktopServices
 
+from src import raccourci, sauvegarde
 from src.cache import obtenir_organisations
-from src.gui.presentation import notes_en_html
+from src.gui.presentation import (
+    TEXTES_RACCOURCI,
+    notes_en_html,
+    texte_confirmation_import,
+)
 from src.gui.travailleurs import TacheReseau, VerificateurMiseAJour
 from src.maj import version_locale
 from src.parametres_affichage import (
@@ -40,7 +48,12 @@ class ControleurReglages(QObject):
     organisations_rafraichies = Signal(dict)
     """Nouveau cache des organisations, à transmettre à la recherche."""
     quitter_demande = Signal()
-    """« Installer et redémarrer » : quitter pour que le lanceur applique la mise à jour."""
+    """Quitter pour redémarrer (« Installer et redémarrer », import de
+    données) : `src.lanceur` relance l'application."""
+    question_raccourci = Signal(str)
+    """Question à poser au démarrage : `premier_lancement` ou `deplace`."""
+    erreur_signalee = Signal(str)
+    """Message d'une opération impossible, affiché tel quel."""
 
     def __init__(self, parent: QObject | None = None) -> None:
         super().__init__(parent)
@@ -56,6 +69,7 @@ class ControleurReglages(QObject):
         self._verificateur: VerificateurMiseAJour | None = None
         self._thread_cache: QThread | None = None
         self._tache_cache: TacheReseau | None = None
+        self._etat_raccourci = raccourci.etat()
 
     # --- Sources ---
 
@@ -166,7 +180,8 @@ class ControleurReglages(QObject):
 
     @property
     def redemarrage_demande(self) -> bool:
-        """Vrai si l'utilisateur a demandé d'installer la mise à jour."""
+        """Vrai si l'utilisateur a demandé un redémarrage (mise à jour ou
+        import de données)."""
         return self._redemarrage_demande
 
     # --- Cache des organisations ---
@@ -212,6 +227,100 @@ class ControleurReglages(QObject):
         self._cache_en_cours = False
         self._message_cache = MESSAGE_CACHE_INDISPONIBLE
         self.etat_change.emit()
+
+    # --- Raccourci ---
+
+    def _lire_raccourci(self) -> dict[str, object]:
+        etat = self._etat_raccourci
+        return {
+            "disponible": etat != "indisponible",
+            "etat": etat,
+            "texte": TEXTES_RACCOURCI.get(etat, ""),
+        }
+
+    raccourci = Property(dict, _lire_raccourci, notify=etat_change)
+    """Feuille Raccourci : `disponible`, `etat` (`src.raccourci.etat`), `texte`."""
+
+    def verifier_raccourci(self) -> None:
+        """Pose, si besoin, la question du raccourci. Appelée par `main()`
+        une fois la fenêtre chargée, jamais par le constructeur (tests)."""
+        question = raccourci.question_au_lancement()
+        if question != "aucune":
+            self.question_raccourci.emit(question)
+
+    def _actualiser_raccourci(self) -> None:
+        self._etat_raccourci = raccourci.etat()
+        self.etat_change.emit()
+
+    @Slot()
+    def ajouter_raccourci(self) -> None:
+        """Crée le raccourci, ou le met à jour après un déplacement."""
+        try:
+            raccourci.creer()
+        except raccourci.ErreurRaccourci as erreur:
+            self.erreur_signalee.emit(str(erreur))
+        self._actualiser_raccourci()
+
+    @Slot()
+    def retirer_raccourci(self) -> None:
+        """Supprime le raccourci du menu des applications."""
+        try:
+            raccourci.retirer()
+        except raccourci.ErreurRaccourci as erreur:
+            self.erreur_signalee.emit(str(erreur))
+        self._actualiser_raccourci()
+
+    @Slot()
+    def refuser_raccourci(self) -> None:
+        """« Non » à la question du premier lancement : ne plus la poser.
+        Après un déplacement, « Non » ne note rien : la question revient."""
+        if raccourci.question_au_lancement() == "premier_lancement":
+            raccourci.refuser_premiere_question()
+
+    # --- Sauvegarde ---
+
+    def _lire_nom_export(self) -> str:
+        return sauvegarde.nom_export()
+
+    nom_export = Property(str, _lire_nom_export, constant=True)
+    """Nom de fichier proposé à l'export des données."""
+
+    @Slot(str, result=str)
+    def exporter_donnees(self, url: str) -> str:
+        """Exporte les données vers le fichier choisi (`url` du sélecteur).
+
+        Returns:
+            Chemin du fichier écrit, vide en cas d'échec (`erreur_signalee`).
+        """
+        destination = Path(QUrl(url).toLocalFile())
+        try:
+            sauvegarde.exporter_donnees(destination)
+        except sauvegarde.ErreurSauvegarde as erreur:
+            self.erreur_signalee.emit(str(erreur))
+            return ""
+        return str(destination)
+
+    @Slot(str, result=str)
+    def confirmation_import(self, url: str) -> str:
+        """Question posée avant d'importer le fichier choisi."""
+        return texte_confirmation_import(Path(QUrl(url).toLocalFile()).name)
+
+    @Slot(str)
+    def importer_donnees(self, url: str) -> None:
+        """Remplace les données par la sauvegarde choisie puis redémarre :
+        les écrans relisent tout au lancement."""
+        try:
+            sauvegarde.importer_donnees(Path(QUrl(url).toLocalFile()))
+        except sauvegarde.ErreurSauvegarde as erreur:
+            self.erreur_signalee.emit(str(erreur))
+            return
+        self._redemarrage_demande = True
+        self.quitter_demande.emit()
+
+    @Slot(str)
+    def ouvrir_dossier(self, chemin: str) -> None:
+        """Affiche le dossier qui contient `chemin` dans le gestionnaire de fichiers."""
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(Path(chemin).parent)))
 
     def arreter(self) -> None:
         """Attend la fin des tâches en cours : détruire un `QThread` actif

@@ -416,3 +416,22 @@ def notes_en_html(markdown: str) -> str:
             paragraphe.append(brute)
     fermer()
     return "".join(blocs)
+
+
+TEXTES_RACCOURCI: dict[str, str] = {
+    "absent": "Tamponné n'est pas encore dans le menu des applications.",
+    "a_jour": "Tamponné figure dans le menu des applications.",
+    "deplace": "Le dossier a été déplacé\u00a0: le raccourci ne trouve plus Tamponné.",
+}
+"""État du raccourci (`src.raccourci.etat`) → phrase de la feuille Raccourci."""
+
+
+def texte_confirmation_import(nom_fichier: str) -> str:
+    """Question posée avant de remplacer les données par une sauvegarde ;
+    le nom du fichier ne se coupe pas (espaces et traits d'union insécables)."""
+    insecable = nom_fichier.replace(" ", "\u00a0").replace("-", "\u2011")
+    return (
+        "Remplacer toutes vos données par celles de "
+        f"«\u00a0{insecable}\u00a0»\u00a0? Une copie des données actuelles "
+        "est conservée. Tamponné redémarrera ensuite."
+    )

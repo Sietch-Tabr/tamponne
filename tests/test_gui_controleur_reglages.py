@@ -8,7 +8,7 @@ import pytest
 from PySide6.QtWidgets import QApplication
 from pytestqt.qtbot import QtBot
 
-from src import parametres_affichage, parametres_sources
+from src import parametres_affichage, parametres_sources, profils, raccourci
 from src.gui import controleur_reglages, travailleurs
 from src.gui.controleur_reglages import (
     MESSAGE_CACHE_INDISPONIBLE,
@@ -169,3 +169,73 @@ def test_pont_pastille_suit_l_avis(qapp: QApplication) -> None:
     assert pont.property("mise_a_jour_disponible") is True
     pont.reglages_controleur.reporter_maj()
     assert pont.property("mise_a_jour_disponible") is False
+
+
+@pytest.fixture
+def sous_linux(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Raccourci `.desktop` dans le profil redirigé par `conftest.py`."""
+    monkeypatch.setattr(raccourci, "systeme_courant", lambda: "linux")
+
+
+def test_raccourci_premier_lancement_pose_la_question_puis_la_retient(
+    qapp: QApplication, qtbot: QtBot, sous_linux: None
+) -> None:
+    reglages = ControleurReglages()
+    assert reglages.property("raccourci")["etat"] == "absent"
+    with qtbot.waitSignal(reglages.question_raccourci) as signal:
+        reglages.verifier_raccourci()
+    assert signal.args == ["premier_lancement"]
+    reglages.refuser_raccourci()
+    with qtbot.assertNotEmitted(reglages.question_raccourci):
+        reglages.verifier_raccourci()
+
+
+def test_ajouter_puis_retirer_raccourci_met_a_jour_la_feuille(
+    qapp: QApplication, sous_linux: None
+) -> None:
+    reglages = ControleurReglages()
+    reglages.ajouter_raccourci()
+    etat = reglages.property("raccourci")
+    assert etat["etat"] == "a_jour"
+    assert etat["texte"] == "Tamponné figure dans le menu des applications."
+    reglages.retirer_raccourci()
+    assert reglages.property("raccourci")["etat"] == "absent"
+
+
+def test_raccourci_indisponible_masque_la_feuille(
+    qapp: QApplication, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(raccourci, "systeme_courant", lambda: None)
+    reglages = ControleurReglages()
+    assert reglages.property("raccourci")["disponible"] is False
+    with qtbot.waitSignal(reglages.erreur_signalee) as signal:
+        reglages.ajouter_raccourci()
+    assert signal.args == ["Raccourci indisponible sur ce système."]
+
+
+def test_exporter_puis_importer_donnees_redemarre(
+    qapp: QApplication, qtbot: QtBot, tmp_path: Path
+) -> None:
+    profils.CHEMIN_PROFILS.write_text('{"Exportée": {}}', encoding="utf-8")
+    reglages = ControleurReglages()
+    url = (tmp_path / "export.zip").as_uri()
+    assert reglages.exporter_donnees(url) == str(tmp_path / "export.zip")
+
+    profils.CHEMIN_PROFILS.write_text('{"Locale": {}}', encoding="utf-8")
+    assert "«\u00a0export.zip\u00a0»" in reglages.confirmation_import(url)
+    with qtbot.waitSignal(reglages.quitter_demande):
+        reglages.importer_donnees(url)
+    assert reglages.redemarrage_demande is True
+    assert profils.CHEMIN_PROFILS.read_text(encoding="utf-8") == '{"Exportée": {}}'
+
+
+def test_importer_un_fichier_douteux_signale_l_erreur_sans_redemarrer(
+    qapp: QApplication, qtbot: QtBot, tmp_path: Path
+) -> None:
+    faux = tmp_path / "faux.zip"
+    faux.write_text("bonjour", encoding="utf-8")
+    reglages = ControleurReglages()
+    with qtbot.waitSignal(reglages.erreur_signalee) as signal:
+        reglages.importer_donnees(faux.as_uri())
+    assert signal.args == ["Ce fichier n'est pas une sauvegarde de Tamponné."]
+    assert reglages.redemarrage_demande is False

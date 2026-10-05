@@ -50,8 +50,9 @@ def main() -> int:
 
     Returns:
         `CODE_REDEMARRAGE` si l'utilisateur a choisi « Installer et
-        redémarrer » (`src.lanceur` applique alors la mise à jour et
-        relance), sinon le code de sortie de la boucle Qt.
+        redémarrer » ou importé des données (`src.lanceur` applique alors
+        la mise à jour en attente et relance), sinon le code de sortie de
+        la boucle Qt.
     """
     nettoyer_fichiers_obsoletes()
     # Menus Fichier/Aide dessinés dans la fenêtre (bande bristol) plutôt
@@ -79,6 +80,7 @@ def main() -> int:
     if not moteur.rootObjects():
         return 1
     pont.reglages_controleur.verifier_mise_a_jour()
+    pont.reglages_controleur.verifier_raccourci()
     code = app.exec()
     return CODE_REDEMARRAGE if pont.reglages_controleur.redemarrage_demande else code
 

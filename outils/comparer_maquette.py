@@ -27,7 +27,7 @@ from PySide6.QtQuick import QQuickWindow  # noqa: E402
 from shiboken6 import Shiboken  # noqa: E402
 
 from outils import donnees_demo  # noqa: E402
-from src import parametres_affichage, parametres_sources  # noqa: E402
+from src import parametres_affichage, parametres_sources, raccourci  # noqa: E402
 
 RACINE = Path(__file__).parent.parent
 DOSSIER_MAQUETTE = Path(__file__).parent / "maquette"
@@ -59,6 +59,24 @@ ECRANS: dict[str, tuple[str, int, int, str]] = {
         2,
         900,
         "ecranSuivi:demanderSuppression:MINT_2026-31544",
+    ),
+    "raccourci": (
+        "Dossier-Reglages-Dialogues.dc.html",
+        4,
+        900,
+        "dialogueRaccourci:demander:premier_lancement",
+    ),
+    "deplace": (
+        "Dossier-Reglages-Dialogues.dc.html",
+        4,
+        900,
+        "dialogueRaccourci:demander:deplace",
+    ),
+    "import": (
+        "Dossier-Reglages-Dialogues.dc.html",
+        4,
+        900,
+        "ecranReglages:confirmerImport:file:///Tamponne-donnees-2026-10-05.zip",
     ),
 }
 """Écran → (fichier de maquette, index d'onglet QML, hauteur de fenêtre,
@@ -152,7 +170,7 @@ def capturer_qml(onglet: int, nuit: bool, hauteur: int, action: str) -> QImage:
         for _ in range(30):
             app.processEvents()
     elif action:
-        nom_objet, fonction, argument = action.split(":")
+        nom_objet, fonction, argument = action.split(":", 2)
         ecran = fenetre.findChild(QObject, nom_objet)
         assert ecran is not None
         QMetaObject.invokeMethod(ecran, fonction, Q_ARG(str, argument))
@@ -209,6 +227,9 @@ def main() -> int:
         # Sources toutes cochées comme la maquette, sans toucher à data/.
         parametres_sources.CHEMIN_SOURCES = dossier / "donnees" / "sources.json"
         parametres_affichage.CHEMIN_AFFICHAGE = dossier / "donnees" / "affichage.json"
+        # Raccourci absent comme la maquette, quel que soit le menu de la machine.
+        raccourci.CHEMIN_PREFERENCE = dossier / "donnees" / "raccourci.json"
+        raccourci.emplacement = lambda systeme: dossier / f"raccourci-absent-{systeme}"
         for nuit in (False, True):
             theme = "nuit" if nuit else "jour"
             maquette = capturer_maquette(fichier, nuit, hauteur, dossier)
