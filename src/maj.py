@@ -7,7 +7,7 @@ nativement les brouillons et pré-versions.
 
 Ne dépend d'aucune bibliothèque d'UI : ce module est appelé aussi bien
 depuis le vérificateur en arrière-plan (`src.gui.travailleurs`) que depuis
-la ligne de commande par `lancer.sh`/`lancer.bat` (voir `if __name__ ==
+la ligne de commande par `src.lanceur` (voir `if __name__ ==
 "__main__"` en bas de fichier) avant même que l'application Qt démarre.
 """
 
@@ -88,7 +88,7 @@ def lire_maj_disponible() -> InfoMaj | None:
 
 def ecrire_maj_disponible(info: InfoMaj) -> None:
     """Pose le marqueur — déclenche l'application automatique au prochain
-    lancement (`lancer.sh`/`lancer.bat`), indépendamment d'un clic utilisateur."""
+    lancement (`src.lanceur`), indépendamment d'un clic utilisateur."""
     ecriture_atomique(CHEMIN_MARQUEUR, dict(info))
 
 
@@ -118,7 +118,7 @@ def appliquer_maj(info: InfoMaj) -> None:
             with zipfile.ZipFile(chemin_zip) as archive:
                 archive.extractall(dossier_tmp)
                 # extractall() n'applique pas les bits Unix (rwx) codés dans
-                # l'archive : sans ça, lancer.sh perd son +x à chaque maj.
+                # l'archive : sans ça, Tamponne.command perd son +x à chaque maj.
                 for membre in archive.infolist():
                     permissions = (membre.external_attr >> 16) & 0o777
                     if permissions:
@@ -148,8 +148,8 @@ def installer_archive(dossier_extrait: Path, racine: Path) -> None:
     """Installe le contenu extrait d'une publication dans `racine`.
 
     Chaque fichier est écrit dans un temporaire puis renommé : un script en
-    cours d'exécution (`lancer.sh` lu par bash) garde son ancien contenu au
-    lieu d'être réécrit sous ses pieds. Ensuite, sous `src/` et `tests/`
+    cours d'exécution (`Tamponne.command` lu par bash) garde son ancien
+    contenu au lieu d'être réécrit sous ses pieds. Ensuite, sous `src/` et `tests/`
     seulement, les fichiers absents de la publication sont supprimés avec
     leurs `__pycache__` ; rien n'est purgé dans un clone git (`.git/`).
 

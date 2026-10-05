@@ -1,5 +1,5 @@
-"""Tests de src/nettoyage.py : retrait des fichiers de l'ancienne interface
-chez les utilisateurs mis à jour depuis la 1.0.x."""
+"""Tests de src/nettoyage.py : retrait des fichiers supprimés d'une version
+à l'autre que la mise à jour laisse sur le disque."""
 
 from pathlib import Path
 
@@ -25,7 +25,9 @@ def test_ancienne_installation_nettoyee_donnees_intactes(tmp_path: Path) -> None
     _creer(tmp_path, "src/gui/vues/accueil.py")
     _creer(tmp_path, "src/gui/widgets/case_a_cocher.py")
     _creer(tmp_path, "tests/test_gui_app.py")
-    _creer(tmp_path, "src/gui/app.py", "conservé : point d'entrée de la 1.0.x")
+    _creer(tmp_path, "lancer.sh")
+    _creer(tmp_path, "lancer.bat")
+    _creer(tmp_path, "src/gui/application.py", "conservé")
     profils = _creer(tmp_path, "data/profils.json", '{"f": {}}')
 
     supprimes = nettoyer_fichiers_obsoletes(tmp_path)
@@ -35,11 +37,14 @@ def test_ancienne_installation_nettoyee_donnees_intactes(tmp_path: Path) -> None
         "src/gui/vues",
         "src/gui/widgets",
         "tests/test_gui_app.py",
+        "lancer.sh",
+        "lancer.bat",
     }
     assert not (tmp_path / "src/gui/theme.py").exists()
     assert not (tmp_path / "src/gui/__pycache__/theme.cpython-314.pyc").exists()
     assert not (tmp_path / "src/gui/vues").exists()
-    assert (tmp_path / "src/gui/app.py").exists()
+    assert not (tmp_path / "lancer.sh").exists()
+    assert (tmp_path / "src/gui/application.py").exists()
     assert profils.read_text(encoding="utf-8") == '{"f": {}}'
 
 

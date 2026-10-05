@@ -107,7 +107,7 @@ class VerificateurMiseAJour(QObject):
         """Slot à connecter à `QThread.started`. Pose le marqueur de mise
         à jour disponible si une publication plus récente est trouvée —
         c'est ce marqueur qui déclenche l'application automatique au
-        prochain lancement (`lancer.sh`/`lancer.bat`), indépendamment
+        prochain lancement (`src.lanceur`), indépendamment
         d'un clic utilisateur."""
         info = verifier_derniere_publication()
         if info is not None:
