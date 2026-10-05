@@ -68,7 +68,7 @@ def test_synchronisation_en_echec_demande_de_relancer(
 ) -> None:
     marqueur.write_text("{}", encoding="utf-8")
     executer = Executeur({"src.maj": [0], "uv": [1]})
-    assert lancer(executer) == 1
+    assert lancer(executer) == lanceur.CODE_MAJ_INACHEVEE
     assert APPLICATION not in executer.commandes
     assert lanceur.MESSAGE_RELANCER in capsys.readouterr().err
 

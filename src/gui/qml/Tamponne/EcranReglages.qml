@@ -324,18 +324,21 @@ Item {
                                 spacing: 8
                                 BoutonEtiquette {
                                     objectName: "boutonAjouterMenu"
+                                    enabled: !racine.reglages.raccourci_en_cours
                                     visible: racine.reglages.raccourci.etat === "absent"
                                     text: "Ajouter au menu"
                                     onClicked: racine.reglages.ajouter_raccourci()
                                 }
                                 BoutonEtiquette {
                                     objectName: "boutonMettreAJourRaccourci"
+                                    enabled: !racine.reglages.raccourci_en_cours
                                     visible: racine.reglages.raccourci.etat === "deplace"
                                     text: "Mettre à jour"
                                     onClicked: racine.reglages.ajouter_raccourci()
                                 }
                                 BoutonEtiquette {
                                     objectName: "boutonRetirerMenu"
+                                    enabled: !racine.reglages.raccourci_en_cours
                                     visible: racine.reglages.raccourci.etat !== "absent"
                                     text: "Retirer"
                                     onClicked: racine.reglages.retirer_raccourci()

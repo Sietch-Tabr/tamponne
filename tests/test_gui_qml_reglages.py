@@ -10,6 +10,7 @@ from PySide6.QtGui import QAccessible, QAccessibleInterface
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuick import QQuickItem
 from PySide6.QtWidgets import QApplication
+from pytestqt.qtbot import QtBot
 
 from src import parametres_affichage, parametres_sources, raccourci
 from src.gui import application
@@ -178,6 +179,7 @@ def test_liste_theme_suit_le_bouton_lampe(
 def test_question_du_raccourci_ouvre_le_dialogue_et_ajoute(
     chargement: tuple[QQmlApplicationEngine, Pont, list[str]],
     qapp: QApplication,
+    qtbot: QtBot,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(raccourci, "systeme_courant", lambda: "linux")
@@ -189,8 +191,8 @@ def test_question_du_raccourci_ouvre_le_dialogue_et_ajoute(
     assert dialogue is not None and dialogue.property("opened") is True
     assert dialogue.property("titre") == "Raccourci"
     QMetaObject.invokeMethod(dialogue, "ajoutDemande")
-    qapp.processEvents()
-    assert raccourci.etat() == "a_jour"
+    qtbot.waitUntil(lambda: raccourci.etat() == "a_jour")
+    pont.reglages_controleur.arreter()
     assert avertissements == []
 
 

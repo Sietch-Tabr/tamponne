@@ -36,4 +36,4 @@ def test_tamponne_bat_lu_d_un_bloc() -> None:
     assert lignes[-1] == ")"
     bloc = "\n".join(lignes[debut:])
     assert "goto" not in bloc.lower() and "%ERRORLEVEL%" not in bloc.upper()
-    assert "uv run --quiet python -m src.lanceur" in bloc
+    assert ".venv\\Scripts\\python.exe -m src.lanceur" in bloc

@@ -12,6 +12,8 @@ ancienne. Le détail de chaque version est aussi publié sur la page
 - Sur un petit écran (portable), la fenêtre s'ouvre agrandie au lieu de déborder
 - Windows : l'avertissement de sécurité ne s'affiche plus qu'au premier lancement (marque du Web retirée des fichiers de Tamponné)
 - Windows : l'icône de Tamponné s'affiche dans la barre des tâches au lieu de celle de Python
+- Windows : la console du lanceur se ferme une fois Tamponné ouvert (la fermer ne ferme plus l'application) ; les erreurs s'affichent dans une boîte de dialogue
+- Créer, mettre à jour ou retirer le raccourci ne fige plus l'interface pendant quelques secondes (Windows)
 
 ## [1.2.0] — 2026-10-05
 

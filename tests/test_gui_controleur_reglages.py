@@ -190,16 +190,20 @@ def test_raccourci_premier_lancement_pose_la_question_puis_la_retient(
         reglages.verifier_raccourci()
 
 
-def test_ajouter_puis_retirer_raccourci_met_a_jour_la_feuille(
-    qapp: QApplication, sous_linux: None
+def test_ajouter_puis_retirer_raccourci_en_arriere_plan(
+    qapp: QApplication, qtbot: QtBot, sous_linux: None
 ) -> None:
     reglages = ControleurReglages()
     reglages.ajouter_raccourci()
+    assert reglages.property("raccourci_en_cours") is True
+    qtbot.waitUntil(lambda: not reglages.property("raccourci_en_cours"))
     etat = reglages.property("raccourci")
     assert etat["etat"] == "a_jour"
     assert etat["texte"] == "Tamponné figure dans le menu des applications."
     reglages.retirer_raccourci()
+    qtbot.waitUntil(lambda: not reglages.property("raccourci_en_cours"))
     assert reglages.property("raccourci")["etat"] == "absent"
+    reglages.arreter()
 
 
 def test_raccourci_indisponible_masque_la_feuille(
@@ -211,6 +215,7 @@ def test_raccourci_indisponible_masque_la_feuille(
     with qtbot.waitSignal(reglages.erreur_signalee) as signal:
         reglages.ajouter_raccourci()
     assert signal.args == ["Raccourci indisponible sur ce système."]
+    reglages.arreter()
 
 
 def test_exporter_puis_importer_donnees_redemarre(
