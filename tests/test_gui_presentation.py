@@ -12,6 +12,7 @@ from src.gui.presentation import (
     notes_en_html,
     reformater_date_iso,
     resume_registre,
+    tampon_nouvelles,
     texte_nombre_fiches,
     texte_nouvelles,
 )
@@ -295,3 +296,16 @@ def test_notes_en_html_liens_https_seulement() -> None:
     html = notes_en_html("[README](https://codeberg.org/r) et [local](file:///etc)")
     assert '<a href="https://codeberg.org/r">README</a>' in html
     assert "local" in html and "file://" not in html
+
+
+def test_tampon_nouvelles_date_du_comptage() -> None:
+    assert tampon_nouvelles({"nb_nouvelles": 3, "nouvelles_le": "2026-10-05"}) == (
+        "3 nouvelles",
+        "05/10/26",
+    )
+
+
+def test_tampon_nouvelles_absent_sans_date_ou_sans_nouvelles() -> None:
+    # Ancien compte (avant le relevé) : il ne mesurait pas les non consultées.
+    assert tampon_nouvelles({"nb_nouvelles": 3}) == ("", "")
+    assert tampon_nouvelles({"nb_nouvelles": 0, "nouvelles_le": "2026-10-05"}) == ("", "")

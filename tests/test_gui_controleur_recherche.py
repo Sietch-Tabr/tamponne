@@ -12,7 +12,8 @@ from pytestqt.qtbot import QtBot
 
 from src import parametres_sources, profils
 from src.gui import controleur_recherche
-from src.gui.controleur_recherche import ControleurRecherche, versants_compatibles
+from src.gui.controleur_recherche import ControleurRecherche
+from src.profils import versants_compatibles
 from src.gui.modele_offres import ProxyOffres
 from src.sources.choisirleservicepublic import ChoisirLeServicePublic
 from src.sources.emploiterritorial import EmploiTerritorial

@@ -174,6 +174,8 @@ Item {
                     Definition { text: "Une fiche, c'est une demande de recherche classée sous un nom, avec « Classer en profil »." }
                     Terme { text: "Lancer" }
                     Definition { text: "Lance la recherche immédiatement (double-clic sur la fiche aussi)." }
+                    Terme { text: "Nouvelles" }
+                    Definition { text: "Chaque jour, au premier lancement, les fiches sont relevées en arrière-plan\u00a0: le tampon rouge compte les offres pas encore consultées dans le registre, daté du relevé. Lancer la fiche les marque consultées." }
                     Terme { text: "modifier · dupliquer · supprimer" }
                     Definition { text: "Change les cases sans lancer, copie la fiche sous un autre nom, ou la jette (confirmation demandée)." }
                 }

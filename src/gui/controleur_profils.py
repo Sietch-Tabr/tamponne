@@ -1,6 +1,8 @@
 """Écran Profils côté Python : fiches de recherche exposées au QML,
-suppression, duplication et demande de lancement."""
+suppression, duplication, demande de lancement et relevé quotidien des
+nouvelles."""
 
+from datetime import date
 from typing import Any
 
 from PySide6.QtCore import (
@@ -11,13 +13,15 @@ from PySide6.QtCore import (
     QObject,
     QPersistentModelIndex,
     Qt,
+    QThread,
     Signal,
     Slot,
 )
 
-from src.gui.presentation import lignes_fiche, texte_nombre_fiches, texte_nouvelles
+from src.gui.presentation import lignes_fiche, tampon_nouvelles, texte_nombre_fiches
+from src.gui.travailleurs import ReleveFiches
 from src.profils import charger_profils, dupliquer_profil, supprimer_profil
-from src.types import Profil
+from src.types import Organisations, Profil
 
 type _Index = QModelIndex | QPersistentModelIndex
 
@@ -26,6 +30,7 @@ _ROLES: dict[int, bytes] = {
     Qt.ItemDataRole.UserRole + 2: b"intitule",
     Qt.ItemDataRole.UserRole + 3: b"lignes",
     Qt.ItemDataRole.UserRole + 4: b"nouvelles",
+    Qt.ItemDataRole.UserRole + 5: b"dateNouvelles",
 }
 
 
@@ -37,9 +42,16 @@ class ModeleFiches(QAbstractListModel):
         self._profils: list[tuple[str, Profil]] = []
 
     def definir(self, profils: dict[str, Profil]) -> None:
-        """Remplace toutes les fiches affichées."""
+        """Remplace les fiches affichées ; mêmes fiches dans le même ordre :
+        contenu mis à jour sur place (le focus clavier reste sur sa fiche)."""
+        nouvelles = list(profils.items())
+        if [nom for nom, _ in nouvelles] == [nom for nom, _ in self._profils]:
+            self._profils = nouvelles
+            if nouvelles:
+                self.dataChanged.emit(self.index(0), self.index(len(nouvelles) - 1))
+            return
         self.beginResetModel()
-        self._profils = list(profils.items())
+        self._profils = nouvelles
         self.endResetModel()
 
     def rowCount(self, parent: _Index = QModelIndex()) -> int:
@@ -52,11 +64,13 @@ class ModeleFiches(QAbstractListModel):
         if not index.isValid() or role not in _ROLES:
             return None
         nom, profil = self._profils[index.row()]
+        texte, date_comptage = tampon_nouvelles(profil)
         return {
             b"nom": nom,
             b"intitule": profil.get("label") or nom,
             b"lignes": lignes_fiche(profil),
-            b"nouvelles": texte_nouvelles(profil.get("nb_nouvelles", 0)),
+            b"nouvelles": texte,
+            b"dateNouvelles": date_comptage,
         }[_ROLES[role]]
 
 
@@ -73,6 +87,8 @@ class ControleurProfils(QObject):
         super().__init__(parent)
         self._modele = ModeleFiches(self)
         self._nombre = 0
+        self._thread_releve: QThread | None = None
+        self._releve: ReleveFiches | None = None
         self.rafraichir()
 
     def _lire_modele(self) -> QObject:
@@ -140,3 +156,33 @@ class ControleurProfils(QObject):
         if nom in charger_profils():
             supprimer_profil(nom)
         self.rafraichir()
+
+    # --- Relevé quotidien ---
+
+    def lancer_releve(self, orgas_cache: Organisations, aujourd_hui: date) -> None:
+        """Compte en arrière-plan les nouvelles des fiches pas encore
+        relevées aujourd'hui. Appelé par `main()`, jamais par le
+        constructeur : les tests construisent l'interface sans réseau."""
+        if self._thread_releve is not None:
+            return
+        thread = QThread()
+        releve = ReleveFiches(orgas_cache, aujourd_hui)
+        releve.moveToThread(thread)
+        thread.started.connect(releve.executer)
+        releve.fiche_relevee.connect(self._on_fiche_relevee)
+        releve.termine.connect(thread.quit)
+        self._thread_releve = thread
+        self._releve = releve
+        thread.start()
+
+    def _on_fiche_relevee(self, _nom: str) -> None:
+        self.rafraichir()
+
+    def arreter(self) -> None:
+        """Interrompt le relevé et attend la fin du thread : détruire un
+        `QThread` encore actif fait planter le processus."""
+        if self._releve is not None:
+            self._releve.arreter()
+        if self._thread_releve is not None and self._thread_releve.isRunning():
+            self._thread_releve.quit()
+            self._thread_releve.wait()

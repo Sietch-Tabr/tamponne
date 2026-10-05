@@ -3,8 +3,14 @@
 import json
 import os
 import tempfile
+import threading
 from pathlib import Path
 from typing import Any
+
+VERROU_DONNEES = threading.RLock()
+"""Verrou des lectures-modifications-écritures de `data/` (profils, cache
+des offres) : le relevé des fiches en arrière-plan écrit en même temps que
+l'interface."""
 
 
 def ecriture_atomique(chemin: Path, donnees: dict[str, Any]) -> None:

@@ -2,6 +2,7 @@
 
 import threading
 from collections.abc import Callable
+from datetime import date
 from functools import partialmethod
 from pathlib import Path
 
@@ -9,6 +10,7 @@ import pytest
 
 from src import cache, parametres_sources, profils
 from src.recherche import (
+    RechercheInterrompue,
     RechercheImpossible,
     lignes_resume,
     post_traiter_resultats,
@@ -520,12 +522,23 @@ def test_post_traiter_avec_profil_marque_les_nouvelles_et_les_stats() -> None:
     profils.ajouter_profil("p", {"label": "p"})
     premiere = post_traiter_resultats([_offre("O1")], [], False, "p")
     assert premiere["nouvelles"] == {"O1"}
-    assert profils.charger_profils()["p"].get("nb_nouvelles") == 1
+    # Affichées dans le registre : la fiche n'a plus de nouvelles.
+    assert profils.charger_profils()["p"].get("nb_nouvelles") == 0
+    assert profils.charger_profils()["p"].get("dernier_lancement") == date.today().isoformat()
 
-    # O1 reste « nouvelle » : vue pour la première fois il y a moins de 24 h.
     seconde = post_traiter_resultats([_offre("O1"), _offre("O2")], [], False, "p")
-    assert seconde["nouvelles"] == {"O1", "O2"}
-    assert profils.charger_profils()["p"].get("nb_nouvelles") == 2
+    assert seconde["nouvelles"] == {"O2"}
+
+
+def test_post_traiter_releve_compte_les_nouvelles_sans_les_consulter() -> None:
+    profils.ajouter_profil("p", {"label": "p"})
+    releve = post_traiter_resultats([_offre("O1")], [], False, "p", consultation=False)
+    assert releve["nouvelles"] == {"O1"}
+    profil = profils.charger_profils()["p"]
+    assert profil.get("nb_nouvelles") == 1
+    assert profil.get("nouvelles_le") == date.today().isoformat()
+    assert "dernier_lancement" not in profil
+    assert post_traiter_resultats([_offre("O1")], [], False, "p")["nouvelles"] == {"O1"}
 
 
 # --- Résumé ---
@@ -557,3 +570,43 @@ def test_lignes_resume_aucune_offre() -> None:
         {}, {"offres": [], "nb_exclus": 0, "nouvelles": set()}, 1, False, []
     )
     assert lignes[-1] == "Aucune offre trouvée."
+
+
+# --- Interruption ---
+
+
+def test_rechercher_interrompue_entre_deux_pages(monkeypatch: pytest.MonkeyPatch) -> None:
+    pages_chargees: list[int] = []
+
+    def rechercher(
+        self: object, filtres: FiltresRecherche, on_page: Callable[[int, int], None] | None = None
+    ) -> tuple[list[Offre], int, bool]:
+        for page in range(1, 6):
+            pages_chargees.append(page)
+            if on_page:
+                on_page(page, 5)
+        return [_offre("O1")], 5, False
+
+    monkeypatch.setattr(ChoisirLeServicePublic, "rechercher", rechercher)
+    parametres_sources.sauvegarder_sources_actives(
+        {"emploiterritorial": False, "passerellesmef": False, "fhf": False}
+    )
+    with pytest.raises(RechercheInterrompue):
+        rechercher_toutes_sources({}, {}, doit_arreter=lambda: len(pages_chargees) >= 2)
+    assert pages_chargees == [1, 2]
+
+
+def test_rechercher_interrompue_avant_toute_source(monkeypatch: pytest.MonkeyPatch) -> None:
+    appels: list[str] = []
+
+    def rechercher(
+        self: object, filtres: FiltresRecherche, on_page: object = None
+    ) -> tuple[list[Offre], int, bool]:
+        appels.append(type(self).__name__)
+        return [], 1, False
+
+    monkeypatch.setattr(ChoisirLeServicePublic, "rechercher", rechercher)
+    monkeypatch.setattr(EmploiTerritorial, "rechercher", rechercher)
+    with pytest.raises(RechercheInterrompue):
+        rechercher_toutes_sources({}, {}, doit_arreter=lambda: True)
+    assert appels == []

@@ -85,6 +85,7 @@ def installer(dossier: Path) -> None:
                 "localisations": ["Île-de-France"],
                 "teletravail": True,
                 "nb_nouvelles": 2,
+                "nouvelles_le": "2026-10-04",
             },
             "hospitalier-achats": {
                 "label": "Hospitalier, achats",

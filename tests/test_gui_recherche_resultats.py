@@ -867,13 +867,11 @@ def test_badge_nouvelles_offres_pour_une_recherche_liee_a_un_profil(
     # cachée (même règle que le CLI historique).
     assert vue.case_nouvelles_seulement.isVisible() is False
 
-    # Relancée aussitôt, l'offre reste « nouvelle » pendant TTL_NOUVELLES
-    # (24 h) : un badge qui disparaîtrait serait une régression.
+    # Relancée aussitôt, l'offre a été consultée : plus de badge.
     qtbot.mouseClick(vue.bouton_lancer, Qt.MouseButton.LeftButton)
     qtbot.waitUntil(lambda: vue.table_resultats.model().rowCount() == 1, timeout=2000)
     qtbot.waitUntil(lambda: vue._thread is None, timeout=2000)
-    assert vue._nouvelles == {"O1"}
-    assert "★" in vue.table_resultats.model().index(0, 0).data()
+    assert vue._nouvelles == set()
 
 
 def test_case_nouvelles_seulement_filtre_le_tableau_sans_relancer(

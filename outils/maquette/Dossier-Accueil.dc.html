@@ -154,6 +154,13 @@
             color: var(--tampon);
             mix-blend-mode: var(--melange);
           }
+          .tampon small {
+            font-family: "IBM Plex Mono", monospace;
+            font-weight: 600;
+            font-size: 13px;
+            letter-spacing: 0;
+            text-transform: none;
+          }
           .mono {
             font-family: "IBM Plex Mono", monospace;
             font-size: 14px;
@@ -430,11 +437,15 @@
                 <span
                   class="tampon"
                   style="
+                    display: inline-flex;
+                    flex-direction: column;
+                    align-items: center;
+                    padding: 3px 9px;
                     transform: rotate(3deg);
                     font-size: 14px;
                     color: var(--rouge);
                   "
-                  >2 nouvelles</span
+                  >2 nouvelles<small>04/10/26</small></span
                 >
               </div>
               <p

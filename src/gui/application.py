@@ -3,6 +3,7 @@
 import json
 import sys
 import urllib.error
+from datetime import date
 from pathlib import Path
 
 from PySide6.QtCore import QObject, Qt, QUrl
@@ -72,6 +73,7 @@ def main() -> int:
     if not moteur.rootObjects():
         return 1
     pont.reglages_controleur.verifier_mise_a_jour()
+    pont.profils_controleur.lancer_releve(orgas_cache, date.today())
     code = app.exec()
     return CODE_RETOUR_MAJ if pont.reglages_controleur.redemarrage_demande else code
 

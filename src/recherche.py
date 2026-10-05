@@ -33,6 +33,15 @@ class RechercheImpossible(Exception):
     """
 
 
+class RechercheInterrompue(Exception):
+    """Arrêt demandé par `doit_arreter` (fermeture de l'application pendant
+    un relevé) ; levée entre deux pages, dans toutes les sources."""
+
+
+def _jamais() -> bool:
+    return False
+
+
 def construire_source(cle: str, orgas_cache: Organisations) -> SourceOffres | None:
     """Instancie la source correspondant à `cle`, `None` si inconnue."""
     if cle == "choisirleservicepublic":
@@ -83,6 +92,7 @@ def rechercher_toutes_sources(
     on_source_terminee: Callable[[str], None] = _ignorer,
     on_avertissement: Callable[[str], None] = _ignorer,
     on_offres_source: Callable[[str, int], None] = _ignorer,
+    doit_arreter: Callable[[], bool] = _jamais,
 ) -> tuple[list[Offre], int, bool]:
     """Interroge les sources actives en parallèle, puis fusionne et
     dédoublonne leurs résultats.
@@ -106,6 +116,8 @@ def rechercher_toutes_sources(
         on_offres_source: Appelé avec (nom affiché, nombre d'offres
             trouvées avant dédoublonnage) quand une source réussit —
             depuis les threads du pool.
+        doit_arreter: Consulté avant chaque source et à chaque page
+            chargée, depuis les threads du pool.
 
     Returns:
         ``(offres, nb_pages, arret_anticipe)`` ; ``nb_pages`` et
@@ -114,6 +126,7 @@ def rechercher_toutes_sources(
 
     Raises:
         RechercheImpossible: aucune source active, ou toutes en échec.
+        RechercheInterrompue: `doit_arreter` a renvoyé vrai.
     """
     sources = sources_a_interroger(filtres, orgas_cache)
     if not sources:
@@ -125,8 +138,12 @@ def rechercher_toutes_sources(
         nom_affiche: str, source: SourceOffres
     ) -> tuple[list[Offre], int, bool]:
         def _on_page(page: int, total: int) -> None:
+            if doit_arreter():
+                raise RechercheInterrompue
             on_progression(nom_affiche, page, total)
 
+        if doit_arreter():
+            raise RechercheInterrompue
         try:
             resultat = source.rechercher(filtres, on_page=_on_page)
             on_offres_source(nom_affiche, len(resultat[0]))
@@ -177,6 +194,7 @@ def post_traiter_resultats(
     grades: list[str],
     afficher_grades_superieurs: bool,
     nom_profil: str | None,
+    consultation: bool = True,
 ) -> ResultatTraite:
     """Filtre les offres brutes d'une recherche et repère les nouvelles.
 
@@ -188,6 +206,9 @@ def post_traiter_resultats(
         nom_profil: Profil sauvegardé dont on met à jour le cache des
             offres vues et les statistiques ; `None` hors profil (ou en
             édition) : aucune offre n'est alors marquée nouvelle.
+        consultation: Vrai si les offres sont affichées dans le registre
+            (elles deviennent consultées, la fiche n'a plus de nouvelles) ;
+            faux pour le relevé en arrière-plan, qui les compte seulement.
     """
     if afficher_grades_superieurs:
         offres_filtrees, nb_exclus = offres, 0
@@ -197,8 +218,10 @@ def post_traiter_resultats(
 
     nouvelles: set[str] = set()
     if nom_profil:
-        nouvelles = maj_cache_offres(nom_profil, offres_filtrees)
-        mettre_a_jour_stats(nom_profil, len(nouvelles))
+        nouvelles = maj_cache_offres(nom_profil, offres_filtrees, consultation)
+        mettre_a_jour_stats(
+            nom_profil, 0 if consultation else len(nouvelles), consultation
+        )
 
     return {"offres": offres_filtrees, "nb_exclus": nb_exclus, "nouvelles": nouvelles}
 

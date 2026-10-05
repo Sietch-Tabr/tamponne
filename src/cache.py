@@ -10,13 +10,12 @@ from bs4 import BeautifulSoup
 
 from src.sources.choisirleservicepublic.api import telecharger_page_offres
 from src.types import Offre, OffreCache, Organisations
-from src.utils import ecriture_atomique
+from src.utils import VERROU_DONNEES, ecriture_atomique
 
 CHEMIN_CACHE = Path(__file__).parent.parent / "data" / "cache.json"
 CHEMIN_OFFRES = Path(__file__).parent.parent / "data" / "offres.json"
 TTL_ORGANISATIONS = 7 * 24 * 3600  # 7 jours en secondes
 TTL_OFFRES = 30 * 24 * 3600  # 30 jours en secondes
-TTL_NOUVELLES = 24 * 3600  # durée pendant laquelle une offre reste "nouvelle"
 
 
 def _charger_cache() -> dict[str, Any]:
@@ -126,11 +125,16 @@ def _sauvegarder_offres(offres: dict[str, dict[str, OffreCache]]) -> None:
     ecriture_atomique(CHEMIN_OFFRES, offres)
 
 
-def maj_cache_offres(nom_profil: str, offres_fraiches: list[Offre]) -> set[str]:
+def maj_cache_offres(
+    nom_profil: str, offres_fraiches: list[Offre], consultation: bool = True
+) -> set[str]:
     """Met à jour le cache des offres pour un profil.
 
-    Ajoute les nouvelles offres, met à jour ``derniere_vue`` des offres
+    Ajoute les offres inconnues, met à jour ``derniere_vue`` des offres
     existantes, et purge celles absentes depuis plus de TTL_OFFRES secondes.
+    Une offre est « nouvelle » tant qu'elle n'a pas été consultée, c'est-à-dire
+    affichée dans le registre : le relevé en arrière-plan les compte sans
+    les consulter.
 
     Lors de la purge, si ``derniere_vue`` est absent ou non parsable, la valeur
     par défaut est ``maintenant_iso`` (ISO 8601 UTC), ce qui préserve l'offre
@@ -140,58 +144,60 @@ def maj_cache_offres(nom_profil: str, offres_fraiches: list[Offre]) -> set[str]:
     Args:
         nom_profil: Clé identifiant le profil dans le cache des offres.
         offres_fraiches: Offres retournées par la dernière recherche.
+        consultation: Vrai si les offres sont affichées dans le registre
+            (elles deviennent consultées) ; faux pour le relevé en
+            arrière-plan.
 
     Returns:
-        Ensemble des références nouvelles (jamais vues avant ce cycle,
-        ou vues pour la première fois il y a moins de TTL_NOUVELLES secondes).
+        Références des offres fraîches pas encore consultées avant cet appel.
     """
-    maintenant = datetime.now(timezone.utc)
-    maintenant_iso = maintenant.isoformat()
-    toutes = _charger_offres()
-    cache_profil = toutes.get(nom_profil, {})
+    with VERROU_DONNEES:
+        maintenant = datetime.now(timezone.utc)
+        maintenant_iso = maintenant.isoformat()
+        toutes = _charger_offres()
+        cache_profil = toutes.get(nom_profil, {})
 
-    refs_fraiches = {o["reference"] for o in offres_fraiches if o.get("reference")}
-    nouvelles: set[str] = set()
+        refs_fraiches = {o["reference"] for o in offres_fraiches if o.get("reference")}
+        nouvelles: set[str] = set()
 
-    for offre in offres_fraiches:
-        ref = offre.get("reference")
-        if not ref:
-            continue
-        if ref not in cache_profil:
-            nouvelles.add(ref)
-            cache_profil[ref] = {
-                **offre,
-                "vu_le": maintenant_iso,
-                "derniere_vue": maintenant_iso,
-            }
-        else:
-            try:
-                vu_le = datetime.fromisoformat(cache_profil[ref]["vu_le"])
-                if (maintenant - vu_le).total_seconds() <= TTL_NOUVELLES:
-                    nouvelles.add(ref)
-            except KeyError, ValueError, TypeError:
-                pass
+        for offre in offres_fraiches:
+            ref = offre.get("reference")
+            if not ref:
+                continue
+            if ref not in cache_profil:
+                nouvelles.add(ref)
+                cache_profil[ref] = {
+                    **offre,
+                    "vu_le": maintenant_iso,
+                    "derniere_vue": maintenant_iso,
+                    "consultee": consultation,
+                }
+                continue
+            if cache_profil[ref].get("consultee", True) is False:
+                nouvelles.add(ref)
             cache_profil[ref].update({**offre, "derniere_vue": maintenant_iso})
+            if consultation:
+                cache_profil[ref]["consultee"] = True
 
-    # Purge des offres absentes depuis plus de TTL_OFFRES
-    a_purger = []
-    for ref, donnees in cache_profil.items():
-        if ref not in refs_fraiches:
-            try:
-                derniere = datetime.fromisoformat(
-                    donnees.get("derniere_vue", maintenant_iso)
-                )
-                age = (maintenant - derniere).total_seconds()
-                if age > TTL_OFFRES:
+        # Purge des offres absentes depuis plus de TTL_OFFRES
+        a_purger = []
+        for ref, donnees in cache_profil.items():
+            if ref not in refs_fraiches:
+                try:
+                    derniere = datetime.fromisoformat(
+                        donnees.get("derniere_vue", maintenant_iso)
+                    )
+                    age = (maintenant - derniere).total_seconds()
+                    if age > TTL_OFFRES:
+                        a_purger.append(ref)
+                except ValueError, TypeError:
                     a_purger.append(ref)
-            except ValueError, TypeError:
-                a_purger.append(ref)
-    for ref in a_purger:
-        del cache_profil[ref]
+        for ref in a_purger:
+            del cache_profil[ref]
 
-    toutes[nom_profil] = cache_profil
-    _sauvegarder_offres(toutes)
-    return nouvelles
+        toutes[nom_profil] = cache_profil
+        _sauvegarder_offres(toutes)
+        return nouvelles
 
 
 def obtenir_offres_cachetees(nom_profil: str) -> dict[str, OffreCache]:

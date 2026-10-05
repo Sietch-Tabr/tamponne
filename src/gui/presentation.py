@@ -279,6 +279,20 @@ def texte_nouvelles(nombre: int) -> str:
     return f"{nombre} nouvelle{'s' if nombre > 1 else ''}"
 
 
+def tampon_nouvelles(profil: Profil) -> tuple[str, str]:
+    """(texte, date JJ/MM/AA) du tampon des nouvelles d'une fiche.
+
+    Rien sans date de comptage : l'ancien compte (avant le relevé
+    quotidien) mesurait les offres du dernier lancement, pas les offres
+    pas encore consultées.
+    """
+    compte_le = profil.get("nouvelles_le")
+    texte = texte_nouvelles(profil.get("nb_nouvelles", 0))
+    if not compte_le or not texte:
+        return "", ""
+    return texte, reformater_date_iso(compte_le, annee_courte=True)
+
+
 def texte_nombre_fiches(nombre: int) -> str:
     """Compteur sous le titre « Mes fiches de recherche »."""
     return f"{nombre} fiche{'s' if nombre > 1 else ''} classée{'s' if nombre > 1 else ''}"

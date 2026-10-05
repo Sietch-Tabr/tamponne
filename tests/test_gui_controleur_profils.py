@@ -1,11 +1,16 @@
 """Tests de src/gui/controleur_profils.py : fiches exposées au QML et
 actions de l'écran Profils."""
 
+import threading
+from datetime import date
+
 import pytest
 from PySide6.QtCore import QModelIndex
 from PySide6.QtWidgets import QApplication
+from pytestqt.qtbot import QtBot
 
 from src import profils
+from src.gui import travailleurs
 from src.gui.controleur_profils import ControleurProfils, ModeleFiches
 
 
@@ -18,6 +23,7 @@ def deux_fiches() -> None:
                 "categories": ["A"],
                 "versants": ["etat"],
                 "nb_nouvelles": 2,
+                "nouvelles_le": "2026-10-04",
             },
             "hospitalier-achats": {"categories": ["A"], "query": "achat"},
         }
@@ -42,6 +48,7 @@ def test_fiches_exposent_intitule_resume_et_nouvelles(qapp: QApplication) -> Non
     assert controleur.property("texte_nombre") == "2 fiches classées"
     assert _valeur(controleur, 0, b"intitule") == "Attaché, Paris et petite couronne"
     assert _valeur(controleur, 0, b"nouvelles") == "2 nouvelles"
+    assert _valeur(controleur, 0, b"dateNouvelles") == "04/10/26"
     assert _valeur(controleur, 1, b"intitule") == "hospitalier-achats"
     assert _valeur(controleur, 1, b"nouvelles") == ""
     assert _valeur(controleur, 1, b"lignes") == [
@@ -93,3 +100,49 @@ def test_lancer_et_modifier_emettent_le_nom_si_la_fiche_existe(
     assert modifies == ["hospitalier-achats"]
     assert controleur.intitule("attache-paris") == "Attaché, Paris et petite couronne"
     assert controleur.intitule("absente") == ""
+
+
+@pytest.mark.usefixtures("deux_fiches")
+def test_rafraichir_memes_fiches_met_a_jour_sans_reinitialiser(
+    qapp: QApplication, qtbot: QtBot
+) -> None:
+    controleur = ControleurProfils(qapp)
+    modele = _modele(controleur)
+    profils.mettre_a_jour_stats("hospitalier-achats", 4, consultation=False)
+    with qtbot.assertNotEmitted(modele.modelReset):
+        with qtbot.waitSignal(modele.dataChanged, timeout=1000):
+            controleur.rafraichir()
+    assert _valeur(controleur, 1, b"nouvelles") == "4 nouvelles"
+
+
+@pytest.mark.usefixtures("deux_fiches")
+def test_lancer_releve_rafraichit_chaque_fiche_relevee(
+    qapp: QApplication, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def relever(nom: str, *_args: object) -> int:
+        profils.mettre_a_jour_stats(nom, 5, consultation=False)
+        return 5
+
+    monkeypatch.setattr(travailleurs, "relever_fiche", relever)
+    controleur = ControleurProfils(qapp)
+    controleur.lancer_releve({}, date.today())
+    qtbot.waitUntil(
+        lambda: _valeur(controleur, 1, b"nouvelles") == "5 nouvelles", timeout=3000
+    )
+    controleur.arreter()
+    assert _valeur(controleur, 0, b"nouvelles") == "5 nouvelles"
+
+
+def test_ecritures_concurrentes_des_profils_sans_perte(qapp: QApplication) -> None:
+    profils.sauvegarder_profils({"base": {"label": "base"}})
+
+    def ajouter(rang: int) -> None:
+        profils.ajouter_profil(f"fiche-{rang}", {"label": str(rang)})
+        profils.mettre_a_jour_stats("base", rang, consultation=False)
+
+    fils = [threading.Thread(target=ajouter, args=(rang,)) for rang in range(20)]
+    for fil in fils:
+        fil.start()
+    for fil in fils:
+        fil.join()
+    assert len(profils.charger_profils()) == 21

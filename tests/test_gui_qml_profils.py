@@ -85,7 +85,7 @@ def test_ecran_profils_expose_fiches_et_actions(
     assert "Mes fiches de recherche" in noms
     assert "2 fiches classées" in noms
     assert "Attaché, Paris et petite couronne" in noms
-    assert "2 nouvelles" in noms
+    assert "2 nouvelles 04/10/26" in noms
     assert "Lancer la fiche « Hospitalier, achats »" in noms
     assert "Nouvelle fiche" in noms
 

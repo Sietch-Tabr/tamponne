@@ -14,6 +14,8 @@ Item {
     required property string intitule
     required property var lignes
     required property string nouvelles
+    /*! Date JJ/MM/AA du comptage des nouvelles (relevé ou lancement). */
+    required property string dateNouvelles
 
     signal lancer(string nom)
     signal modifier(string nom)
@@ -100,6 +102,7 @@ Item {
                     id: tamponNouvelles
                     rotation: 3
                     texte: racine.nouvelles
+                    date: racine.dateNouvelles
                     encre: Theme.rouge
                     fond: Theme.bristol
                 }
@@ -163,6 +166,7 @@ Item {
                 y: bande.origine.y - bande.y
                 rotation: 3
                 texte: racine.nouvelles
+                date: racine.dateNouvelles
                 encre: Theme.rouge
                 fond: Theme.bristolLigne
                 Accessible.ignored: true

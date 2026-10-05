@@ -4,10 +4,11 @@ import json
 import sys
 from datetime import date
 from pathlib import Path
+from typing import Any, cast
 
 from src.filtres import resumer_filtres
 from src.types import FiltresRecherche, Profil
-from src.utils import ecriture_atomique
+from src.utils import VERROU_DONNEES, ecriture_atomique
 
 CHEMIN_PROFILS = Path(__file__).parent.parent / "data" / "profils.json"
 
@@ -36,24 +37,27 @@ def sauvegarder_profils(profils: dict[str, Profil]) -> None:
 
 def ajouter_profil(nom: str, filtres: Profil) -> None:
     """Crée ou remplace un profil."""
-    profils = charger_profils()
-    profils[nom] = {**filtres, "cree_le": date.today().isoformat()}
-    sauvegarder_profils(profils)
+    with VERROU_DONNEES:
+        profils = charger_profils()
+        profils[nom] = {**filtres, "cree_le": date.today().isoformat()}
+        sauvegarder_profils(profils)
 
 
 def modifier_profil(nom: str, filtres: FiltresRecherche) -> None:
     """Met à jour un profil existant (conserve cree_le original)."""
-    profils = charger_profils()
-    cree_le = profils.get(nom, {}).get("cree_le", date.today().isoformat())
-    profils[nom] = {**filtres, "cree_le": cree_le}
-    sauvegarder_profils(profils)
+    with VERROU_DONNEES:
+        profils = charger_profils()
+        cree_le = profils.get(nom, {}).get("cree_le", date.today().isoformat())
+        profils[nom] = {**filtres, "cree_le": cree_le}
+        sauvegarder_profils(profils)
 
 
 def supprimer_profil(nom: str) -> None:
     """Supprime un profil."""
-    profils = charger_profils()
-    profils.pop(nom, None)
-    sauvegarder_profils(profils)
+    with VERROU_DONNEES:
+        profils = charger_profils()
+        profils.pop(nom, None)
+        sauvegarder_profils(profils)
 
 
 def dupliquer_profil(
@@ -66,26 +70,52 @@ def dupliquer_profil(
         nouveau_nom: Nom de la copie.
         label: Intitulé de la copie ; `None` garde celui du profil source.
     """
-    profils = charger_profils()
-    if nom_source not in profils:
-        raise KeyError(f"Profil introuvable : {nom_source}")
-    profils[nouveau_nom] = {
-        **profils[nom_source],
-        "cree_le": date.today().isoformat(),
-    }
-    if label:
-        profils[nouveau_nom]["label"] = label
-    sauvegarder_profils(profils)
+    with VERROU_DONNEES:
+        profils = charger_profils()
+        if nom_source not in profils:
+            raise KeyError(f"Profil introuvable : {nom_source}")
+        profils[nouveau_nom] = {
+            **profils[nom_source],
+            "cree_le": date.today().isoformat(),
+        }
+        if label:
+            profils[nouveau_nom]["label"] = label
+        sauvegarder_profils(profils)
 
 
-def mettre_a_jour_stats(nom: str, nb_nouvelles: int) -> None:
-    """Enregistre les stats du dernier lancement (date + nb nouvelles offres)."""
-    profils = charger_profils()
-    if nom not in profils:
-        return
-    profils[nom]["dernier_lancement"] = date.today().isoformat()
-    profils[nom]["nb_nouvelles"] = nb_nouvelles
-    sauvegarder_profils(profils)
+def mettre_a_jour_stats(nom: str, nb_nouvelles: int, consultation: bool = True) -> None:
+    """Enregistre le nombre d'offres pas encore consultées et sa date.
+
+    Args:
+        nom: Profil concerné (ignoré s'il n'existe plus).
+        nb_nouvelles: Offres pas encore consultées dans le registre.
+        consultation: Vrai pour un lancement depuis l'interface (date du
+            dernier lancement aussi mise à jour), faux pour un relevé.
+    """
+    with VERROU_DONNEES:
+        profils = charger_profils()
+        if nom not in profils:
+            return
+        aujourd_hui = date.today().isoformat()
+        if consultation:
+            profils[nom]["dernier_lancement"] = aujourd_hui
+        profils[nom]["nb_nouvelles"] = nb_nouvelles
+        profils[nom]["nouvelles_le"] = aujourd_hui
+        sauvegarder_profils(profils)
+
+
+def versants_compatibles(profil: FiltresRecherche) -> list[str]:
+    """Versants d'un profil, y compris au format singulier historique
+    (`"versant": "etat"|"hospitalier"|"territorial"|"__tous__"`)."""
+    versants = profil.get("versants")
+    if versants is not None:
+        return list(versants)
+    ancien = cast(dict[str, Any], profil).get("versant")
+    if ancien is None or ancien == "etat":
+        return ["etat"]
+    if ancien == "__tous__":
+        return []
+    return [str(ancien)]
 
 
 def resume_profil(profil: Profil) -> str:

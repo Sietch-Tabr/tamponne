@@ -44,10 +44,14 @@ class OffreCache(Offre):
         vu_le: Horodatage ISO 8601 UTC de la première apparition.
         derniere_vue: Horodatage ISO 8601 UTC du dernier cycle où l'offre
             était présente dans les résultats.
+        consultee: Faux tant que l'offre, trouvée par le relevé en
+            arrière-plan, n'a pas été affichée dans le registre ; absent
+            (anciennes entrées) = consultée.
     """
 
     vu_le: str
     derniere_vue: str
+    consultee: NotRequired[bool]
 
 
 class FiltresRecherche(TypedDict, total=False):
@@ -105,14 +109,17 @@ class Profil(FiltresRecherche, total=False):
         label: Nom d'affichage dans les menus.
         cree_le: Date de création au format ``YYYY-MM-DD``.
         dernier_lancement: Date du dernier lancement au format ``YYYY-MM-DD``.
-        nb_nouvelles: Nombre de nouvelles offres détectées lors du dernier
-            lancement.
+        nb_nouvelles: Nombre d'offres pas encore consultées dans le
+            registre, au dernier relevé ou lancement.
+        nouvelles_le: Date (``YYYY-MM-DD``) à laquelle ``nb_nouvelles`` a
+            été compté.
     """
 
     label: str
     cree_le: str
     dernier_lancement: str
     nb_nouvelles: int
+    nouvelles_le: str
 
 
 class DetailOffre(TypedDict):

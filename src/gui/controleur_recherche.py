@@ -32,7 +32,12 @@ from src.gui.modele_offres import ProxyOffres
 from src.gui.modele_registre import ModeleRegistre
 from src.gui.presentation import contenu_detail, libelle_selection, resume_registre
 from src.gui.travailleurs import TacheReseau, TravailleurRecherche
-from src.profils import ajouter_profil, charger_profils, modifier_profil
+from src.profils import (
+    ajouter_profil,
+    charger_profils,
+    modifier_profil,
+    versants_compatibles,
+)
 from src.recherche import post_traiter_resultats
 from src.sources.choisirleservicepublic import MAX_PAGES, recuperer_detail_offre
 from src.types import FiltresRecherche, Offre, Organisations, Profil
@@ -78,20 +83,6 @@ def _etat_initial() -> dict[str, Any]:
         "grades_superieurs": False,
         "mot_cle": "",
     }
-
-
-def versants_compatibles(profil: FiltresRecherche) -> list[str]:
-    """Versants d'un profil, y compris au format singulier historique
-    (`"versant": "etat"|"hospitalier"|"territorial"|"__tous__"`)."""
-    versants = profil.get("versants")
-    if versants is not None:
-        return list(versants)
-    ancien = cast(dict[str, Any], profil).get("versant")
-    if ancien is None or ancien == "etat":
-        return ["etat"]
-    if ancien == "__tous__":
-        return []
-    return [str(ancien)]
 
 
 class ControleurRecherche(QObject):

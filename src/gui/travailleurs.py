@@ -7,13 +7,22 @@ connexion à une fonction/lambda ordinaire ne garantit pas l'exécution
 sur le bon thread.
 """
 
+import threading
 from collections.abc import Callable
+from datetime import date
 
 from PySide6.QtCore import QObject, Signal
 
 from src.candidatures import verifier_disponibilite
 from src.maj import ecrire_maj_disponible, verifier_derniere_publication
-from src.recherche import RechercheImpossible, rechercher_toutes_sources
+from src.parametres_sources import charger_sources_actives
+from src.profils import charger_profils
+from src.recherche import (
+    RechercheImpossible,
+    RechercheInterrompue,
+    rechercher_toutes_sources,
+)
+from src.releve import fiches_a_relever, relever_fiche
 from src.types import Candidature, FiltresRecherche, Organisations
 
 
@@ -136,3 +145,46 @@ class TacheReseau(QObject):
             self.echec.emit(str(erreur))
             return
         self.termine.emit(resultat)
+
+
+class ReleveFiches(QObject):
+    """Relevé quotidien des fiches, une par une, pour compter leurs offres
+    pas encore consultées ; même pattern QThread que `TravailleurRecherche`.
+    `arreter()` peut être appelé depuis le thread principal."""
+
+    fiche_relevee = Signal(str)
+    """Nom d'une fiche dont le nombre de nouvelles vient d'être enregistré."""
+    termine = Signal()
+
+    def __init__(self, orgas_cache: Organisations, aujourd_hui: date) -> None:
+        super().__init__()
+        self._orgas_cache = orgas_cache
+        self._aujourd_hui = aujourd_hui
+        self._arret = threading.Event()
+
+    def arreter(self) -> None:
+        """Interrompt le relevé à la prochaine page chargée."""
+        self._arret.set()
+
+    def executer(self) -> None:
+        """Slot à connecter à `QThread.started`. Une fiche en échec (sources
+        indisponibles) garde son ancien compte ; sans source active, le
+        relevé s'arrête."""
+        try:
+            for nom in fiches_a_relever(charger_profils(), self._aujourd_hui):
+                if self._arret.is_set():
+                    break
+                # Relue à chaque tour : la fiche a pu être modifiée ou supprimée.
+                profil = charger_profils().get(nom)
+                if profil is None:
+                    continue
+                try:
+                    relever_fiche(nom, profil, self._orgas_cache, self._arret.is_set)
+                except RechercheImpossible:
+                    if not any(charger_sources_actives().values()):
+                        break
+                    continue
+                self.fiche_relevee.emit(nom)
+        except RechercheInterrompue:
+            pass
+        self.termine.emit()
