@@ -8,7 +8,7 @@ dependencies = [
 ]
 
 [project.gui-scripts]
-tamponne = "src.gui.app:main"
+tamponne = "src.gui.application:main"
 
 [build-system]
 requires = ["hatchling"]

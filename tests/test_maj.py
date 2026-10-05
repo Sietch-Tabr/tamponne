@@ -248,3 +248,68 @@ def test_appliquer_maj_echec_telechargement_leve_runtime_error(
     monkeypatch.setattr(maj.urllib.request, "urlretrieve", _leve)
     with pytest.raises(RuntimeError):
         maj.appliquer_maj(_info())
+
+
+# --- installer_archive : purge et remplacement ---
+
+
+def _publication(tmp_path: Path, fichiers: dict[str, str]) -> Path:
+    dossier = tmp_path / "extrait" / "tamponne-abc123"
+    for relatif, contenu in fichiers.items():
+        chemin = dossier / relatif
+        chemin.parent.mkdir(parents=True, exist_ok=True)
+        chemin.write_text(contenu, encoding="utf-8")
+    return dossier
+
+
+def _installation(racine: Path, fichiers: dict[str, str]) -> None:
+    for relatif, contenu in fichiers.items():
+        chemin = racine / relatif
+        chemin.parent.mkdir(parents=True, exist_ok=True)
+        chemin.write_text(contenu, encoding="utf-8")
+
+
+def test_installer_archive_purge_src_et_tests_seulement(tmp_path: Path) -> None:
+    racine = tmp_path / "installation"
+    _installation(
+        racine,
+        {
+            "src/garde.py": "ancien",
+            "src/gui/vues/accueil.py": "obsolète",
+            "src/gui/vues/__pycache__/accueil.cpython-314.pyc": "",
+            "tests/test_ancien.py": "obsolète",
+            "data/profils.json": "{}",
+            "notes-perso.md": "à garder",
+        },
+    )
+    publication = _publication(tmp_path, {"src/garde.py": "nouveau", "tests/test_x.py": ""})
+
+    maj.installer_archive(publication, racine)
+
+    assert (racine / "src/garde.py").read_text(encoding="utf-8") == "nouveau"
+    assert not (racine / "src/gui").exists()
+    assert not (racine / "tests/test_ancien.py").exists()
+    assert (racine / "tests/test_x.py").exists()
+    assert (racine / "data/profils.json").read_text(encoding="utf-8") == "{}"
+    assert (racine / "notes-perso.md").exists()
+
+
+def test_installer_archive_ne_purge_rien_dans_un_clone_git(tmp_path: Path) -> None:
+    racine = tmp_path / "clone"
+    _installation(racine, {".git/HEAD": "ref", "src/local.py": "en cours"})
+    maj.installer_archive(_publication(tmp_path, {"src/autre.py": ""}), racine)
+    assert (racine / "src/local.py").exists()
+
+
+def test_installer_archive_remplace_sans_reecrire_le_fichier_ouvert(
+    tmp_path: Path,
+) -> None:
+    """bash lit lancer.sh au fil de l'exécution : le remplacer par renommage
+    laisse au processus en cours l'ancien contenu."""
+    racine = tmp_path / "installation"
+    _installation(racine, {"lancer.sh": "ancien contenu\n"})
+    with (racine / "lancer.sh").open(encoding="utf-8") as ouvert:
+        maj.installer_archive(_publication(tmp_path, {"lancer.sh": "nouveau\n"}), racine)
+        assert ouvert.read() == "ancien contenu\n"
+    assert (racine / "lancer.sh").read_text(encoding="utf-8") == "nouveau\n"
+    assert not list(racine.glob("*.maj"))

@@ -1,13 +1,14 @@
 #!/bin/bash
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+# Bloc lu en entier avant exécution, puis exit : une mise à jour qui
+# réécrit ce fichier pendant qu'il tourne ne peut rien exécuter d'autre.
+{
+cd "$(dirname "${BASH_SOURCE[0]}")"
 
-# Boucle : une mise à jour en attente (data/maj_disponible.json, posée par
-# l'app via src.maj) est appliquée avant le lancement — au prochain
-# lancement normal, ou immédiatement si l'app a quitté avec le code 42
-# (clic sur « Mettre à jour maintenant » dans Paramètres).
+# Une mise à jour en attente (data/maj_disponible.json) est appliquée
+# avant le lancement, ou aussitôt si l'app quitte avec le code 42
+# (« Installer et redémarrer » dans Réglages).
 while true; do
     uv sync --quiet
     if [ -f data/maj_disponible.json ]; then
@@ -15,10 +16,11 @@ while true; do
             || echo "Mise à jour indisponible, on continue avec la version actuelle." >&2
         uv sync --quiet
     fi
-    # `|| code=$?` plutôt que `code=$?` seul : sous `set -e`, un code de
-    # sortie non nul sur la ligne précédente ferait quitter le script
-    # avant même d'atteindre la capture du code.
+    # `|| code=$?` : sous `set -e`, un code non nul ferait quitter le
+    # script avant la capture.
     code=0
     uv run python -m src.gui.application || code=$?
     [ "$code" -eq 42 ] || break
 done
+exit 0
+}

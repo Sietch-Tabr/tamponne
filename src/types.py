@@ -55,7 +55,7 @@ class OffreCache(Offre):
 
 
 class FiltresRecherche(TypedDict, total=False):
-    """Paramètres de recherche construits par le wizard (tous optionnels).
+    """Critères du formulaire de recherche (tous optionnels).
 
     Les listes vides signifient « pas de filtre sur ce critère ».
 

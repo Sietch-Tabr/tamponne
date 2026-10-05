@@ -12,6 +12,7 @@ from PySide6.QtQml import QQmlApplicationEngine
 
 from src.cache import obtenir_organisations
 from src.gui.pont import Pont
+from src.nettoyage import nettoyer_fichiers_obsoletes
 from src.parametres_affichage import charger_mode_theme, charger_reduire_animations
 
 DOSSIER_QML = Path(__file__).parent / "qml"
@@ -45,13 +46,15 @@ def creer_moteur(pont: Pont) -> QQmlApplicationEngine:
 
 
 def main() -> int:
-    """Lance l'application QML.
+    """Lance l'application QML, après avoir retiré les fichiers de l'ancienne
+    interface laissés par une mise à jour depuis la 1.0.x.
 
     Returns:
         `CODE_RETOUR_MAJ` si l'utilisateur a choisi « Installer et
         redémarrer » (`lancer.sh`/`lancer.bat` appliquent alors la mise à
         jour et relancent), sinon le code de sortie de la boucle Qt.
     """
+    nettoyer_fichiers_obsoletes()
     # Menus Fichier/Aide dessinés dans la fenêtre (bande bristol) plutôt
     # que dans la barre système de macOS ; à poser avant l'application.
     QGuiApplication.setAttribute(Qt.ApplicationAttribute.AA_DontUseNativeMenuBar)

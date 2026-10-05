@@ -367,3 +367,30 @@ def test_export_resume_les_criteres_de_la_recherche_affichee(
     controleur.basculer("categories", "C", True)
     controleur.exporter()
     assert recus[0] == resumer_filtres({**controleur.construire_filtres(), "categories": ["A"]})
+
+
+def test_nouvelles_seulement_et_export_des_offres_visibles(
+    controleur: ControleurRecherche, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    exportees: list[list[Offre]] = []
+
+    def exporter(offres: list[Offre], resume: str, nb_pages: int, profil: object) -> Path:
+        exportees.append(offres)
+        return Path("export.html")
+
+    monkeypatch.setattr(controleur_recherche, "exporter_html", exporter)
+    profils.sauvegarder_profils({"f": {"label": "F", "versants": ["etat", "territorial"]}})
+    controleur.lancer_profil("f")
+    _attendre(controleur, qtbot)
+    controleur.filtrer("finances")
+    assert controleur.property("modele").rowCount() == 1
+    controleur.exporter()
+    assert [o["reference"] for o in exportees[0]] == ["T3"]
+    controleur.filtrer("")
+    controleur.nouvelles_seulement(True)
+    assert controleur.property("modele").rowCount() == 2
+    # Relancée : les offres déjà affichées sont consultées, plus de nouvelles.
+    controleur.lancer()
+    _attendre(controleur, qtbot)
+    controleur.nouvelles_seulement(True)
+    assert controleur.property("modele").rowCount() == 0

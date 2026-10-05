@@ -10,3 +10,4 @@ if exist data\maj_disponible.json (
 )
 uv run python -m src.gui.application
 if %ERRORLEVEL%==42 goto boucle
+rem Garder les lignes ci-dessus a l'identique : cmd relit ce fichier pendant une mise a jour.
