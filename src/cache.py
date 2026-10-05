@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 
 from src.sources.choisirleservicepublic.api import telecharger_page_offres
 from src.types import Offre, OffreCache, Organisations
@@ -53,6 +53,13 @@ def _organisations_expirees(cache: dict[str, Any]) -> bool:
         return True
 
 
+def _attribut(balise: Tag, nom: str) -> str:
+    """Valeur texte d'un attribut HTML, vide s'il est absent (ou multiple,
+    ce qui n'arrive pas pour les attributs lus ici)."""
+    valeur = balise.get(nom)
+    return valeur if isinstance(valeur, str) else ""
+
+
 def _scraper_organisations() -> Organisations:
     """Scrape /nos-offres/ et retourne {ministère: {sous-org: id}}."""
     html = telecharger_page_offres()
@@ -62,19 +69,19 @@ def _scraper_organisations() -> Organisations:
     for inp in soup.find_all(
         "input", attrs={"data-slug": "organisations", "data-has-children": True}
     ):
-        parent_id = inp.get("id")
-        desc = inp.get("data-desc")
+        parent_id = _attribut(inp, "id")
+        desc = _attribut(inp, "data-desc")
         if parent_id and desc:
             parents[parent_id] = {"nom": desc, "enfants": {}}
 
     for inp in soup.find_all(
         "input", attrs={"data-slug": "organisations", "data-parent": True}
     ):
-        parent_id = inp.get("data-parent")
+        parent_id = _attribut(inp, "data-parent")
         if not parent_id or parent_id not in parents:
             continue
-        desc = inp.get("data-desc")
-        valeur = inp.get("value", "")
+        desc = _attribut(inp, "data-desc")
+        valeur = _attribut(inp, "value")
         if desc and valeur.isdigit():
             parents[parent_id]["enfants"][desc] = int(valeur)
 

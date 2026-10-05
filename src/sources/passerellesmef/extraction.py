@@ -52,7 +52,7 @@ def extraire_offres(html: str) -> list[Offre]:
             continue
         titre = lien.get_text(strip=True)
 
-        ref_tag = carte.find(attrs={"data-reference": True})
+        ref_tag = carte.select_one("[data-reference]")
         reference = str(ref_tag.get("data-reference", "")) if ref_tag else ""
 
         date = employeur = localisation = ""

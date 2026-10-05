@@ -69,7 +69,8 @@ def extraire_offres(html: str) -> list[Offre]:
         if not lien:
             continue
 
-        url = _valider_url(lien.get("href", ""))
+        href = lien.get("href")
+        url = _valider_url(href) if isinstance(href, str) else ""
         if not url:
             continue
         titre = lien.get_text(strip=True)
@@ -82,7 +83,7 @@ def extraire_offres(html: str) -> list[Offre]:
 
         localisation = versant = employeur = date = ""
         for li in carte.find_all("li"):
-            classes = set(li.get("class", []))
+            classes = set(li.get_attribute_list("class"))
             if "fr-icon--sm" not in classes:
                 continue
             for sr in li.find_all("span", class_="sr-only"):
