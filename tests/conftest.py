@@ -9,7 +9,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pytest  # noqa: E402
 
-from src import cache, candidatures, parametres_affichage, profils  # noqa: E402
+from src import cache, candidatures, parametres_affichage, profils, raccourci  # noqa: E402
 from src.gui import travailleurs  # noqa: E402
 
 
@@ -58,3 +58,16 @@ def _rediriger_caches_vers_tmp(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     data/offres.json (ni data/cache.json) pendant les tests."""
     monkeypatch.setattr(cache, "CHEMIN_OFFRES", tmp_path / "offres.json")
     monkeypatch.setattr(cache, "CHEMIN_CACHE", tmp_path / "cache.json")
+
+
+@pytest.fixture(autouse=True)
+def _rediriger_raccourci_vers_tmp(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Jamais de raccourci dans le vrai menu des applications pendant les
+    tests : profil utilisateur et préférence redirigés."""
+    profil = tmp_path / "profil"
+    monkeypatch.setenv("HOME", str(profil))
+    monkeypatch.setenv("APPDATA", str(profil / "AppData/Roaming"))
+    monkeypatch.setenv("XDG_DATA_HOME", str(profil / ".local/share"))
+    monkeypatch.setattr(raccourci, "CHEMIN_PREFERENCE", tmp_path / "raccourci.json")
