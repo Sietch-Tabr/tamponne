@@ -24,9 +24,7 @@ if errorlevel 1 (
     powershell -NoProfile -Command "Add-Type -AssemblyName PresentationFramework; [void][System.Windows.MessageBox]::Show('Impossible de préparer Tamponné : vérifiez la connexion internet puis relancez.', 'Tamponné', 'OK', 'Error')"
     exit /b 1
 )
-uv run --quiet python -m src.lanceur
-if errorlevel 1 (
-    powershell -NoProfile -Command "Add-Type -AssemblyName PresentationFramework; [void][System.Windows.MessageBox]::Show('Tamponné s''est arrêté sur une erreur. Relancez-le ; si le problème persiste, signalez-le sur Codeberg.', 'Tamponné', 'OK', 'Error')"
-)
+rem Le lanceur se relance sans console puis rend la main : cette fenêtre se ferme.
+.venv\Scripts\python.exe -m src.lanceur
 exit /b
 )

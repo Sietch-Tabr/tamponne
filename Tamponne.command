@@ -9,7 +9,11 @@ export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
 
 signaler() {
     echo "$1" >&2
-    [ -t 2 ] && return
+    if [ -t 2 ]; then
+        # Terminal ouvert par ce script : il se fermerait avant lecture.
+        [ -n "${TAMPONNE_TERMINAL:-}" ] && read -r -p "Appuyez sur Entrée pour fermer." _
+        return
+    fi
     if command -v osascript >/dev/null 2>&1; then
         osascript -e 'on run argv' \
             -e 'display alert "Tamponné" message (item 1 of argv) as critical' \
@@ -22,6 +26,23 @@ signaler() {
         notify-send "Tamponné" "$1"
     fi
 }
+
+# Linux : lancé par double-clic, aucun terminal n'affiche l'installation
+# (macOS ouvre toujours Terminal pour un .command). On s'y relance.
+if [ ! -t 1 ] && [ "$(uname)" = Linux ] && [ -z "${TAMPONNE_TERMINAL:-}" ] \
+    && { ! command -v uv >/dev/null 2>&1 || [ ! -d .venv ]; }; then
+    for terminal in x-terminal-emulator konsole gnome-terminal xfce4-terminal xterm; do
+        command -v "$terminal" >/dev/null 2>&1 || continue
+        case $terminal in
+            gnome-terminal) option=-- ;;
+            xfce4-terminal) option=-x ;;
+            *) option=-e ;;
+        esac
+        TAMPONNE_TERMINAL=1 exec "$terminal" "$option" /bin/bash "$PWD/Tamponne.command"
+    done
+    command -v notify-send >/dev/null 2>&1 \
+        && notify-send "Tamponné" "Premier lancement : installation en cours (quelques minutes)…"
+fi
 
 if ! command -v uv >/dev/null 2>&1; then
     echo "Installation de uv, le gestionnaire de Python de Tamponné…"

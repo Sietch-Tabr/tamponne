@@ -16,13 +16,13 @@ Rien à installer au préalable : au premier lancement, Tamponné installe lui-m
 2. **Dézipper** le fichier où vous voulez (Documents, Bureau…). Tamponné est portable : il reste dans ce dossier, avec vos données (`data/`). Pour le déplacer, déplacez tout le dossier.
 3. **Double-cliquer** sur le lanceur :
 
-| Système | Lanceur                                                                   |
-| ------- | ------------------------------------------------------------------------- |
-| Windows | `Tamponne.bat`                                                            |
-| macOS   | `Tamponne.command`                                                        |
-| Linux   | `./Tamponne.command` dans un terminal (le double-clic dépend du bureau) |
+| Système | Lanceur                                                                                          |
+| ------- | ------------------------------------------------------------------------------------------------ |
+| Windows | `Tamponne.bat`                                                                                   |
+| macOS   | `Tamponne.command`                                                                               |
+| Linux   | `Tamponne.command`, ou `./Tamponne.command` dans un terminal si le double-clic l'ouvre comme un texte |
 
-Au premier lancement, Tamponné propose de s'ajouter au menu des applications (voir [Raccourci](#raccourci)) : il se lance ensuite comme n'importe quelle application.
+Au premier lancement, une fenêtre de terminal montre l'installation, puis Tamponné propose de s'ajouter au menu des applications (voir [Raccourci](#raccourci)) : il se lance ensuite comme n'importe quelle application.
 
 > **macOS : « Tamponne.command ne peut pas être ouvert »**. Au premier double-clic, macOS bloque les fichiers téléchargés qui ne viennent pas de l'App Store ou d'un développeur identifié. Ouvrez **Réglages Système › Confidentialité et sécurité**, descendez jusqu'au message sur `Tamponne.command`, cliquez sur **« Ouvrir quand même »** et confirmez avec votre mot de passe. Une seule fois : les lancements suivants (et le raccourci) ne sont plus bloqués.
 

@@ -4,8 +4,8 @@ point d'entrée (src/gui/application.py)."""
 from collections.abc import Iterator
 
 import pytest
-from PySide6.QtCore import QObject, QUrl
-from PySide6.QtGui import QAccessible, QAccessibleInterface
+from PySide6.QtCore import QObject, Qt, QUrl
+from PySide6.QtGui import QAccessible, QAccessibleInterface, QWindow
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtWidgets import QApplication
 
@@ -92,3 +92,24 @@ def test_bouton_lampe_annonce_le_bureau_vise(moteur: QQmlApplicationEngine) -> N
     assert "Bureau de jour" in _noms_accessibles(_racine(moteur))
     theme.setProperty("mode", "clair")
     assert "Bureau de nuit" in _noms_accessibles(_racine(moteur))
+
+
+def test_adapter_a_l_ecran_agrandit_si_l_ecran_est_trop_petit(
+    qapp: QApplication,
+) -> None:
+    """L'écran hors écran des tests fait 800 × 800 : 1280 × 900 n'y tient pas."""
+    fenetre = QWindow()
+    fenetre.resize(1280, 900)
+    fenetre.show()
+    application.adapter_a_l_ecran(fenetre)
+    assert fenetre.windowState() & Qt.WindowState.WindowMaximized
+    fenetre.close()
+
+
+def test_adapter_a_l_ecran_garde_la_taille_si_elle_tient(qapp: QApplication) -> None:
+    fenetre = QWindow()
+    fenetre.resize(600, 500)
+    fenetre.show()
+    application.adapter_a_l_ecran(fenetre)
+    assert not fenetre.windowState() & Qt.WindowState.WindowMaximized
+    fenetre.close()

@@ -34,7 +34,7 @@ type EtatRaccourci = Literal["indisponible", "absent", "a_jour", "deplace"]
 type Question = Literal["aucune", "premier_lancement", "deplace"]
 
 
-class ErreurRaccourci(Exception):
+class ErreurRaccourci(RuntimeError):
     """Création ou retrait impossible ; le message s'affiche tel quel."""
 
 
@@ -138,7 +138,7 @@ def creer(racine: Path = CHEMIN_RACINE) -> None:
             _creer_app(cible, racine)
         else:
             _creer_desktop(cible, racine)
-    except (OSError, subprocess.CalledProcessError) as erreur:
+    except (OSError, subprocess.SubprocessError) as erreur:
         raise ErreurRaccourci("Impossible de créer le raccourci.") from erreur
     _enregistrer(racine)
 
@@ -184,11 +184,19 @@ def _creer_lnk(cible: Path, racine: Path) -> None:
         "TAMPONNE_DOSSIER": str(racine),
         "TAMPONNE_ICONE": str(racine / "src/gui/icones/tamponne.ico"),
     }
+    # Entrée fermée et délai borné : PowerShell attendrait sinon la console
+    # héritée ; sans fenêtre pour ne rien faire clignoter.
+    drapeaux = 0
+    if sys.platform == "win32":
+        drapeaux = subprocess.CREATE_NO_WINDOW
     subprocess.run(
         ["powershell", "-NoProfile", "-NonInteractive", "-Command", script],
         env=environnement,
         check=True,
         capture_output=True,
+        stdin=subprocess.DEVNULL,
+        timeout=60,
+        creationflags=drapeaux,
     )
 
 

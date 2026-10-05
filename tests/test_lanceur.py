@@ -68,6 +68,25 @@ def test_synchronisation_en_echec_demande_de_relancer(
 ) -> None:
     marqueur.write_text("{}", encoding="utf-8")
     executer = Executeur({"src.maj": [0], "uv": [1]})
-    assert lancer(executer) == 1
+    assert lancer(executer) == lanceur.CODE_MAJ_INACHEVEE
     assert APPLICATION not in executer.commandes
     assert lanceur.MESSAGE_RELANCER in capsys.readouterr().err
+
+
+def test_retirer_marque_du_web_debloque_l_installation_hors_venv_et_donnees(
+    tmp_path: Path,
+) -> None:
+    """Sur NTFS, `fichier:Zone.Identifier` est un flux ; ici un fichier au
+    même nom, supprimé de la même façon."""
+    marque = lanceur.FLUX_MARQUE_DU_WEB
+    for relatif in ("Tamponne.bat", "src/lanceur.py", ".venv/x.py", "data/p.json"):
+        chemin = tmp_path / relatif
+        chemin.parent.mkdir(parents=True, exist_ok=True)
+        chemin.write_text("", encoding="utf-8")
+        Path(str(chemin) + marque).write_text("[ZoneTransfer]", encoding="utf-8")
+
+    assert lanceur.retirer_marque_du_web(tmp_path) == 2
+    assert not Path(str(tmp_path / "Tamponne.bat") + marque).exists()
+    assert not Path(str(tmp_path / "src/lanceur.py") + marque).exists()
+    assert Path(str(tmp_path / ".venv/x.py") + marque).exists()
+    assert lanceur.retirer_marque_du_web(tmp_path) == 0

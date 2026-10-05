@@ -1,12 +1,13 @@
 """Point d'entrée de l'interface QML (thème « dossier administratif »)."""
 
+import ctypes
 import json
 import sys
 import urllib.error
 from pathlib import Path
 
 from PySide6.QtCore import QObject, Qt, QUrl
-from PySide6.QtGui import QGuiApplication, QIcon
+from PySide6.QtGui import QGuiApplication, QIcon, QWindow
 from PySide6.QtQml import QQmlApplicationEngine
 
 from src.cache import obtenir_organisations
@@ -17,6 +18,9 @@ from src.parametres_affichage import charger_mode_theme, charger_reduire_animati
 
 DOSSIER_QML = Path(__file__).parent / "qml"
 ICONE = Path(__file__).parent / "icones" / "tamponne.png"
+IDENTIFIANT_WINDOWS = "Kwaite.Tamponne"
+"""Identifiant d'application Windows (AppUserModelID) : regroupement et
+icône dans la barre des tâches."""
 
 
 def creer_moteur(pont: Pont) -> QQmlApplicationEngine:
@@ -44,6 +48,19 @@ def creer_moteur(pont: Pont) -> QQmlApplicationEngine:
     return moteur
 
 
+def adapter_a_l_ecran(fenetre: QWindow) -> None:
+    """Agrandit la fenêtre si sa taille d'ouverture (1280 × 900, barre de
+    titre comprise) dépasse la zone utile de son écran, sans la barre de
+    menus ni le Dock ou la barre des tâches : petit écran de portable."""
+    ecran = fenetre.screen()
+    if ecran is None:
+        return
+    zone = ecran.availableGeometry()
+    cadre = fenetre.frameGeometry()
+    if cadre.width() > zone.width() or cadre.height() > zone.height():
+        fenetre.showMaximized()
+
+
 def main() -> int:
     """Lance l'application QML, après avoir retiré les fichiers obsolètes
     laissés par les mises à jour (`src.nettoyage`).
@@ -55,6 +72,12 @@ def main() -> int:
         la boucle Qt.
     """
     nettoyer_fichiers_obsoletes()
+    if sys.platform == "win32":
+        # Sans identifiant propre, Windows range la fenêtre sous python.exe
+        # et la barre des tâches montre l'icône de Python.
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
+            IDENTIFIANT_WINDOWS
+        )
     # Menus Fichier/Aide dessinés dans la fenêtre (bande bristol) plutôt
     # que dans la barre système de macOS ; à poser avant l'application.
     QGuiApplication.setAttribute(Qt.ApplicationAttribute.AA_DontUseNativeMenuBar)
@@ -79,6 +102,9 @@ def main() -> int:
     moteur.load(QUrl.fromLocalFile(str(DOSSIER_QML / "Tamponne" / "Fenetre.qml")))
     if not moteur.rootObjects():
         return 1
+    fenetre = moteur.rootObjects()[0]
+    if isinstance(fenetre, QWindow):
+        adapter_a_l_ecran(fenetre)
     pont.reglages_controleur.verifier_mise_a_jour()
     pont.reglages_controleur.verifier_raccourci()
     code = app.exec()

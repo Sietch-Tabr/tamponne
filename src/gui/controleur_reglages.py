@@ -2,6 +2,7 @@
 d'affichage, avis de mise à jour, cache des organisations, raccourci et
 sauvegarde des données."""
 
+from collections.abc import Callable
 from datetime import date
 from pathlib import Path
 from typing import cast
@@ -70,6 +71,9 @@ class ControleurReglages(QObject):
         self._thread_cache: QThread | None = None
         self._tache_cache: TacheReseau | None = None
         self._etat_raccourci = raccourci.etat()
+        self._raccourci_en_cours = False
+        self._thread_raccourci: QThread | None = None
+        self._tache_raccourci: TacheReseau | None = None
 
     # --- Sources ---
 
@@ -252,23 +256,49 @@ class ControleurReglages(QObject):
         self._etat_raccourci = raccourci.etat()
         self.etat_change.emit()
 
+    def _lire_raccourci_en_cours(self) -> bool:
+        return self._raccourci_en_cours
+
+    raccourci_en_cours = Property(bool, _lire_raccourci_en_cours, notify=etat_change)
+    """Vrai pendant la création ou le retrait du raccourci."""
+
+    def _lancer_operation_raccourci(self, operation: Callable[[], None]) -> None:
+        """Exécute `operation` hors du fil de l'interface : sous Windows,
+        PowerShell met plusieurs secondes à démarrer."""
+        if self._raccourci_en_cours:
+            return
+        self._raccourci_en_cours = True
+        thread = QThread()
+        tache = TacheReseau(operation)
+        tache.moveToThread(thread)
+        thread.started.connect(tache.executer)
+        tache.termine.connect(self._on_raccourci_termine)
+        tache.echec.connect(self._on_raccourci_echoue)
+        tache.termine.connect(thread.quit)
+        tache.echec.connect(thread.quit)
+        self._thread_raccourci = thread
+        self._tache_raccourci = tache
+        thread.start()
+        self.etat_change.emit()
+
+    def _on_raccourci_termine(self, _resultat: object) -> None:
+        self._raccourci_en_cours = False
+        self._actualiser_raccourci()
+
+    def _on_raccourci_echoue(self, message: str) -> None:
+        self._raccourci_en_cours = False
+        self.erreur_signalee.emit(message)
+        self._actualiser_raccourci()
+
     @Slot()
     def ajouter_raccourci(self) -> None:
         """Crée le raccourci, ou le met à jour après un déplacement."""
-        try:
-            raccourci.creer()
-        except raccourci.ErreurRaccourci as erreur:
-            self.erreur_signalee.emit(str(erreur))
-        self._actualiser_raccourci()
+        self._lancer_operation_raccourci(raccourci.creer)
 
     @Slot()
     def retirer_raccourci(self) -> None:
         """Supprime le raccourci du menu des applications."""
-        try:
-            raccourci.retirer()
-        except raccourci.ErreurRaccourci as erreur:
-            self.erreur_signalee.emit(str(erreur))
-        self._actualiser_raccourci()
+        self._lancer_operation_raccourci(raccourci.retirer)
 
     @Slot()
     def refuser_raccourci(self) -> None:
@@ -325,7 +355,7 @@ class ControleurReglages(QObject):
     def arreter(self) -> None:
         """Attend la fin des tâches en cours : détruire un `QThread` actif
         fait planter le processus."""
-        for thread in (self._thread_maj, self._thread_cache):
+        for thread in (self._thread_maj, self._thread_cache, self._thread_raccourci):
             if thread is not None and thread.isRunning():
                 thread.quit()
                 thread.wait()
