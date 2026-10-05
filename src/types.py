@@ -83,6 +83,9 @@ class FiltresRecherche(TypedDict, total=False):
         teletravail: ``True`` si seuls les postes en télétravail possible
             sont ciblés.
         query: Mot-clé libre saisi par l'utilisateur.
+        grades_superieurs: ``True`` pour garder les offres des grades
+            d'encadrement supérieur (IDIV, IP, AFIPA), écartées par défaut —
+            filtre appliqué côté client, ignoré par les sources.
     """
 
     categories: list[str]
@@ -97,6 +100,7 @@ class FiltresRecherche(TypedDict, total=False):
     management: bool
     teletravail: bool
     query: str
+    grades_superieurs: bool
 
 
 class Profil(FiltresRecherche, total=False):

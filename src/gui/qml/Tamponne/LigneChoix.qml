@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
-import QtQuick.Shapes
 import Tamponne
 
 /*! Ligne du formulaire qui ouvre une fenêtre de sélection : intitulé à
@@ -41,23 +40,9 @@ AbstractButton {
     }
 
     background: Item {
-        Shape {
-            // Rendue en texture : une Shape échappe sinon au découpage d'une zone défilante.
-            layer.enabled: true
-            layer.samples: 4
+        LignePointillee {
             anchors.bottom: parent.bottom
             width: parent.width
-            height: 1
-            ShapePath {
-                strokeColor: Theme.encre2
-                strokeWidth: 1
-                strokeStyle: ShapePath.DashLine
-                dashPattern: [1, 2]
-                fillColor: "transparent"
-                startX: 0
-                startY: 0.5
-                PathLine { x: racine.width; y: 0.5 }
-            }
         }
         Rectangle {
             visible: racine.visualFocus

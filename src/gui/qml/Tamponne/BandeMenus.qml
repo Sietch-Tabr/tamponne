@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Controls.Basic
-import QtQuick.Shapes
 import Tamponne
 
 /*! Barre de menus Fichier / Aide en bande bristol, dessinée dans la
@@ -72,22 +71,17 @@ MenuBar {
         MenuSeparator {
             leftPadding: 16
             rightPadding: 16
-            contentItem: Shape {
-                // Rendue en texture : une Shape échappe sinon au découpage d'une zone défilante.
-                layer.enabled: true
-                layer.samples: 4
-                id: pointilles
+            // « border-top: 1.5px dashed ; margin: 6px 16px ».
+            contentItem: Item {
                 implicitWidth: 288
-                implicitHeight: 13
-                ShapePath {
-                    strokeColor: Theme.encre2
-                    strokeWidth: 1.5
-                    strokeStyle: ShapePath.DashLine
-                    dashPattern: [2, 2]
-                    fillColor: "transparent"
-                    startX: 0
-                    startY: 6.5
-                    PathLine { x: 288; y: 6.5 }
+                implicitHeight: 12 + pointilles.trait
+                Pointilles {
+                    id: pointilles
+                    y: 6
+                    width: parent.width
+                    couleur: Theme.encre2
+                    epaisseur: 1.5
+                    style: "dashed"
                 }
             }
         }

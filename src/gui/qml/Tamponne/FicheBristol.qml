@@ -116,20 +116,31 @@ Item {
             font.family: Theme.policeMono
             font.pixelSize: 14
             lineHeight: 28
+            // Occupe la hauteur restante (« margin-top: auto » des actions)
+            // sans ajouter l'écart d'un élément d'espacement.
+            Layout.fillHeight: true
+            verticalAlignment: Text.AlignTop
         }
 
-        Item { Layout.fillHeight: true }
-
-        Flow {
+        // « gap: 6px 8px », « align-items: center » de la maquette.
+        RangeeFlex {
             Layout.fillWidth: true
-            spacing: 6
+            ecartColonnes: 8
+            ecartLignes: 6
 
-            BoutonTampon {
-                text: "Lancer"
-                Accessible.name: "Lancer la fiche « " + racine.intitule + " »"
-                onClicked: racine.lancer(racine.nom)
+            // « margin: 4px 10px 4px 4px » du tampon.
+            Item {
+                implicitWidth: boutonLancer.implicitWidth + 14
+                implicitHeight: boutonLancer.implicitHeight + 8
+                BoutonTampon {
+                    id: boutonLancer
+                    x: 4
+                    y: 4
+                    text: "Lancer"
+                    Accessible.name: "Lancer la fiche « " + racine.intitule + " »"
+                    onClicked: racine.lancer(racine.nom)
+                }
             }
-            Item { width: 4; height: 1 }
             LienCrayon {
                 text: "modifier"
                 onClicked: racine.modifier(racine.nom)

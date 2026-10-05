@@ -183,7 +183,13 @@ def test_lignes_fiche_regroupe_comme_la_maquette() -> None:
     assert lignes_fiche(profil) == [
         "Cat. A+ (direction), A · État, Territorial",
         "Île-de-France · télétravail",
+        "grades supérieurs exclus",
     ]
+
+
+def test_lignes_fiche_grades_superieurs_inclus() -> None:
+    profil: Profil = {"categories": ["A+ (direction)"], "grades_superieurs": True}
+    assert lignes_fiche(profil)[2] == "grades supérieurs inclus"
 
 
 def test_lignes_fiche_troisieme_ligne_pour_les_autres_criteres() -> None:
@@ -202,7 +208,11 @@ def test_lignes_fiche_troisieme_ligne_pour_les_autres_criteres() -> None:
 
 
 def test_lignes_fiche_profil_vide() -> None:
-    assert lignes_fiche({}) == ["Toutes catégories · tous versants", "Toute la France"]
+    assert lignes_fiche({}) == [
+        "Toutes catégories · tous versants",
+        "Toute la France",
+        "grades supérieurs exclus",
+    ]
 
 
 def test_textes_nouvelles_et_nombre_de_fiches_accordes() -> None:
@@ -309,3 +319,10 @@ def test_tampon_nouvelles_absent_sans_date_ou_sans_nouvelles() -> None:
     # Ancien compte (avant le relevé) : il ne mesurait pas les non consultées.
     assert tampon_nouvelles({"nb_nouvelles": 3}) == ("", "")
     assert tampon_nouvelles({"nb_nouvelles": 0, "nouvelles_le": "2026-10-05"}) == ("", "")
+
+
+def test_lignes_fiche_categories_en_libelle_court() -> None:
+    lignes = lignes_fiche(
+        {"categories": ["A+ (autres emplois fonctionnels)", "A+ (autres)", "A"]}
+    )
+    assert lignes[0].startswith("Cat. A+ (autres), A ·")

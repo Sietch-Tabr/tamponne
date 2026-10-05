@@ -23,8 +23,9 @@ Item {
     // passe à la ligne sous 520 + 22 + 300 px.
     readonly property real largeurUtile: width - 56
     readonly property bool surUneLigne: largeurUtile >= 842
-    readonly property real largeurAvis: surUneLigne ? 520 + (largeurUtile - 842) * 999 / 1000 : largeurUtile
-    readonly property real largeurColonne: surUneLigne ? 300 + (largeurUtile - 842) / 1000 : largeurUtile
+    // Largeurs arrondies au pixel, comme les boîtes du navigateur.
+    readonly property real largeurColonne: surUneLigne ? Math.round(300 + (largeurUtile - 842) / 1000) : largeurUtile
+    readonly property real largeurAvis: surUneLigne ? largeurUtile - 22 - largeurColonne : largeurUtile
 
     component TitreFeuille: Texte {
         width: parent ? parent.width : 0

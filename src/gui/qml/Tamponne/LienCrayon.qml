@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Controls.Basic
-import QtQuick.Shapes
 import Tamponne
 
 /*! Action tertiaire « annotation au crayon » : texte à chasse fixe
@@ -20,32 +19,27 @@ AbstractButton {
     Accessible.name: text
 
     contentItem: Item {
-        Text {
+        // Texte : hauteur de ligne du navigateur (19 px), centrée comme l'inline-flex.
+        Texte {
             id: libelle
-            anchors.verticalCenter: parent.verticalCenter
+            // Position fractionnaire : l'ancrage au centre arrondirait 12,5 à 12.
+            y: (parent.height - height) / 2
             text: racine.text
             color: racine.encre
             font.family: Theme.policeMono
             font.pixelSize: 14
+            wrapMode: Text.NoWrap
+            Accessible.ignored: true
         }
-        Shape {
-            // Rendue en texture : une Shape échappe sinon au découpage d'une zone défilante.
-            layer.enabled: true
-            layer.samples: 4
+        // « text-decoration: underline dotted 1.5px ; text-underline-offset: 4px ».
+        Pointilles {
             x: libelle.x
             y: libelle.y + libelle.baselineOffset + 4
             width: libelle.implicitWidth
-            height: 1.5
-            ShapePath {
-                strokeColor: racine.encre
-                strokeWidth: 1.5
-                strokeStyle: ShapePath.DashLine
-                dashPattern: [1, 1]
-                fillColor: "transparent"
-                startX: 0
-                startY: 0.75
-                PathLine { x: libelle.implicitWidth; y: 0.75 }
-            }
+            couleur: racine.encre
+            epaisseur: 1.5
+            style: "dotted"
+            ajuste: false
         }
     }
 

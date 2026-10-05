@@ -142,3 +142,15 @@ def test_releve_fiches_interrompu(
 
     monkeypatch.setattr(travailleurs, "relever_fiche", relever)
     assert _executer(releve_fiches, qtbot) == []
+
+
+def test_relever_fiche_respecte_les_grades_superieurs(monkeypatch: pytest.MonkeyPatch) -> None:
+    idiv = {**_offre("O1"), "titre": "IDIV Chef de service"}
+    monkeypatch.setattr(
+        releve, "rechercher_toutes_sources", lambda *_a, **_k: ([idiv], 1, False)
+    )
+    profils.ajouter_profil("exclus", {"label": "e"})
+    profils.ajouter_profil("inclus", {"label": "i", "grades_superieurs": True})
+    fiches = profils.charger_profils()
+    assert releve.relever_fiche("exclus", fiches["exclus"], {}, lambda: False) == 0
+    assert releve.relever_fiche("inclus", fiches["inclus"], {}, lambda: False) == 1

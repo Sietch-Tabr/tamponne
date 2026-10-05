@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Controls.Basic
-import QtQuick.Shapes
 import Tamponne
 
 /*! Bouton secondaire en étiquette kraft : œillet à gauche, perforation
@@ -44,24 +43,15 @@ AbstractButton {
             border.color: racine.encre
             border.width: 1.5
         }
-        Shape {
-            // Rendue en texture : une Shape échappe sinon au découpage d'une zone défilante.
-            layer.enabled: true
-            layer.samples: 4
+        // Perforation : « border-left: 1.5px dashed », left 26 px, top et bottom 7 px.
+        Pointilles {
             x: 27.5
             y: 8.5
-            width: 1.5
             height: parent.height - 17
-            ShapePath {
-                strokeColor: Theme.encre2
-                strokeWidth: 1.5
-                strokeStyle: ShapePath.DashLine
-                dashPattern: [3, 2]
-                fillColor: "transparent"
-                startX: 0.75
-                startY: 0
-                PathLine { x: 0.75; y: racine.height - 17 }
-            }
+            vertical: true
+            couleur: Theme.encre2
+            epaisseur: 1.5
+            style: "dashed"
         }
         Rectangle {
             visible: racine.visualFocus

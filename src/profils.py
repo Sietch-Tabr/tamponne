@@ -6,7 +6,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any, cast
 
-from src.filtres import resumer_filtres
+from src.filtres import categorie_normalisee, resumer_filtres
 from src.types import FiltresRecherche, Profil
 from src.utils import VERROU_DONNEES, ecriture_atomique
 
@@ -43,12 +43,20 @@ def ajouter_profil(nom: str, filtres: Profil) -> None:
         sauvegarder_profils(profils)
 
 
+_METADONNEES_CONSERVEES = ("label", "cree_le", "dernier_lancement")
+
+
 def modifier_profil(nom: str, filtres: FiltresRecherche) -> None:
-    """Met à jour un profil existant (conserve cree_le original)."""
+    """Remplace les critères d'un profil en gardant son intitulé, sa date
+    de création et celle du dernier lancement ; le compte des nouvelles,
+    établi pour les anciens critères, est effacé (le relevé le refera)."""
     with VERROU_DONNEES:
         profils = charger_profils()
-        cree_le = profils.get(nom, {}).get("cree_le", date.today().isoformat())
-        profils[nom] = {**filtres, "cree_le": cree_le}
+        ancien = cast(dict[str, Any], profils.get(nom, {}))
+        conserve = {cle: ancien[cle] for cle in _METADONNEES_CONSERVEES if cle in ancien}
+        profils[nom] = cast(
+            Profil, {"cree_le": date.today().isoformat(), **conserve, **filtres}
+        )
         sauvegarder_profils(profils)
 
 
@@ -102,6 +110,12 @@ def mettre_a_jour_stats(nom: str, nb_nouvelles: int, consultation: bool = True) 
         profils[nom]["nb_nouvelles"] = nb_nouvelles
         profils[nom]["nouvelles_le"] = aujourd_hui
         sauvegarder_profils(profils)
+
+
+def categories_compatibles(profil: FiltresRecherche) -> list[str]:
+    """Catégories d'un profil en clés de `src.filtres.CATEGORIES`, y compris
+    celles enregistrées sous leur libellé court, sans doublon."""
+    return list(dict.fromkeys(categorie_normalisee(c) for c in profil.get("categories") or []))
 
 
 def versants_compatibles(profil: FiltresRecherche) -> list[str]:

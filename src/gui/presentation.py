@@ -11,6 +11,7 @@ from src.candidatures import (
     dernier_evenement,
     relance_suggeree,
 )
+from src.filtres import LIBELLES_CATEGORIES, categorie_normalisee
 from src.types import Candidature, DetailOffre, Profil
 
 LIBELLES_TAMPON: dict[str, str] = {
@@ -234,9 +235,13 @@ def lignes_fiche(profil: Profil) -> list[str]:
     Returns:
         Une à trois lignes : catégories et versants ; lieu et options ;
         autres critères (domaines, organisations, grades, expérience,
-        date de publication, mot-clé), omise s'il n'y en a aucun.
+        date de publication, mot-clé, grades supérieurs quand la catégorie
+        A+ est concernée), omise s'il n'y en a aucun.
     """
-    categories = profil.get("categories") or []
+    categories = [
+        LIBELLES_CATEGORIES.get(c, c)
+        for c in dict.fromkeys(map(categorie_normalisee, profil.get("categories") or []))
+    ]
     versants = [_VERSANTS_FICHE.get(v, v) for v in profil.get("versants") or []]
     ligne_statut = " · ".join(
         [
@@ -265,6 +270,10 @@ def lignes_fiche(profil: Profil) -> list[str]:
         autres.append(date_publication.lower())
     if mot_cle := profil.get("query"):
         autres.append(f"mot-clé « {mot_cle} »")
+    # Les grades supérieurs (IDIV, IP, AFIPA) ne concernent que la catégorie A+.
+    if not categories or any(c.startswith("A+") for c in categories):
+        inclus = profil.get("grades_superieurs")
+        autres.append(f"grades supérieurs {'inclus' if inclus else 'exclus'}")
 
     lignes = [ligne_statut, " · ".join(lieu)]
     if autres:

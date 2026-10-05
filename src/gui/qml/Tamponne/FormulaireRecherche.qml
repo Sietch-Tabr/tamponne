@@ -101,10 +101,10 @@ Feuille {
                     model: racine.choix.categories.slice(0, 2)
                     CaseCerfa {
                         ecartApres: 16
-                        required property string modelData
-                        text: modelData
-                        coche: racine.etat.categories.indexOf(modelData) >= 0
-                        onClicked: racine.recherche.basculer("categories", modelData, !coche)
+                        required property var modelData
+                        text: modelData.libelle
+                        coche: racine.etat.categories.indexOf(modelData.cle) >= 0
+                        onClicked: racine.recherche.basculer("categories", modelData.cle, !coche)
                     }
                 }
             }
@@ -116,10 +116,10 @@ Feuille {
                     model: racine.choix.categories.slice(2)
                     CaseCerfa {
                         ecartApres: 16
-                        required property string modelData
-                        text: modelData
-                        coche: racine.etat.categories.indexOf(modelData) >= 0
-                        onClicked: racine.recherche.basculer("categories", modelData, !coche)
+                        required property var modelData
+                        text: modelData.libelle
+                        coche: racine.etat.categories.indexOf(modelData.cle) >= 0
+                        onClicked: racine.recherche.basculer("categories", modelData.cle, !coche)
                     }
                 }
             }

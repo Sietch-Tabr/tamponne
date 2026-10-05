@@ -12,9 +12,10 @@ from pytestqt.qtbot import QtBot
 
 from src import parametres_sources, profils
 from src.gui import controleur_recherche
+from src.filtres import CATEGORIES
 from src.gui.controleur_recherche import ControleurRecherche
-from src.profils import versants_compatibles
 from src.gui.modele_offres import ProxyOffres
+from src.profils import versants_compatibles
 from src.sources.choisirleservicepublic import ChoisirLeServicePublic
 from src.sources.emploiterritorial import EmploiTerritorial
 from src.types import FiltresRecherche, Offre
@@ -275,3 +276,49 @@ def test_numero_de_selection_suit_le_registre_apres_tri(
     controleur.trier(4)
     controleur.selectionner(0)
     assert controleur.property("numero_selection") == "002"
+
+
+def test_categorie_a_plus_autres_envoie_la_cle_connue_des_sources(
+    qapp: QApplication,
+) -> None:
+    controleur = ControleurRecherche({}, qapp)
+    choix = controleur.property("choix")["categories"]
+    assert {"cle": "A+ (autres emplois fonctionnels)", "libelle": "A+ (autres)"} in choix
+    assert all(c["cle"] in CATEGORIES for c in choix)
+    controleur.basculer("categories", "A+ (autres emplois fonctionnels)", True)
+    assert controleur.construire_filtres().get("categories") == [
+        "A+ (autres emplois fonctionnels)"
+    ]
+
+
+def test_fiche_classee_avec_le_libelle_court_relue_avec_la_cle(qapp: QApplication) -> None:
+    profils.sauvegarder_profils({"f": {"categories": ["A+ (autres)", "A"]}})
+    controleur = ControleurRecherche({}, qapp)
+    controleur.modifier_profil("f")
+    assert controleur.construire_filtres().get("categories") == [
+        "A+ (autres emplois fonctionnels)",
+        "A",
+    ]
+
+
+def test_enregistrer_une_fiche_modifiee_garde_son_intitule(qapp: QApplication) -> None:
+    profils.sauvegarder_profils(
+        {"f": {"label": "Attaché, Paris", "cree_le": "2026-01-02", "categories": ["A"]}}
+    )
+    controleur = ControleurRecherche({}, qapp)
+    controleur.modifier_profil("f")
+    controleur.basculer("categories", "B", True)
+    controleur.valider()
+    fiche = profils.charger_profils()["f"]
+    assert fiche.get("label") == "Attaché, Paris"
+    assert fiche.get("categories") == ["A", "B"]
+
+
+def test_grades_superieurs_enregistres_avec_la_fiche_et_relus(qapp: QApplication) -> None:
+    controleur = ControleurRecherche({}, qapp)
+    controleur.definir("grades_superieurs", True)
+    assert controleur.classer("f", "Fiche") == ""
+    assert profils.charger_profils()["f"].get("grades_superieurs") is True
+    autre = ControleurRecherche({}, qapp)
+    autre.modifier_profil("f")
+    assert autre.property("etat")["grades_superieurs"] is True

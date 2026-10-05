@@ -41,7 +41,7 @@ AbstractButton {
         visible: racine.filet
         y: racine.height - 1
         width: racine.width
-        couleur: Theme.regle
+        couleur: Theme.regleMarquee
     }
 
     indicator: Rectangle {

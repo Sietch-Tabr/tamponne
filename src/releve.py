@@ -8,7 +8,7 @@ l'exécute dans un `QThread`).
 from collections.abc import Callable
 from datetime import date
 
-from src.profils import versants_compatibles
+from src.profils import categories_compatibles, versants_compatibles
 from src.recherche import post_traiter_resultats, rechercher_toutes_sources
 from src.types import FiltresRecherche, Organisations, Profil
 
@@ -24,6 +24,7 @@ _CLES_FILTRES = (
     "management",
     "teletravail",
     "query",
+    "grades_superieurs",
 )
 
 
@@ -44,6 +45,8 @@ def filtres_de_la_fiche(profil: Profil) -> FiltresRecherche:
         if cle in profil:
             filtres[cle] = profil[cle]  # type: ignore[literal-required]
     filtres["versants"] = versants_compatibles(profil)
+    if "categories" in profil:
+        filtres["categories"] = categories_compatibles(profil)
     return filtres
 
 
@@ -74,6 +77,10 @@ def relever_fiche(
         filtres, orgas_cache, doit_arreter=doit_arreter
     )
     resultat = post_traiter_resultats(
-        offres, list(filtres.get("grades") or []), False, nom, consultation=False
+        offres,
+        list(filtres.get("grades") or []),
+        bool(filtres.get("grades_superieurs")),
+        nom,
+        consultation=False,
     )
     return len(resultat["nouvelles"])

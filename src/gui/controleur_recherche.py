@@ -25,6 +25,7 @@ from src.filtres import (
     DATES_PUBLICATION,
     DOMAINES,
     EXPERIENCES,
+    LIBELLES_CATEGORIES,
     LOCALISATIONS,
     resumer_filtres,
 )
@@ -35,6 +36,7 @@ from src.gui.travailleurs import TacheReseau, TravailleurRecherche
 from src.profils import (
     ajouter_profil,
     charger_profils,
+    categories_compatibles,
     modifier_profil,
     versants_compatibles,
 )
@@ -44,8 +46,6 @@ from src.types import FiltresRecherche, Offre, Organisations, Profil
 
 INDIFFERENTE = "Indifférente"
 
-CATEGORIES: list[str] = ["A+ (direction)", "A+ (autres)", "A", "B", "C"]
-"""Valeurs des cases « Catégorie », dans l'ordre du formulaire."""
 
 VERSANTS: list[tuple[str, str]] = [
     ("etat", "État"),
@@ -188,7 +188,10 @@ class ControleurRecherche(QObject):
 
     def _lire_choix(self) -> dict[str, Any]:
         return {
-            "categories": CATEGORIES,
+            "categories": [
+                {"cle": cle, "libelle": libelle}
+                for cle, libelle in LIBELLES_CATEGORIES.items()
+            ],
             "versants": [{"cle": cle, "libelle": lib} for cle, lib in VERSANTS],
             "types_poste": [libelle for libelle, _ in TYPES_POSTE],
             "experiences": [INDIFFERENTE, *EXPERIENCES],
@@ -313,6 +316,7 @@ class ControleurRecherche(QObject):
             "management": bool(self._etat["management"]),
             "teletravail": bool(self._etat["teletravail"]),
             "query": str(self._etat["mot_cle"]).strip(),
+            "grades_superieurs": bool(self._etat["grades_superieurs"]),
         }
 
     def _charger_profil(self, nom: str) -> bool:
@@ -330,7 +334,7 @@ class ControleurRecherche(QObject):
         )
         self._etat = {
             **_etat_initial(),
-            "categories": list(profil.get("categories") or []),
+            "categories": categories_compatibles(profil),
             "versants": versants_compatibles(profil),
             "domaines": list(profil.get("domaines") or []),
             "localisations": list(profil.get("localisations") or []),
@@ -342,6 +346,7 @@ class ControleurRecherche(QObject):
             "management": bool(profil.get("management")),
             "teletravail": bool(profil.get("teletravail")),
             "mot_cle": profil.get("query") or "",
+            "grades_superieurs": bool(profil.get("grades_superieurs")),
         }
         self._nom_profil = nom
         return True
