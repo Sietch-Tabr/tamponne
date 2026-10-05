@@ -6,7 +6,7 @@ import urllib.error
 from pathlib import Path
 
 from PySide6.QtCore import QObject, Qt, QUrl
-from PySide6.QtGui import QGuiApplication
+from PySide6.QtGui import QGuiApplication, QIcon
 from PySide6.QtQml import QQmlApplicationEngine
 
 from src.cache import obtenir_organisations
@@ -16,6 +16,7 @@ from src.nettoyage import nettoyer_fichiers_obsoletes
 from src.parametres_affichage import charger_mode_theme, charger_reduire_animations
 
 DOSSIER_QML = Path(__file__).parent / "qml"
+ICONE = Path(__file__).parent / "icones" / "tamponne.png"
 
 
 def creer_moteur(pont: Pont) -> QQmlApplicationEngine:
@@ -60,6 +61,10 @@ def main() -> int:
     app.setApplicationName("Tamponné")
     app.setApplicationDisplayName("Tamponné")
     app.setOrganizationName("Tamponné")
+    # Icône du Dock (macOS) et de la barre des tâches ; le nom relie la
+    # fenêtre au raccourci `tamponne.desktop` sous Linux (Wayland).
+    app.setWindowIcon(QIcon(str(ICONE)))
+    app.setDesktopFileName("tamponne")
 
     try:
         orgas_cache = obtenir_organisations()

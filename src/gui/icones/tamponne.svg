@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Icône de Tamponné : T dans un tampon rond, encre usée (48 px et plus). -->
+  <defs>
+    <filter id="usure" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="7" result="bruit"/>
+      <feDisplacementMap in="SourceGraphic" in2="bruit" scale="10" xChannelSelector="R" yChannelSelector="G" result="deplace"/>
+      <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="3" seed="3" result="grain"/>
+      <feColorMatrix in="grain" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -8 5.6" result="masque"/>
+      <feComposite in="deplace" in2="masque" operator="in"/>
+    </filter>
+  </defs>
+  <g transform="rotate(-10 512 512)" fill="#E07B24" filter="url(#usure)">
+    <circle cx="512" cy="512" r="420" fill="none" stroke="#E07B24" stroke-width="20"/>
+    <circle cx="512" cy="512" r="372" fill="none" stroke="#E07B24" stroke-width="50"/>
+    <rect x="312" y="300" width="400" height="96"/>
+    <rect x="455" y="300" width="114" height="440"/>
+  </g>
+</svg>
