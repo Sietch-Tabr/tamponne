@@ -4,6 +4,35 @@ Toutes les évolutions notables de Tamponné, de la plus récente à la plus
 ancienne. Le détail de chaque version est aussi publié sur la page
 [Releases](https://codeberg.org/Kwaite/tamponne/releases) du dépôt.
 
+## [1.2.0] — 2026-10-05
+
+### Installation
+
+- Plus rien à installer au préalable : télécharger le zip, le dézipper et double-cliquer sur `Tamponne.command` (macOS, Linux) ou `Tamponne.bat` (Windows)
+- uv, puis Python et les composants, s'installent tout seuls au premier lancement, avec un message pendant le téléchargement
+- En cas d'échec (pas de connexion…), un message en français s'affiche, y compris lancé depuis le raccourci
+- Les anciens lanceurs `lancer.sh` et `lancer.bat` sont remplacés et retirés automatiquement
+
+### Raccourci
+
+- Tamponné peut s'ajouter au menu des applications : menu Démarrer (Windows), `~/Applications` (macOS, avec Spotlight et le Dock), menu des applications (Linux)
+- Proposé une fois au premier lancement, puis géré dans Réglages › Raccourci
+- Si le dossier de Tamponné a été déplacé, la mise à jour du raccourci est proposée au lancement
+
+### Sauvegarde
+
+- Réglages › Sauvegarde : export de toutes les données (fiches, dossiers suivis et leurs PDF, offres vues, réglages) dans un fichier zip
+- Import d'une sauvegarde : remplace les données après confirmation, garde une copie des données d'avant, puis redémarre
+
+### Icône
+
+- Nouvelle icône : un T dans un tampon rond, aussi dans le Dock et la barre des tâches
+
+### Maintenance
+
+- La boucle de mise à jour et de redémarrage est désormais en Python (`src/lanceur.py`), testée
+- README réécrit pour une installation sans terminal
+
 ## [1.1.0] — 2026-10-05
 
 ### Nouvelle interface
