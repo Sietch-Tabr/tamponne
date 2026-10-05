@@ -8,7 +8,7 @@ dependencies = [
 ]
 
 [project.gui-scripts]
-tamponne = "src.gui.app:main"
+tamponne = "src.gui.application:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -22,7 +22,6 @@ dev = [
     "mypy>=1.10",
     "pytest>=9.1.1",
     "pytest-qt>=4.5.0",
-    "types-beautifulsoup4>=4.12",
 ]
 
 [tool.pytest.ini_options]
@@ -30,7 +29,7 @@ pythonpath = ["."]
 
 [tool.mypy]
 python_version = "3.14"
-files = ["src", "tests"]
+files = ["src", "tests", "outils"]
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
 warn_unused_ignores = true

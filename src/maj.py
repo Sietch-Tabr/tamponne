@@ -99,10 +99,10 @@ def effacer_maj_disponible() -> None:
 def appliquer_maj(info: InfoMaj) -> None:
     """Télécharge et applique la publication `info`.
 
-    Copie les fichiers de l'archive par-dessus la racine du projet, sans
-    purge préalable — l'archive Codeberg ne contient que les fichiers
+    Installe les fichiers de l'archive dans la racine du projet (voir
+    `installer_archive`) : l'archive Codeberg ne contient que les fichiers
     suivis par git, donc `data/`, `.git/` et les fichiers non versionnés
-    (CLAUDE.md, .claudeignore, PLAN.md...) ne sont jamais touchés.
+    hors de `src/` et `tests/` ne sont jamais touchés.
 
     Raises:
         RuntimeError: Téléchargement ou extraction impossible — l'appelant
@@ -125,7 +125,7 @@ def appliquer_maj(info: InfoMaj) -> None:
                         (Path(dossier_tmp) / membre.filename).chmod(permissions)
         except (urllib.error.URLError, OSError, zipfile.BadZipFile) as e:
             raise RuntimeError(
-                f"Impossible de télécharger ou d'extraire la mise à jour : {e}"
+                f"Impossible de télécharger ou d'extraire la mise à jour\u00a0: {e}"
             ) from e
 
         # Dossier racine unique de l'archive (ex. « tamponne-abc1234/ ») déduit
@@ -137,18 +137,60 @@ def appliquer_maj(info: InfoMaj) -> None:
             )
         dossier_extrait = racines[0]
 
-        for fichier_source in dossier_extrait.rglob("*"):
-            if fichier_source.is_dir():
-                continue
-            chemin_relatif = fichier_source.relative_to(dossier_extrait)
-            fichier_dest = CHEMIN_RACINE / chemin_relatif
-            fichier_dest.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(fichier_source, fichier_dest)
+        installer_archive(dossier_extrait, CHEMIN_RACINE)
+
+
+DOSSIERS_PURGES = ("src", "tests")
+"""Dossiers où un fichier absent de la nouvelle version est supprimé."""
+
+
+def installer_archive(dossier_extrait: Path, racine: Path) -> None:
+    """Installe le contenu extrait d'une publication dans `racine`.
+
+    Chaque fichier est écrit dans un temporaire puis renommé : un script en
+    cours d'exécution (`lancer.sh` lu par bash) garde son ancien contenu au
+    lieu d'être réécrit sous ses pieds. Ensuite, sous `src/` et `tests/`
+    seulement, les fichiers absents de la publication sont supprimés avec
+    leurs `__pycache__` ; rien n'est purgé dans un clone git (`.git/`).
+
+    Args:
+        dossier_extrait: Racine de l'archive extraite.
+        racine: Dossier d'installation.
+    """
+    fichiers_publies: set[Path] = set()
+    for fichier_source in dossier_extrait.rglob("*"):
+        if fichier_source.is_dir():
+            continue
+        chemin_relatif = fichier_source.relative_to(dossier_extrait)
+        fichiers_publies.add(chemin_relatif)
+        fichier_dest = racine / chemin_relatif
+        fichier_dest.parent.mkdir(parents=True, exist_ok=True)
+        temporaire = fichier_dest.with_name(fichier_dest.name + ".maj")
+        shutil.copy2(fichier_source, temporaire)
+        temporaire.replace(fichier_dest)
+    if not (racine / ".git").exists():
+        _purger(racine, fichiers_publies)
+
+
+def _purger(racine: Path, fichiers_publies: set[Path]) -> None:
+    """Supprime sous `DOSSIERS_PURGES` ce que la publication ne contient plus."""
+    for nom in DOSSIERS_PURGES:
+        dossier = racine / nom
+        if not dossier.is_dir():
+            continue
+        for cache in sorted(dossier.rglob("__pycache__"), reverse=True):
+            shutil.rmtree(cache, ignore_errors=True)
+        for fichier in sorted(dossier.rglob("*"), reverse=True):
+            relatif = fichier.relative_to(racine)
+            if fichier.is_file() and relatif not in fichiers_publies:
+                fichier.unlink()
+            elif fichier.is_dir() and not any(fichier.iterdir()):
+                fichier.rmdir()
 
 
 if __name__ == "__main__":
     if "--appliquer" not in sys.argv:
-        print("Usage : python -m src.maj --appliquer", file=sys.stderr)
+        print("Usage\u00a0: python -m src.maj --appliquer", file=sys.stderr)
         sys.exit(1)
 
     info_en_attente = lire_maj_disponible()

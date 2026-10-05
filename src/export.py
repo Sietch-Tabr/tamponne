@@ -89,10 +89,10 @@ def exporter_html(
 <body>
 <h1>Offres d'emploi — Choisir le Service Public</h1>
 <div class="meta">
-  <strong>Filtres :</strong> {_echapper_html(resume_filtres)}<br>
-  <strong>Résultats :</strong> {len(offres)} offres affichées
+  <strong>Filtres\u00a0:</strong> {_echapper_html(resume_filtres)}<br>
+  <strong>Résultats\u00a0:</strong> {len(offres)} offres affichées
   (~{nb_total_approx} au total, {nb_pages} page(s))<br>
-  <strong>Généré le :</strong> {date_generation}
+  <strong>Généré le\u00a0:</strong> {date_generation}
 </div>
 <table>
   <thead>

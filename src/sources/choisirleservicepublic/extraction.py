@@ -49,8 +49,9 @@ _SOURCES_CONNUES = {
 }
 
 
-def _deriver_source(reference: str) -> str:
-    """Origine de l'offre, déduite du préfixe de référence."""
+def deriver_source(reference: str) -> str:
+    """Origine de l'offre, déduite du préfixe de référence (chaîne vide si
+    la référence n'a pas de préfixe)."""
     if "_" not in reference:
         return ""
     prefixe = reference.split("_", 1)[0]
@@ -68,7 +69,8 @@ def extraire_offres(html: str) -> list[Offre]:
         if not lien:
             continue
 
-        url = _valider_url(lien.get("href", ""))
+        href = lien.get("href")
+        url = _valider_url(href) if isinstance(href, str) else ""
         if not url:
             continue
         titre = lien.get_text(strip=True)
@@ -81,7 +83,7 @@ def extraire_offres(html: str) -> list[Offre]:
 
         localisation = versant = employeur = date = ""
         for li in carte.find_all("li"):
-            classes = set(li.get("class", []))
+            classes = set(li.get_attribute_list("class"))
             if "fr-icon--sm" not in classes:
                 continue
             for sr in li.find_all("span", class_="sr-only"):
@@ -109,7 +111,7 @@ def extraire_offres(html: str) -> list[Offre]:
                 "localisation": localisation,
                 "versant": versant,
                 "date": date,
-                "source": _deriver_source(reference),
+                "source": deriver_source(reference),
             }
         )
     return offres
@@ -278,13 +280,13 @@ def extraire_detail_offre(html: str) -> DetailOffre:
             data = json.loads(m.group(1))
         except json.JSONDecodeError:
             print(
-                "Avertissement : bloc JSON-LD de la fiche de poste illisible "
+                "Avertissement\u00a0: bloc JSON-LD de la fiche de poste illisible "
                 "(JSON invalide) — détail structuré incomplet pour cette offre.",
                 file=sys.stderr,
             )
     else:
         print(
-            "Avertissement : bloc JSON-LD absent de la fiche de poste — "
+            "Avertissement\u00a0: bloc JSON-LD absent de la fiche de poste — "
             "détail structuré incomplet pour cette offre, seul le HTML brut "
             "est conservé.",
             file=sys.stderr,
@@ -296,7 +298,7 @@ def extraire_detail_offre(html: str) -> DetailOffre:
         description = str(data.get("Description", "")).strip()
     if data and not description:
         print(
-            "Avertissement : champ Description vide dans le JSON-LD de la "
+            "Avertissement\u00a0: champ Description vide dans le JSON-LD de la "
             "fiche de poste.",
             file=sys.stderr,
         )

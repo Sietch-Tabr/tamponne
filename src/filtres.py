@@ -12,6 +12,24 @@ CATEGORIES: dict[str, int] = {
     "C": 1807,
 }
 
+LIBELLES_CATEGORIES: dict[str, str] = {
+    "A+ (direction)": "A+ (direction)",
+    "A+ (autres emplois fonctionnels)": "A+ (autres)",
+    "A": "A",
+    "B": "B",
+    "C": "C",
+}
+"""Catégorie (clé de `CATEGORIES`) → libellé court du formulaire et des fiches."""
+
+
+def categorie_normalisee(valeur: str) -> str:
+    """Clé de `CATEGORIES` d'une catégorie enregistrée, y compris sous son
+    libellé court (fiches classées avant la séparation clé / libellé)."""
+    for cle, libelle in LIBELLES_CATEGORIES.items():
+        if valeur == libelle:
+            return cle
+    return valeur
+
 VERSANTS: dict[str, int] = {
     "etat": 2456,
     "hospitalier": 2457,

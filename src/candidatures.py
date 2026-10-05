@@ -17,7 +17,12 @@ from src.sources.choisirleservicepublic.api import (
     obtenir_page_offres,
     telecharger_binaire,
 )
-from src.sources.choisirleservicepublic.extraction import DETAIL_VIDE, _valider_url
+from src.formatage import SOURCE_PAR_DEFAUT
+from src.sources.choisirleservicepublic.extraction import (
+    DETAIL_VIDE,
+    _valider_url,
+    deriver_source,
+)
 from src.types import Candidature, DetailOffre, EvenementCandidature, Offre
 from src.utils import ecriture_atomique
 
@@ -48,7 +53,7 @@ def generer_archive_pdf(reference: str, page_html: str) -> bool:
     url_pdf = _extraire_url_pdf(page_html)
     if not url_pdf:
         print(
-            "Avertissement : lien PDF introuvable, archive non générée.",
+            "Avertissement\u00a0: lien PDF introuvable, archive non générée.",
             file=sys.stderr,
         )
         return False
@@ -56,7 +61,7 @@ def generer_archive_pdf(reference: str, page_html: str) -> bool:
         contenu = telecharger_binaire(url_pdf)
     except RuntimeError:
         print(
-            f"Avertissement : échec de téléchargement du PDF ({url_pdf}).",
+            f"Avertissement\u00a0: échec de téléchargement du PDF ({url_pdf}).",
             file=sys.stderr,
         )
         return False
@@ -67,7 +72,7 @@ def generer_archive_pdf(reference: str, page_html: str) -> bool:
         chemin.write_bytes(contenu)
     except OSError:
         print(
-            f"Avertissement : échec d'écriture de l'archive PDF ({chemin}).",
+            f"Avertissement\u00a0: échec d'écriture de l'archive PDF ({chemin}).",
             file=sys.stderr,
         )
         return False
@@ -104,7 +109,7 @@ def charger_candidatures() -> dict[str, Candidature]:
         return json.loads(CHEMIN_CANDIDATURES.read_text(encoding="utf-8"))
     except json.JSONDecodeError, OSError:
         print(
-            f"Avertissement : {CHEMIN_CANDIDATURES.name} illisible ou corrompu, "
+            f"Avertissement\u00a0: {CHEMIN_CANDIDATURES.name} illisible ou corrompu, "
             "aucune candidature chargée.",
             file=sys.stderr,
         )
@@ -127,6 +132,7 @@ def ajouter_candidature(
     offre_localisation: str = "",
     offre_versant: str = "",
     offre_date: str = "",
+    offre_source: str = "",
     detail: DetailOffre | None = None,
 ) -> None:
     """Démarre le suivi d'une candidature pour une offre.
@@ -137,6 +143,7 @@ def ajouter_candidature(
     précédent vaut mieux qu'un historique mélangé.
 
     Args:
+        offre_source: Source de l'offre (colonne Source du registre).
         detail: Détail structuré + archive HTML brute de la fiche de
             poste (voir `DetailOffre`), récupéré à l'appel via
             `recuperer_detail_offre` — absent (`None`) si l'appelant ne
@@ -159,6 +166,7 @@ def ajouter_candidature(
         "disponible": True,
         "derniere_verification": "",
         "detail": detail or DETAIL_VIDE,
+        "offre_source": offre_source,
     }
     sauvegarder_candidatures(candidatures)
 
@@ -182,6 +190,7 @@ def suivre_offre(offre: Offre) -> None:
         offre_localisation=offre["localisation"],
         offre_versant=offre["versant"],
         offre_date=offre["date"],
+        offre_source=offre.get("source") or SOURCE_PAR_DEFAUT,
         detail=detail,
     )
 
@@ -194,13 +203,54 @@ def ajouter_evenement(
     """Ajoute un événement à l'historique d'une candidature suivie."""
     candidatures = charger_candidatures()
     if reference not in candidatures:
-        raise KeyError(f"Candidature introuvable : {reference}")
+        raise KeyError(f"Candidature introuvable\u00a0: {reference}")
     evenement: EvenementCandidature = {
         "date": evenement_date or date.today().isoformat(),
         "type": type_evenement,
         "note": note,
     }
     candidatures[reference]["historique"].append(evenement)
+    sauvegarder_candidatures(candidatures)
+
+
+def evenement_en_double(
+    candidature: Candidature,
+    type_evenement: str,
+    evenement_date: str,
+    sauf_indice: int | None = None,
+) -> bool:
+    """Vrai si l'historique contient déjà un événement de ce type à cette
+    date (l'événement `sauf_indice`, en cours de modification, est ignoré)."""
+    return any(
+        evenement["type"] == type_evenement and evenement["date"] == evenement_date
+        for indice, evenement in enumerate(candidature.get("historique") or [])
+        if indice != sauf_indice
+    )
+
+
+def modifier_evenement(
+    reference: str,
+    indice: int,
+    type_evenement: str,
+    evenement_date: str,
+    note: str = "",
+) -> None:
+    """Remplace l'événement `indice` (position dans l'historique enregistré)."""
+    candidatures = charger_candidatures()
+    historique = candidatures[reference]["historique"]
+    if not 0 <= indice < len(historique):
+        raise IndexError(f"Événement introuvable\u00a0: {indice}")
+    historique[indice] = {"date": evenement_date, "type": type_evenement, "note": note}
+    sauvegarder_candidatures(candidatures)
+
+
+def supprimer_evenement(reference: str, indice: int) -> None:
+    """Retire l'événement `indice` (position dans l'historique enregistré)."""
+    candidatures = charger_candidatures()
+    historique = candidatures[reference]["historique"]
+    if not 0 <= indice < len(historique):
+        raise IndexError(f"Événement introuvable\u00a0: {indice}")
+    del historique[indice]
     sauvegarder_candidatures(candidatures)
 
 
@@ -211,6 +261,15 @@ def supprimer_candidature(reference: str) -> None:
     candidatures.pop(reference, None)
     sauvegarder_candidatures(candidatures)
     chemin_archive_pdf(reference).unlink(missing_ok=True)
+
+
+def source_candidature(candidature: Candidature) -> str:
+    """Source de l'offre suivie : celle mémorisée au suivi, sinon déduite
+    du préfixe de la référence (candidatures antérieures à la 2.0), sinon
+    chaîne vide."""
+    return candidature.get("offre_source") or deriver_source(
+        candidature.get("offre_reference") or ""
+    )
 
 
 def dernier_evenement(candidature: Candidature) -> EvenementCandidature | None:

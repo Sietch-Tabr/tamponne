@@ -181,7 +181,7 @@ def extraire_detail_offre(html: str) -> DetailOffre:
     }
     if not champs and not soup.find("h2"):
         print(
-            "Avertissement : structure de fiche inattendue sur "
+            "Avertissement\u00a0: structure de fiche inattendue sur "
             "emploi-territorial.fr, détail incomplet pour cette offre.",
             file=sys.stderr,
         )

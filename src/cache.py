@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 
 from src.sources.choisirleservicepublic.api import telecharger_page_offres
 from src.types import Offre, OffreCache, Organisations
@@ -16,7 +16,6 @@ CHEMIN_CACHE = Path(__file__).parent.parent / "data" / "cache.json"
 CHEMIN_OFFRES = Path(__file__).parent.parent / "data" / "offres.json"
 TTL_ORGANISATIONS = 7 * 24 * 3600  # 7 jours en secondes
 TTL_OFFRES = 30 * 24 * 3600  # 30 jours en secondes
-TTL_NOUVELLES = 24 * 3600  # durée pendant laquelle une offre reste "nouvelle"
 
 
 def _charger_cache() -> dict[str, Any]:
@@ -29,7 +28,7 @@ def _charger_cache() -> dict[str, Any]:
         # stderr, pas de bibliothèque d'UI : ce module n'est lié à
         # aucune interface particulière.
         print(
-            f"Avertissement : {CHEMIN_CACHE.name} illisible ou corrompu, "
+            f"Avertissement\u00a0: {CHEMIN_CACHE.name} illisible ou corrompu, "
             "cache réinitialisé.",
             file=sys.stderr,
         )
@@ -54,6 +53,13 @@ def _organisations_expirees(cache: dict[str, Any]) -> bool:
         return True
 
 
+def _attribut(balise: Tag, nom: str) -> str:
+    """Valeur texte d'un attribut HTML, vide s'il est absent (ou multiple,
+    ce qui n'arrive pas pour les attributs lus ici)."""
+    valeur = balise.get(nom)
+    return valeur if isinstance(valeur, str) else ""
+
+
 def _scraper_organisations() -> Organisations:
     """Scrape /nos-offres/ et retourne {ministère: {sous-org: id}}."""
     html = telecharger_page_offres()
@@ -63,19 +69,19 @@ def _scraper_organisations() -> Organisations:
     for inp in soup.find_all(
         "input", attrs={"data-slug": "organisations", "data-has-children": True}
     ):
-        parent_id = inp.get("id")
-        desc = inp.get("data-desc")
+        parent_id = _attribut(inp, "id")
+        desc = _attribut(inp, "data-desc")
         if parent_id and desc:
             parents[parent_id] = {"nom": desc, "enfants": {}}
 
     for inp in soup.find_all(
         "input", attrs={"data-slug": "organisations", "data-parent": True}
     ):
-        parent_id = inp.get("data-parent")
+        parent_id = _attribut(inp, "data-parent")
         if not parent_id or parent_id not in parents:
             continue
-        desc = inp.get("data-desc")
-        valeur = inp.get("value", "")
+        desc = _attribut(inp, "data-desc")
+        valeur = _attribut(inp, "value")
         if desc and valeur.isdigit():
             parents[parent_id]["enfants"][desc] = int(valeur)
 
@@ -114,7 +120,7 @@ def _charger_offres() -> dict[str, dict[str, OffreCache]]:
         return json.loads(CHEMIN_OFFRES.read_text(encoding="utf-8"))
     except json.JSONDecodeError, OSError:
         print(
-            f"Avertissement : {CHEMIN_OFFRES.name} illisible ou corrompu, "
+            f"Avertissement\u00a0: {CHEMIN_OFFRES.name} illisible ou corrompu, "
             "cache réinitialisé.",
             file=sys.stderr,
         )
@@ -129,7 +135,7 @@ def _sauvegarder_offres(offres: dict[str, dict[str, OffreCache]]) -> None:
 def maj_cache_offres(nom_profil: str, offres_fraiches: list[Offre]) -> set[str]:
     """Met à jour le cache des offres pour un profil.
 
-    Ajoute les nouvelles offres, met à jour ``derniere_vue`` des offres
+    Ajoute les offres inconnues, met à jour ``derniere_vue`` des offres
     existantes, et purge celles absentes depuis plus de TTL_OFFRES secondes.
 
     Lors de la purge, si ``derniere_vue`` est absent ou non parsable, la valeur
@@ -142,8 +148,7 @@ def maj_cache_offres(nom_profil: str, offres_fraiches: list[Offre]) -> set[str]:
         offres_fraiches: Offres retournées par la dernière recherche.
 
     Returns:
-        Ensemble des références nouvelles (jamais vues avant ce cycle,
-        ou vues pour la première fois il y a moins de TTL_NOUVELLES secondes).
+        Références des offres jamais vues pour ce profil avant cet appel.
     """
     maintenant = datetime.now(timezone.utc)
     maintenant_iso = maintenant.isoformat()
@@ -165,12 +170,6 @@ def maj_cache_offres(nom_profil: str, offres_fraiches: list[Offre]) -> set[str]:
                 "derniere_vue": maintenant_iso,
             }
         else:
-            try:
-                vu_le = datetime.fromisoformat(cache_profil[ref]["vu_le"])
-                if (maintenant - vu_le).total_seconds() <= TTL_NOUVELLES:
-                    nouvelles.add(ref)
-            except KeyError, ValueError, TypeError:
-                pass
             cache_profil[ref].update({**offre, "derniere_vue": maintenant_iso})
 
     # Purge des offres absentes depuis plus de TTL_OFFRES

@@ -2,6 +2,7 @@
 
 import threading
 from collections.abc import Callable
+from datetime import date
 from functools import partialmethod
 from pathlib import Path
 
@@ -457,6 +458,7 @@ def test_rechercher_remonte_progression_et_sources_terminees(
     monkeypatch.setattr(EmploiTerritorial, "rechercher", _echec)
     progressions: list[tuple[str, int, int]] = []
     terminees: list[str] = []
+    comptes: list[tuple[str, int]] = []
     offres, nb_pages, _ = rechercher_toutes_sources(
         {},
         {},
@@ -464,6 +466,7 @@ def test_rechercher_remonte_progression_et_sources_terminees(
             (nom, page, total)
         ),
         on_source_terminee=terminees.append,
+        on_offres_source=lambda nom, nombre: comptes.append((nom, nombre)),
     )
 
     nom_csp = parametres_sources.SOURCES_DISPONIBLES["choisirleservicepublic"]
@@ -474,6 +477,8 @@ def test_rechercher_remonte_progression_et_sources_terminees(
     )
     assert nb_pages == 2
     assert [o["reference"] for o in offres] == ["O1"]
+    # Seule la source qui a réussi annonce son nombre d'offres.
+    assert comptes == [(nom_csp, 1)]
 
 
 # --- Post-traitement ---
@@ -512,16 +517,14 @@ def test_post_traiter_sans_profil_ne_marque_aucune_nouvelle() -> None:
     assert cache._charger_offres() == {}
 
 
-def test_post_traiter_avec_profil_marque_les_nouvelles_et_les_stats() -> None:
+def test_post_traiter_avec_profil_marque_les_nouvelles_et_la_date() -> None:
     profils.ajouter_profil("p", {"label": "p"})
     premiere = post_traiter_resultats([_offre("O1")], [], False, "p")
     assert premiere["nouvelles"] == {"O1"}
-    assert profils.charger_profils()["p"].get("nb_nouvelles") == 1
+    assert profils.charger_profils()["p"].get("dernier_lancement") == date.today().isoformat()
 
-    # O1 reste « nouvelle » : vue pour la première fois il y a moins de 24 h.
     seconde = post_traiter_resultats([_offre("O1"), _offre("O2")], [], False, "p")
-    assert seconde["nouvelles"] == {"O1", "O2"}
-    assert profils.charger_profils()["p"].get("nb_nouvelles") == 2
+    assert seconde["nouvelles"] == {"O2"}
 
 
 # --- Résumé ---
@@ -530,7 +533,7 @@ def test_post_traiter_avec_profil_marque_les_nouvelles_et_les_stats() -> None:
 def test_lignes_resume_cas_nominal() -> None:
     resultat = post_traiter_resultats([_offre("O1")], [], False, None)
     lignes = lignes_resume({}, resultat, 1, False, [])
-    assert lignes == ["Filtres : tous versants", "1 offre(s)"]
+    assert lignes == ["Filtres\u00a0: tous versants", "1 offre(s)"]
 
 
 def test_lignes_resume_detaille_pages_exclusions_et_avertissements() -> None:
@@ -539,13 +542,13 @@ def test_lignes_resume_detaille_pages_exclusions_et_avertissements() -> None:
         {"offres": [_offre("O1")], "nb_exclus": 2, "nouvelles": {"O1"}},
         3,
         True,
-        ["FHF indisponible : HTTP 503"],
+        ["FHF indisponible\u00a0: HTTP 503"],
     )
     assert lignes[1] == "1 offre(s) · 3 page(s)"
     assert "1 nouvelle(s) offre(s) depuis la dernière recherche" in lignes
     assert "2 offre(s) IDiv/IP exclue(s) (filtre de titre)" in lignes
     assert "Arrêt à la page 3 (page vide)" in lignes
-    assert lignes[-1] == "FHF indisponible : HTTP 503"
+    assert lignes[-1] == "FHF indisponible\u00a0: HTTP 503"
 
 
 def test_lignes_resume_aucune_offre() -> None:

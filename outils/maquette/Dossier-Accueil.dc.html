@@ -1,0 +1,552 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <title>Profils, variante dossier</title>
+    <script src="./support.js"></script>
+  </head>
+  <body>
+    <x-dc>
+      <helmet>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&amp;family=IBM+Plex+Mono:wght@400;600&amp;display=swap"
+        />
+        <style>
+          body {
+            margin: 0;
+            background: #0f1512;
+          }
+          .app {
+--bristol:#FFFFFF;--bristol-ligne:#C9D6EE;--bristol-tete:#C8423B;--surligneur:#F4E27A;--surligne-texte:#1C1A17;
+            --bureau: #23302a;
+            --kraft: #d9bf8c;
+            --onglet: #c4a66c;
+            --onglet-survol: #d0b57e;
+            --texte-kraft: #3e2f12;
+            --num: #3e2f12;
+            --papier: #fbfaf6;
+            --encre: #1c1a17;
+            --encre-2: #4a463e;
+            --tampon: #4b2c9e;
+            --sur-tampon: #ffffff;
+            --rouge: #b3261e;
+            --ombre: #b39257;
+            --ombre-portee: rgba(28, 26, 23, 0.16);
+            --logo: #ede6d3;
+            --sous-logo: #c9d2cb;
+            --bristol: #ffffff;
+            --bristol-ligne: #c9d6ee;
+            --bristol-tete: #c8423b;
+            --pointille: #6b5428;
+            --melange: multiply;
+          }
+          .app.nuit {
+--bristol:#1E2530;--bristol-ligne:#2D3A50;--bristol-tete:#E36A60;--surligneur:#5B521C;--surligne-texte:#FFF4C2;
+            --bureau: #0f1512;
+            --kraft: #4a3b24;
+            --onglet: #33291a;
+            --onglet-survol: #4d3e27;
+            --texte-kraft: #eadcbe;
+            --num: #d9c08c;
+            --papier: #1c221f;
+            --encre: #ece6d6;
+            --encre-2: #b5ae9e;
+            --tampon: #ffb672;
+            --sur-tampon: #1f1408;
+            --rouge: #ff8e80;
+            --ombre: #080b09;
+            --ombre-portee: rgba(0, 0, 0, 0.45);
+            --logo: #e6dcc2;
+            --sous-logo: #9daea3;
+            --bristol: #1e2530;
+            --bristol-ligne: #2d3a50;
+            --bristol-tete: #e36a60;
+            --pointille: #b89d68;
+            --melange: screen;
+          }
+          .sr {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+          }
+          .app a {
+            color: var(--tampon);
+          }
+          .app .onglet {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 44px;
+            padding: 0 18px;
+            background: var(--onglet);
+            color: var(--encre);
+            border-radius: 10px 10px 0 0;
+            text-decoration: none;
+            font-weight: 700;
+            font-stretch: 90%;
+            font-size: 16px;
+          }
+          .app .onglet:hover {
+            background: var(--onglet-survol);
+          }
+          .app .onglet:focus-visible {
+            outline: 3px solid var(--tampon);
+            outline-offset: 2px;
+          }
+          .app .onglet-actif {
+            background: var(--kraft);
+            min-height: 52px;
+          }
+          .num {
+            font-family: "IBM Plex Mono", monospace;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--num);
+          }
+          .point {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--rouge);
+            display: inline-block;
+          }
+          .lampe {
+            all: unset;
+            cursor: pointer;
+            min-height: 44px;
+            padding: 0 16px;
+            border: 1.5px solid var(--sous-logo);
+            border-radius: 999px;
+            color: var(--logo);
+            font-family: "IBM Plex Mono", monospace;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+          }
+          .lampe[aria-pressed="true"] {
+            background: var(--logo);
+            color: var(--bureau);
+            border-color: var(--logo);
+          }
+          .lampe:focus-visible {
+            outline: 3px solid var(--logo);
+            outline-offset: 3px;
+          }
+          .tampon {
+            display: inline-block;
+            padding: 2px 8px;
+            border: 2.5px solid currentColor;
+            border-radius: 4px;
+            font-weight: 800;
+            font-stretch: 85%;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            line-height: 1.3;
+            color: var(--tampon);
+            mix-blend-mode: var(--melange);
+          }
+          .mono {
+            font-family: "IBM Plex Mono", monospace;
+            font-size: 14px;
+          }
+          .bristol {
+            background-color: var(--bristol);
+            color: var(--encre);
+            background-image: repeating-linear-gradient(
+              to bottom,
+              transparent 0,
+              transparent 27px,
+              var(--bristol-ligne) 27px,
+              var(--bristol-ligne) 28px
+            );
+            background-position: 0 64px;
+            border-top: 3px solid var(--bristol-tete);
+            padding: 14px 18px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            box-shadow:
+              0 2px 0 var(--ombre),
+              0 10px 22px var(--ombre-portee);
+            min-height: 240px;
+            box-sizing: border-box;
+          }
+          .app .btn-tampon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 48px;
+            padding: 0 22px;
+            border-radius: 3px;
+            background: var(--tampon);
+            color: var(--sur-tampon);
+            font-weight: 800;
+            font-stretch: 85%;
+            font-size: 16px;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            text-decoration: none;
+            cursor: pointer;
+            outline: 2px solid var(--tampon);
+            outline-offset: 3px;
+            box-shadow:
+              inset 0 0 0 3px var(--tampon),
+              inset 0 0 0 4.5px var(--sur-tampon);
+            transform: rotate(-1deg);
+            transition: transform 0.12s;
+          }
+          .app .btn-tampon:hover {
+            transform: rotate(0);
+            color: var(--sur-tampon);
+          }
+          .app .btn-tampon:active {
+            transform: scale(0.97);
+          }
+          .app .btn-tampon:focus-visible {
+            outline: 3px solid var(--encre);
+            outline-offset: 3px;
+          }
+          .crayon {
+            all: unset;
+            cursor: pointer;
+            min-height: 44px;
+            display: inline-flex;
+            align-items: center;
+            padding: 0 6px;
+            font-family: "IBM Plex Mono", monospace;
+            font-size: 14px;
+            color: var(--encre);
+            text-decoration: underline;
+            text-decoration-style: dotted;
+            text-decoration-thickness: 1.5px;
+            text-underline-offset: 4px;
+          }
+          .crayon:focus-visible {
+            outline: 3px solid var(--tampon);
+          }
+          .app .nouvelle {
+            min-height: 240px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            border: 2px dashed var(--pointille);
+            color: var(--texte-kraft);
+            text-decoration: none;
+            font-weight: 800;
+            font-stretch: 90%;
+            font-size: 17px;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+          }
+          .app .nouvelle:hover {
+            background: var(--onglet-survol);
+          }
+          .app .nouvelle:focus-visible {
+            outline: 3px solid var(--tampon);
+            outline-offset: 2px;
+          }
+          @media (prefers-reduced-motion: reduce) {
+            .app .btn-tampon,
+            .app .btn-tampon:hover,
+            .app .btn-tampon:active {
+              transform: none;
+              transition: none;
+            }
+            .bristol {
+              transform: none !important;
+            }
+          }
+          @media (forced-colors: active) {
+            .app .btn-tampon {
+              border: 2px solid ButtonText;
+              outline: 0;
+              box-shadow: none;
+            }
+            .tampon {
+              mix-blend-mode: normal;
+            }
+            .lampe {
+              border-color: ButtonText;
+            }
+          }
+        
+
+.menubar{display:flex;align-items:stretch;gap:2px;margin:-22px -24px 16px;padding:0 18px;min-height:40px;background:var(--bristol);border-top:3px solid var(--bristol-tete);border-bottom:1px solid var(--bristol-ligne)}
+.menubar .menu-entree{all:unset;cursor:pointer;padding:0 14px;display:inline-flex;align-items:center;font-family:Archivo,system-ui,sans-serif;font-weight:800;font-stretch:85%;font-size:15px;text-transform:uppercase;letter-spacing:1px;color:var(--encre)}
+.menubar .menu-entree:hover,.menubar .menu-entree[aria-expanded="true"]{background:var(--surligneur);color:var(--surligne-texte)}
+.menubar .menu-entree:focus-visible{outline:3px solid var(--tampon);outline-offset:-3px}
+</style>
+      </helmet>
+      <div
+        class="{{classe}}"
+        style="
+          min-height: 900px;
+          display: flex;
+          flex-direction: column;
+          padding: 22px 24px 28px;
+          box-sizing: border-box;
+          background: var(--bureau);
+          font-family: Archivo, system-ui, sans-serif;
+          color: var(--encre);
+        "
+      >
+<div class="menubar" role="menubar" aria-label="Menu de l'application"><a class="menu-entree" href="Dossier-Menu.dc.html" role="menuitem" aria-haspopup="menu" aria-expanded="false">Fichier</a><a class="menu-entree" href="Dossier-Menu.dc.html" role="menuitem" aria-haspopup="menu" aria-expanded="false">Aide</a></div>
+        <div
+          style="
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px 20px;
+            padding: 0 6px 18px;
+          "
+        >
+          <span
+            class="tampon"
+            style="
+              color: var(--logo);
+              font-size: 26px;
+              transform: rotate(-3deg);
+              mix-blend-mode: normal;
+              outline: 1.5px solid var(--logo);
+              outline-offset: 3px;
+            "
+            >Tamponné</span
+          >
+          <span style="color: var(--sous-logo); font-size: 15px"
+            >Offres de la fonction publique · 4 sources</span
+          >
+          <button
+            class="lampe"
+            type="button"
+            aria-pressed="{{pressee}}"
+            onClick="{{basculer}}"
+            style="margin-left: auto"
+          >{{libelleLampe}}</button>
+        </div>
+
+        <nav
+          aria-label="Navigation principale"
+          style="
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-end;
+            gap: 4px;
+            padding: 0 20px;
+          "
+        >
+          <a
+            class="onglet onglet-actif"
+            href="Dossier-Accueil.dc.html"
+            aria-current="page"
+            >Profils</a
+          >
+          <a class="onglet" href="Dossier-Recherche.dc.html"
+            >Recherche</a
+          >
+          <a class="onglet" href="Dossier-Suivi.dc.html"
+            >Suivi</a
+          >
+          <a class="onglet" href="Dossier-Aide.dc.html">Aide</a>
+          <a class="onglet" href="Dossier-Parametres.dc.html"
+            >Réglages
+            <span class="point" aria-hidden="true"></span
+            ><span class="sr">(mise à jour disponible)</span></a
+          >
+        </nav>
+
+        <div
+          style="
+            flex: 1;
+            background: var(--kraft);
+            border-radius: 4px 12px 12px 12px;
+            padding: 28px;
+            display: flex;
+            flex-direction: column;
+            gap: 22px;
+          "
+        >
+          <div
+            style="
+              display: flex;
+              flex-wrap: wrap;
+              align-items: flex-end;
+              gap: 8px 18px;
+              color: var(--texte-kraft);
+            "
+          >
+            <h1
+              style="
+                margin: 0;
+                font-size: 40px;
+                font-weight: 800;
+                font-stretch: 80%;
+                text-transform: uppercase;
+                line-height: 1;
+              "
+            >
+              Mes fiches de recherche
+            </h1>
+            <span class="mono">2 fiches classées</span>
+          </div>
+
+          <div
+            style="
+              display: grid;
+              grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+              gap: 24px;
+            "
+          >
+            <article class="bristol" style="transform: rotate(-0.5deg)">
+              <div
+                style="
+                  display: flex;
+                  align-items: flex-start;
+                  gap: 10px;
+                  min-height: 48px;
+                "
+              >
+                <h2
+                  style="
+                    margin: 0;
+                    font-size: 22px;
+                    font-weight: 800;
+                    font-stretch: 90%;
+                    flex: 1;
+                  "
+                >
+                  Attaché, Paris et petite couronne
+                </h2>
+              </div>
+              <p
+                class="mono"
+                style="margin: 0; line-height: 28px; color: var(--encre-2)"
+              >
+                Cat. A+ (direction), A · État, Territorial<br />Île-de-France ·
+                télétravail<br />grades supérieurs exclus
+              </p>
+              <div
+                style="
+                  display: flex;
+                  flex-wrap: wrap;
+                  align-items: center;
+                  gap: 6px 8px;
+                  margin-top: auto;
+                "
+              >
+                <a
+                  class="btn-tampon"
+                  href="Dossier-Recherche.dc.html"
+                  style="margin: 4px 10px 4px 4px"
+                  >Lancer<span class="sr">
+                    la fiche «&nbsp;Attaché, Paris et petite couronne&nbsp;»</span
+                  ></a
+                >
+                <button class="crayon" type="button">modifier</button>
+                <button class="crayon" type="button">dupliquer</button>
+                <button
+                  class="crayon"
+                  type="button"
+                  style="color: var(--rouge)"
+                >
+                  supprimer
+                </button>
+              </div>
+            </article>
+
+            <article class="bristol" style="transform: rotate(0.4deg)">
+              <div
+                style="
+                  display: flex;
+                  align-items: flex-start;
+                  gap: 10px;
+                  min-height: 48px;
+                "
+              >
+                <h2
+                  style="
+                    margin: 0;
+                    font-size: 22px;
+                    font-weight: 800;
+                    font-stretch: 90%;
+                    flex: 1;
+                  "
+                >
+                  Hospitalier, achats
+                </h2>
+              </div>
+              <p
+                class="mono"
+                style="margin: 0; line-height: 28px; color: var(--encre-2)"
+              >
+                Cat. A · Hospitalier<br />Toute la France<br />mot-clé «&nbsp;achat&nbsp;»
+              </p>
+              <div
+                style="
+                  display: flex;
+                  flex-wrap: wrap;
+                  align-items: center;
+                  gap: 6px 8px;
+                  margin-top: auto;
+                "
+              >
+                <a
+                  class="btn-tampon"
+                  href="Dossier-Recherche.dc.html"
+                  style="margin: 4px 10px 4px 4px"
+                  >Lancer<span class="sr">
+                    la fiche «&nbsp;Hospitalier, achats&nbsp;»</span
+                  ></a
+                >
+                <button class="crayon" type="button">modifier</button>
+                <button class="crayon" type="button">dupliquer</button>
+                <button
+                  class="crayon"
+                  type="button"
+                  style="color: var(--rouge)"
+                >
+                  supprimer
+                </button>
+              </div>
+            </article>
+
+            <a class="nouvelle" href="Dossier-Recherche.dc.html">
+              <span aria-hidden="true" style="font-size: 34px; line-height: 1"
+                >+</span
+              >
+              Nouvelle fiche
+            </a>
+          </div>
+        </div>
+      </div>
+    </x-dc>
+    <script
+      type="text/x-dc"
+      data-dc-script
+      data-props='{"theme":{"editor":"enum","options":["sombre","clair"],"default":"sombre"},"$preview":{"width":1280,"height":900}}'
+    >
+      class Component extends DCLogic {
+        renderVals() {
+          const choisi = this.state && typeof this.state.nuit === 'boolean' ? this.state.nuit : null;
+          const nuit = choisi !== null ? choisi : (this.props.theme ?? 'sombre') !== 'clair';
+          return {
+            classe: nuit ? 'app nuit' : 'app',
+            pressee: nuit ? 'true' : 'false',
+      libelleLampe: nuit ? 'Bureau de jour' : 'Bureau de nuit',
+            basculer: () => this.setState({ nuit: !nuit })
+          };
+        }
+      }
+    </script>
+  </body>
+</html>

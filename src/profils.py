@@ -4,8 +4,9 @@ import json
 import sys
 from datetime import date
 from pathlib import Path
+from typing import Any, cast
 
-from src.filtres import resumer_filtres
+from src.filtres import categorie_normalisee, resumer_filtres
 from src.types import FiltresRecherche, Profil
 from src.utils import ecriture_atomique
 
@@ -22,7 +23,7 @@ def charger_profils() -> dict[str, Profil]:
         # stderr, pas de bibliothèque d'UI : ce module n'est lié à
         # aucune interface particulière.
         print(
-            f"Avertissement : {CHEMIN_PROFILS.name} illisible ou corrompu, "
+            f"Avertissement\u00a0: {CHEMIN_PROFILS.name} illisible ou corrompu, "
             "aucun profil chargé.",
             file=sys.stderr,
         )
@@ -41,11 +42,18 @@ def ajouter_profil(nom: str, filtres: Profil) -> None:
     sauvegarder_profils(profils)
 
 
+_METADONNEES_CONSERVEES = ("label", "cree_le", "dernier_lancement")
+
+
 def modifier_profil(nom: str, filtres: FiltresRecherche) -> None:
-    """Met à jour un profil existant (conserve cree_le original)."""
+    """Remplace les critères d'un profil en gardant son intitulé, sa date
+    de création et celle du dernier lancement."""
     profils = charger_profils()
-    cree_le = profils.get(nom, {}).get("cree_le", date.today().isoformat())
-    profils[nom] = {**filtres, "cree_le": cree_le}
+    ancien = cast(dict[str, Any], profils.get(nom, {}))
+    conserve = {cle: ancien[cle] for cle in _METADONNEES_CONSERVEES if cle in ancien}
+    profils[nom] = cast(
+        Profil, {"cree_le": date.today().isoformat(), **conserve, **filtres}
+    )
     sauvegarder_profils(profils)
 
 
@@ -56,26 +64,56 @@ def supprimer_profil(nom: str) -> None:
     sauvegarder_profils(profils)
 
 
-def dupliquer_profil(nom_source: str, nouveau_nom: str) -> None:
-    """Copie un profil sous un nouveau nom."""
+def dupliquer_profil(
+    nom_source: str, nouveau_nom: str, label: str | None = None
+) -> None:
+    """Copie un profil sous un nouveau nom.
+
+    Args:
+        nom_source: Profil à copier.
+        nouveau_nom: Nom de la copie.
+        label: Intitulé de la copie ; `None` garde celui du profil source.
+    """
     profils = charger_profils()
     if nom_source not in profils:
-        raise KeyError(f"Profil introuvable : {nom_source}")
+        raise KeyError(f"Profil introuvable\u00a0: {nom_source}")
     profils[nouveau_nom] = {
         **profils[nom_source],
         "cree_le": date.today().isoformat(),
     }
+    if label:
+        profils[nouveau_nom]["label"] = label
     sauvegarder_profils(profils)
 
 
-def mettre_a_jour_stats(nom: str, nb_nouvelles: int) -> None:
-    """Enregistre les stats du dernier lancement (date + nb nouvelles offres)."""
+def noter_lancement(nom: str) -> None:
+    """Enregistre la date du dernier lancement d'une fiche (ignorée si elle
+    n'existe plus)."""
     profils = charger_profils()
     if nom not in profils:
         return
     profils[nom]["dernier_lancement"] = date.today().isoformat()
-    profils[nom]["nb_nouvelles"] = nb_nouvelles
     sauvegarder_profils(profils)
+
+
+def categories_compatibles(profil: FiltresRecherche) -> list[str]:
+    """Catégories d'un profil en clés de `src.filtres.CATEGORIES`, y compris
+    celles enregistrées sous leur libellé court, sans doublon."""
+    return list(dict.fromkeys(categorie_normalisee(c) for c in profil.get("categories") or []))
+
+
+def versants_compatibles(profil: FiltresRecherche) -> list[str]:
+    """Versants d'un profil, y compris au format singulier historique
+    (`"versant": "etat"|"hospitalier"|"territorial"|"__tous__"`)."""
+    versants = profil.get("versants")
+    if versants is not None:
+        return list(versants)
+    ancien = cast(dict[str, Any], profil).get("versant")
+    if ancien is None or ancien == "etat":
+        return ["etat"]
+    if ancien == "__tous__":
+        return []
+    return [str(ancien)]
 
 
 def resume_profil(profil: Profil) -> str:

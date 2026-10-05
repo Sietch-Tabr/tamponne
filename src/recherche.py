@@ -15,7 +15,7 @@ from src.parametres_sources import (
     VERSANT_SOURCE,
     charger_sources_actives,
 )
-from src.profils import mettre_a_jour_stats
+from src.profils import noter_lancement
 from src.sources.base import SourceOffres, deduplique_offres
 from src.sources.choisirleservicepublic import MAX_PAGES, ChoisirLeServicePublic
 from src.sources.choisirleservicepublic.extraction import filtrer_grades_superieurs
@@ -82,6 +82,7 @@ def rechercher_toutes_sources(
     on_progression: Callable[[str, int, int], None] = _ignorer,
     on_source_terminee: Callable[[str], None] = _ignorer,
     on_avertissement: Callable[[str], None] = _ignorer,
+    on_offres_source: Callable[[str, int], None] = _ignorer,
 ) -> tuple[list[Offre], int, bool]:
     """Interroge les sources actives en parallèle, puis fusionne et
     dédoublonne leurs résultats.
@@ -102,6 +103,9 @@ def rechercher_toutes_sources(
             échec) — depuis les threads du pool.
         on_avertissement: Appelé pour chaque source en échec, sans
             interrompre les autres.
+        on_offres_source: Appelé avec (nom affiché, nombre d'offres
+            trouvées avant dédoublonnage) quand une source réussit —
+            depuis les threads du pool.
 
     Returns:
         ``(offres, nb_pages, arret_anticipe)`` ; ``nb_pages`` et
@@ -113,7 +117,9 @@ def rechercher_toutes_sources(
     """
     sources = sources_a_interroger(filtres, orgas_cache)
     if not sources:
-        raise RechercheImpossible("Aucune source active — voir l'onglet Sources.")
+        raise RechercheImpossible(
+            "Aucune source cochée\u00a0: voir Réglages › Sources consultées."
+        )
 
     def _interroger(
         nom_affiche: str, source: SourceOffres
@@ -122,7 +128,9 @@ def rechercher_toutes_sources(
             on_progression(nom_affiche, page, total)
 
         try:
-            return source.rechercher(filtres, on_page=_on_page)
+            resultat = source.rechercher(filtres, on_page=_on_page)
+            on_offres_source(nom_affiche, len(resultat[0]))
+            return resultat
         finally:
             on_source_terminee(nom_affiche)
 
@@ -143,7 +151,7 @@ def rechercher_toutes_sources(
                 offres, nb_pages, arret_anticipe = futur.result()
             except RuntimeError as erreur:
                 nb_echecs += 1
-                on_avertissement(f"{nom_affiche} indisponible : {erreur}")
+                on_avertissement(f"{nom_affiche} indisponible\u00a0: {erreur}")
                 continue
             if cle == "fhf":
                 offres = filtrer_doublons_fhf(offres, toutes_offres)
@@ -153,7 +161,9 @@ def rechercher_toutes_sources(
                 arret_anticipe_reference = arret_anticipe
 
     if nb_echecs == len(sources):
-        raise RechercheImpossible("Toutes les sources actives sont indisponibles.")
+        raise RechercheImpossible(
+            "Toutes les sources actives sont indisponibles. Réessayer dans un moment."
+        )
 
     return (
         deduplique_offres(toutes_offres),
@@ -176,8 +186,8 @@ def post_traiter_resultats(
         afficher_grades_superieurs: Conserve les offres IDiv/IP au lieu
             de les exclure par leur titre.
         nom_profil: Profil sauvegardé dont on met à jour le cache des
-            offres vues et les statistiques ; `None` hors profil (ou en
-            édition) : aucune offre n'est alors marquée nouvelle.
+            offres vues et la date du dernier lancement ; `None` hors profil
+            (ou critères modifiés) : aucune offre n'est alors marquée nouvelle.
     """
     if afficher_grades_superieurs:
         offres_filtrees, nb_exclus = offres, 0
@@ -188,7 +198,7 @@ def post_traiter_resultats(
     nouvelles: set[str] = set()
     if nom_profil:
         nouvelles = maj_cache_offres(nom_profil, offres_filtrees)
-        mettre_a_jour_stats(nom_profil, len(nouvelles))
+        noter_lancement(nom_profil)
 
     return {"offres": offres_filtrees, "nb_exclus": nb_exclus, "nouvelles": nouvelles}
 
@@ -205,7 +215,7 @@ def lignes_resume(
     offres = resultat["offres"]
     nouvelles = resultat["nouvelles"]
     lignes = [
-        f"Filtres : {resumer_filtres(filtres)}",
+        f"Filtres\u00a0: {resumer_filtres(filtres)}",
         f"{len(offres)} offre(s)" + (f" · {nb_pages} page(s)" if nb_pages > 1 else ""),
     ]
     if nouvelles:

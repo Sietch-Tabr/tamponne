@@ -36,7 +36,7 @@ def charger_sources_actives() -> dict[str, bool]:
             etats = json.loads(CHEMIN_SOURCES.read_text(encoding="utf-8"))
         except json.JSONDecodeError, OSError:
             print(
-                f"Avertissement : {CHEMIN_SOURCES.name} illisible ou corrompu, "
+                f"Avertissement\u00a0: {CHEMIN_SOURCES.name} illisible ou corrompu, "
                 "toutes les sources sont réactivées.",
                 file=sys.stderr,
             )

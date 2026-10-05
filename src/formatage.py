@@ -7,6 +7,9 @@ import re
 
 from src.types import Offre
 
+SOURCE_PAR_DEFAUT = "Choisir le service public"
+"""Source affichée pour une offre de choisirleservicepublic sans préfixe connu."""
+
 _MOIS_FR = {
     "janvier": 1,
     "février": 2,
@@ -48,7 +51,7 @@ def offre_vers_ligne(offre: Offre) -> tuple[str, str, str, str, str]:
         offre["employeur"] or "—",
         offre["localisation"] or "—",
         reformater_date(offre["date"]) if offre["date"] else "—",
-        offre.get("source") or "Choisir le service public",
+        offre.get("source") or SOURCE_PAR_DEFAUT,
     )
 
 

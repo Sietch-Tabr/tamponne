@@ -376,3 +376,36 @@ def test_nouvelle_candidature_disponible_par_defaut() -> None:
     toutes = candidatures.charger_candidatures()
     assert toutes["ref-1"]["disponible"] is True
     assert toutes["ref-1"]["derniere_verification"] == ""
+
+
+def test_source_candidature_memorisee_puis_deduite_du_prefixe() -> None:
+    candidatures.ajouter_candidature(
+        "2026-1", "Titre", "Employeur", "https://example.org", offre_source="FHF"
+    )
+    assert candidatures.source_candidature(
+        candidatures.charger_candidatures()["2026-1"]
+    ) == "FHF"
+    ancienne = candidatures.charger_candidatures()["2026-1"]
+    del ancienne["offre_source"]
+    ancienne["offre_reference"] = "MINT_2026-31544"
+    assert candidatures.source_candidature(ancienne) == "Ministère de l'Intérieur"
+    ancienne["offre_reference"] = "2026-30871"
+    assert candidatures.source_candidature(ancienne) == ""
+
+
+def test_evenements_doublon_modification_et_suppression() -> None:
+    candidatures.ajouter_candidature("R", "Titre", "Employeur", "https://example.org")
+    candidatures.ajouter_evenement("R", "relance", "2026-10-01", "")
+    candidatures.ajouter_evenement("R", "entretien_planifie", "2026-10-03", "visio")
+    dossier = candidatures.charger_candidatures()["R"]
+    assert candidatures.evenement_en_double(dossier, "relance", "2026-10-01")
+    assert not candidatures.evenement_en_double(dossier, "relance", "2026-10-01", sauf_indice=0)
+    assert not candidatures.evenement_en_double(dossier, "relance", "2026-10-02")
+
+    candidatures.modifier_evenement("R", 1, "entretien_passe", "2026-10-03", "fait")
+    candidatures.supprimer_evenement("R", 0)
+    assert candidatures.charger_candidatures()["R"]["historique"] == [
+        {"date": "2026-10-03", "type": "entretien_passe", "note": "fait"}
+    ]
+    with pytest.raises(IndexError):
+        candidatures.supprimer_evenement("R", 5)

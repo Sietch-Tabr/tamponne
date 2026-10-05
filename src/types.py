@@ -1,6 +1,6 @@
 """Types partagés entre les modules du projet."""
 
-from typing import TypedDict
+from typing import NotRequired, TypedDict
 
 Organisations = dict[str, dict[str, int]]
 """Mapping ministère → {nom de sous-organisation → identifiant API}."""
@@ -51,7 +51,7 @@ class OffreCache(Offre):
 
 
 class FiltresRecherche(TypedDict, total=False):
-    """Paramètres de recherche construits par le wizard (tous optionnels).
+    """Critères du formulaire de recherche (tous optionnels).
 
     Les listes vides signifient « pas de filtre sur ce critère ».
 
@@ -79,6 +79,9 @@ class FiltresRecherche(TypedDict, total=False):
         teletravail: ``True`` si seuls les postes en télétravail possible
             sont ciblés.
         query: Mot-clé libre saisi par l'utilisateur.
+        grades_superieurs: ``True`` pour garder les offres des grades
+            d'encadrement supérieur (IDIV, IP, AFIPA), écartées par défaut —
+            filtre appliqué côté client, ignoré par les sources.
     """
 
     categories: list[str]
@@ -93,6 +96,7 @@ class FiltresRecherche(TypedDict, total=False):
     management: bool
     teletravail: bool
     query: str
+    grades_superieurs: bool
 
 
 class Profil(FiltresRecherche, total=False):
@@ -105,14 +109,11 @@ class Profil(FiltresRecherche, total=False):
         label: Nom d'affichage dans les menus.
         cree_le: Date de création au format ``YYYY-MM-DD``.
         dernier_lancement: Date du dernier lancement au format ``YYYY-MM-DD``.
-        nb_nouvelles: Nombre de nouvelles offres détectées lors du dernier
-            lancement.
     """
 
     label: str
     cree_le: str
     dernier_lancement: str
-    nb_nouvelles: int
 
 
 class DetailOffre(TypedDict):
@@ -211,6 +212,9 @@ class Candidature(TypedDict):
             moment de la candidature (voir `src.types.Offre`).
         detail: Détail structuré + archive HTML brute, voir
             `DetailOffre`.
+        offre_source: Source de l'offre au moment du suivi (absente des
+            candidatures enregistrées avant la 2.0, voir
+            :func:`~src.candidatures.source_candidature`).
     """
 
     offre_titre: str
@@ -226,6 +230,7 @@ class Candidature(TypedDict):
     disponible: bool
     derniere_verification: str
     detail: DetailOffre
+    offre_source: NotRequired[str]
 
 
 class PageAPI(TypedDict):
