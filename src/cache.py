@@ -28,7 +28,7 @@ def _charger_cache() -> dict[str, Any]:
         # stderr, pas de bibliothèque d'UI : ce module n'est lié à
         # aucune interface particulière.
         print(
-            f"Avertissement : {CHEMIN_CACHE.name} illisible ou corrompu, "
+            f"Avertissement\u00a0: {CHEMIN_CACHE.name} illisible ou corrompu, "
             "cache réinitialisé.",
             file=sys.stderr,
         )
@@ -113,7 +113,7 @@ def _charger_offres() -> dict[str, dict[str, OffreCache]]:
         return json.loads(CHEMIN_OFFRES.read_text(encoding="utf-8"))
     except json.JSONDecodeError, OSError:
         print(
-            f"Avertissement : {CHEMIN_OFFRES.name} illisible ou corrompu, "
+            f"Avertissement\u00a0: {CHEMIN_OFFRES.name} illisible ou corrompu, "
             "cache réinitialisé.",
             file=sys.stderr,
         )

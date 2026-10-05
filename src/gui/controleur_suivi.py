@@ -333,7 +333,7 @@ class ControleurSuivi(QObject):
             return "Type d'événement inconnu."
         if evenement_en_double(candidature, type_evenement, date_iso, sauf):
             return (
-                f"Déjà tamponné : un événement « {TYPES_EVENEMENT[type_evenement]} »"
+                f"Déjà tamponné\u00a0: un événement «\u00a0{TYPES_EVENEMENT[type_evenement]}\u00a0»"
                 " existe à cette date."
             )
         return ""

@@ -54,7 +54,7 @@ def test_fiches_exposent_intitule_resume_et_nouvelles(qapp: QApplication) -> Non
     assert _valeur(controleur, 1, b"lignes") == [
         "Cat. A · tous versants",
         "Toute la France",
-        "mot-clé « achat »",
+        "mot-clé «\u00a0achat\u00a0»",
     ]
 
 

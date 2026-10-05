@@ -742,7 +742,7 @@ class VueRechercheResultats(QWidget):
     def _on_erreur(self, message: str) -> None:
         self.barre_progression.setVisible(False)
         self._reinitialiser_role_entete()
-        self.label_entete.setText(f"Erreur : {message}")
+        self.label_entete.setText(f"Erreur\u00a0: {message}")
         self.bouton_lancer.setEnabled(True)
         self.bouton_lancer.setText("Lancer la recherche")
 
@@ -838,18 +838,18 @@ class VueRechercheResultats(QWidget):
             QApplication.restoreOverrideCursor()
 
         QMessageBox.information(
-            self, "Candidature suivie", f"« {offre['titre']} » ajoutée au suivi."
+            self, "Candidature suivie", f"«\u00a0{offre['titre']}\u00a0» ajoutée au suivi."
         )
 
     def _sauvegarder_comme_profil(self) -> None:
         nom, ok = QInputDialog.getText(
-            self, "Sauvegarder comme profil", "Nom du profil (ex: dgal-paris) :"
+            self, "Sauvegarder comme profil", "Nom du profil (ex: dgal-paris)\u00a0:"
         )
         if not ok or not nom.strip():
             return
         nom = nom.strip()
         label, _ = QInputDialog.getText(
-            self, "Sauvegarder comme profil", "Description courte :", text=nom
+            self, "Sauvegarder comme profil", "Description courte\u00a0:", text=nom
         )
         filtres = self.construire_filtres()
         ajouter_profil(nom, cast(Profil, {**filtres, "label": label or nom}))
@@ -864,6 +864,6 @@ class VueRechercheResultats(QWidget):
         if question_oui_non(
             self,
             "Export généré",
-            f"Export généré : {chemin}\n\nOuvrir dans le navigateur ?",
+            f"Export généré\u00a0: {chemin}\n\nOuvrir dans le navigateur\u00a0?",
         ):
             ouvrir_dans_navigateur(chemin)

@@ -547,7 +547,7 @@ def test_post_traiter_releve_compte_les_nouvelles_sans_les_consulter() -> None:
 def test_lignes_resume_cas_nominal() -> None:
     resultat = post_traiter_resultats([_offre("O1")], [], False, None)
     lignes = lignes_resume({}, resultat, 1, False, [])
-    assert lignes == ["Filtres : tous versants", "1 offre(s)"]
+    assert lignes == ["Filtres\u00a0: tous versants", "1 offre(s)"]
 
 
 def test_lignes_resume_detaille_pages_exclusions_et_avertissements() -> None:
@@ -556,13 +556,13 @@ def test_lignes_resume_detaille_pages_exclusions_et_avertissements() -> None:
         {"offres": [_offre("O1")], "nb_exclus": 2, "nouvelles": {"O1"}},
         3,
         True,
-        ["FHF indisponible : HTTP 503"],
+        ["FHF indisponible\u00a0: HTTP 503"],
     )
     assert lignes[1] == "1 offre(s) · 3 page(s)"
     assert "1 nouvelle(s) offre(s) depuis la dernière recherche" in lignes
     assert "2 offre(s) IDiv/IP exclue(s) (filtre de titre)" in lignes
     assert "Arrêt à la page 3 (page vide)" in lignes
-    assert lignes[-1] == "FHF indisponible : HTTP 503"
+    assert lignes[-1] == "FHF indisponible\u00a0: HTTP 503"
 
 
 def test_lignes_resume_aucune_offre() -> None:

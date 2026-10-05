@@ -9,7 +9,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pytest  # noqa: E402
 
-from src import candidatures, parametres_affichage, profils  # noqa: E402
+from src import cache, candidatures, parametres_affichage, profils  # noqa: E402
 from src.gui import travailleurs  # noqa: E402
 
 
@@ -51,3 +51,11 @@ def _rediriger_profils_vers_tmp(
 ) -> None:
     """Le `Pont` de l'interface QML charge les profils dès sa construction."""
     monkeypatch.setattr(profils, "CHEMIN_PROFILS", tmp_path / "profils.json")
+
+
+@pytest.fixture(autouse=True)
+def _rediriger_caches_vers_tmp(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Lancer une fiche met à jour le cache des offres vues : jamais le vrai
+    data/offres.json (ni data/cache.json) pendant les tests."""
+    monkeypatch.setattr(cache, "CHEMIN_OFFRES", tmp_path / "offres.json")
+    monkeypatch.setattr(cache, "CHEMIN_CACHE", tmp_path / "cache.json")

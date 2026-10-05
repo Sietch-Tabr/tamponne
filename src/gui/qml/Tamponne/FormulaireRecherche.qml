@@ -84,7 +84,7 @@ Feuille {
         Texte {
             Layout.fillWidth: true
             visible: racine.recherche.edition
-            text: "Fiche « " + racine.recherche.intitule_edition + " » : les cases ci-dessous remplacent ses critères."
+            text: "Fiche «\u00a0" + racine.recherche.intitule_edition + "\u00a0»\u00a0: les cases ci-dessous remplacent ses critères."
             font.pixelSize: 15
             lineHeight: Math.round(15 * 1.55)
         }

@@ -135,9 +135,9 @@ class VueParametres(QWidget):
         """Met à jour l'affichage de l'âge du cache (pas de scraping)."""
         age = age_cache_organisations()
         self.label_cache.setText(
-            f"Cache organisations : mis à jour {age}"
+            f"Cache organisations\u00a0: mis à jour {age}"
             if age
-            else "Cache organisations : jamais chargé"
+            else "Cache organisations\u00a0: jamais chargé"
         )
 
     def _rafraichir_cache(self) -> None:

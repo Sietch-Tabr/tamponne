@@ -112,7 +112,7 @@ def test_ecran_reglages_expose_sources_et_classement(
         "Avis de mise à jour",
         "Sources consultées",
         *parametres_sources.SOURCES_DISPONIBLES.values(),
-        "Thème : Suivre le système",
+        "Thème\u00a0: Suivre le système",
         "Réduire les animations",
         "Rafraîchir le cache",
     ):

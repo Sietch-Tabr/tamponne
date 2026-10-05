@@ -109,6 +109,11 @@ class ControleurRecherche(QObject):
         self._proxy = ProxyOffres(self)
         self._proxy.setSourceModel(self._modele)
         self._nom_profil: str | None = None
+        self._filtres_fiche: FiltresRecherche | None = None
+        # Fiche à laquelle la recherche affichée est rattachée (cache des
+        # offres vues, nouvelles, export) : seulement si ses critères sont intacts.
+        self._profil_lance: str | None = None
+        self._filtres_lances: FiltresRecherche = {}
         self._edition = False
         self._phase = "vide"
         self._resume = ""
@@ -349,6 +354,7 @@ class ControleurRecherche(QObject):
             "grades_superieurs": bool(profil.get("grades_superieurs")),
         }
         self._nom_profil = nom
+        self._filtres_fiche = self.construire_filtres()
         return True
 
     @Slot(str)
@@ -428,6 +434,12 @@ class ControleurRecherche(QObject):
         if self._thread is not None:
             return
         filtres = self.construire_filtres()
+        self._filtres_lances = filtres
+        self._profil_lance = (
+            self._nom_profil
+            if not self._edition and filtres == self._filtres_fiche
+            else None
+        )
         self._grades = list(filtres.get("grades") or [])
         self._grades_superieurs = bool(self._etat["grades_superieurs"])
         self._sources = {}
@@ -476,7 +488,7 @@ class ControleurRecherche(QObject):
     def _on_resultat(
         self, offres: list[Offre], nb_pages: int, arret_anticipe: bool
     ) -> None:
-        profil = None if self._edition else self._nom_profil
+        profil = self._profil_lance
         resultat = post_traiter_resultats(
             offres, self._grades, self._grades_superieurs, profil
         )
@@ -489,7 +501,7 @@ class ControleurRecherche(QObject):
             self._avertissements.append(f"Arrêt à la page {nb_pages} (page vide)")
         elif nb_pages > MAX_PAGES:
             self._avertissements.append(
-                f"{nb_pages} pages au total : seules les {MAX_PAGES} premières chargées."
+                f"{nb_pages} pages au total\u00a0: seules les {MAX_PAGES} premières chargées."
             )
         self._resume = resume_registre(
             len(resultat["offres"]),
@@ -610,7 +622,7 @@ class ControleurRecherche(QObject):
 
     def _on_tache_echouee(self, message: str) -> None:
         self._suites.pop(id(self.sender()), None)
-        self.action_echouee.emit(f"Opération impossible : {message}")
+        self.action_echouee.emit(f"Opération impossible\u00a0: {message}")
 
     def _on_thread_tache_fini(self) -> None:
         self._taches = [(t, tache) for t, tache in self._taches if t.isRunning()]
@@ -686,8 +698,9 @@ class ControleurRecherche(QObject):
             `{chemin, nombre}` du fichier produit.
         """
         offres = self._proxy.offres_visibles()
-        resume = resumer_filtres(self.construire_filtres())
-        chemin = exporter_html(offres, resume, self._nb_pages, self._nom_profil)
+        # Critères de la recherche affichée, même si le formulaire a changé depuis.
+        resume = resumer_filtres(self._filtres_lances)
+        chemin = exporter_html(offres, resume, self._nb_pages, self._profil_lance)
         return {"chemin": str(chemin), "nombre": len(offres)}
 
     @Slot(str)

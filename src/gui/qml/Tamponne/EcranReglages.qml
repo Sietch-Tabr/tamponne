@@ -119,7 +119,7 @@ Item {
                     }
 
                     Paragraphe {
-                        text: "<b>Objet :</b> " + racine.avis.objet
+                        text: "<b>Objet\u00a0:</b> " + racine.avis.objet
                         font.pixelSize: racine.avis.disponible ? 17 : 16
                         lineHeight: racine.avis.disponible ? 17 * 1.55 : 16 * 1.5
                     }
@@ -276,7 +276,7 @@ Item {
                                 implicitHeight: 44
                                 model: racine.modesTheme
                                 currentIndex: racine.modesTheme.findIndex(m => m.cle === Theme.mode)
-                                Accessible.name: "Thème : " + displayText
+                                Accessible.name: "Thème\u00a0: " + displayText
                                 onActivated: indice => {
                                     Theme.mode = racine.modesTheme[indice].cle
                                     racine.modeThemeChoisi(Theme.mode)

@@ -78,7 +78,7 @@ def test_ecran_suivi_expose_dossiers_statuts_et_tampons(
     assert "3 candidatures suivies" in noms
     assert "Réf. MINT_2026-31544" in noms
     assert "Attaché(e) d'administration RH" in noms
-    assert "Statut : entretien planifié le 01/10/2026 (visio, 14 h)" in noms
+    assert "Statut\u00a0: entretien planifié le 01/10/2026 (visio, 14 h)" in noms
     assert "Modifier l'événement Entretien du 01/10/26" in noms
     assert "Relance suggérée, sans nouvelles depuis 23 jours" in noms
     assert "archive PDF" in noms

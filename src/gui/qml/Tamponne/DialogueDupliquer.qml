@@ -36,7 +36,7 @@ Dialogue {
 
     Texte {
         Layout.fillWidth: true
-        text: "Copie de « " + racine.intitule + " »"
+        text: "Copie de «\u00a0" + racine.intitule + "\u00a0»"
         color: Theme.encre2
         font.family: Theme.policeMono
         font.pixelSize: 14

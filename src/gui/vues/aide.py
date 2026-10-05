@@ -66,13 +66,13 @@ class VueAide(QWidget):
         _entree(
             disposition,
             "Catégorie",
-            "Niveau hiérarchique du poste : A+ (encadrement supérieur), A "
+            "Niveau hiérarchique du poste\u00a0: A+ (encadrement supérieur), A "
             "(cadre), B (profession intermédiaire), C (employé).",
         )
         _entree(
             disposition,
             "Versant",
-            "La branche de la fonction publique : État (FPE), Hospitalière "
+            "La branche de la fonction publique\u00a0: État (FPE), Hospitalière "
             "(FPH), Territoriale (FPT) — plusieurs cases à la fois "
             "possibles, aucune cochée = tous les versants.",
         )
@@ -88,7 +88,7 @@ class VueAide(QWidget):
             "Type de poste",
             "Par défaut, l'app ne montre que les postes ouverts aux "
             "titulaires (titulaires + postes ouverts aux deux statuts). "
-            "Choisir « Tous » pour voir aussi les postes réservés aux "
+            "Choisir «\u00a0Tous\u00a0» pour voir aussi les postes réservés aux "
             "contractuels.",
         )
         _entree(
@@ -116,7 +116,7 @@ class VueAide(QWidget):
             "Grade → Attaché principal\n"
             "Versant → Territoriale\n"
             "Lieu & Organisation → Localisation Hérault\n\n"
-            "Le filtre Grade repère « attaché principal » dans le titre, "
+            "Le filtre Grade repère «\u00a0attaché principal\u00a0» dans le titre, "
             "quel que soit le versant — pas besoin de le recocher si la "
             "recherche est élargie à l'État ou l'Hospitalière.",
         )
@@ -125,10 +125,10 @@ class VueAide(QWidget):
             "Chef de projet informatique (DGFiP → fonction publique d'État)",
             "Catégorie → A\n"
             "Versant → État\n"
-            "Poste → Domaine « Numérique »\n"
-            "Options → mot-clé libre « chef de projet »\n\n"
+            "Poste → Domaine «\u00a0Numérique\u00a0»\n"
+            "Options → mot-clé libre «\u00a0chef de projet\u00a0»\n\n"
             "Pas de grade statutaire dédié pour ce métier (contrairement à "
-            "« attaché ») — le mot-clé resserre sur l'intitulé du poste.",
+            "«\u00a0attaché\u00a0») — le mot-clé resserre sur l'intitulé du poste.",
         )
         return groupe
 
@@ -141,15 +141,15 @@ class VueAide(QWidget):
             _texte(
                 "Par défaut, l'app masque les offres dont le titre commence "
                 "par un grade d'encadrement supérieur de la DGFiP (IDIV, "
-                "AFIPA, IP suivi d'une majuscule — ex. IPFiP) : ce sont en "
+                "AFIPA, IP suivi d'une majuscule — ex. IPFiP)\u00a0: ce sont en "
                 "général des postes très spécifiques, peu pertinents pour "
                 "une recherche large."
             )
         )
         disposition.addWidget(
             _texte(
-                "Pour les voir quand même, active « Afficher aussi les "
-                "grades supérieurs » dans l'écran Recherche."
+                "Pour les voir quand même, active «\u00a0Afficher aussi les "
+                "grades supérieurs\u00a0» dans l'écran Recherche."
             )
         )
         return groupe
@@ -163,9 +163,9 @@ class VueAide(QWidget):
             _texte(
                 "Un profil, c'est une recherche sauvegardée avec un nom. "
                 "Sur l'Accueil, double-clique sur un profil (ou son bouton "
-                "« Lancer ») pour lancer sa recherche immédiatement — les "
+                "«\u00a0Lancer\u00a0») pour lancer sa recherche immédiatement — les "
                 "autres actions sont aussi des boutons directs sur la "
-                "tuile :"
+                "tuile\u00a0:"
             )
         )
         _entree(disposition, "Lancer", "Lance la recherche immédiatement.")
@@ -186,7 +186,7 @@ class VueAide(QWidget):
         disposition.addWidget(
             _texte(
                 "Depuis l'écran Recherche, sélectionne une offre puis "
-                "« Suivre cette offre » pour démarrer son suivi. Le statut "
+                "«\u00a0Suivre cette offre\u00a0» pour démarrer son suivi. Le statut "
                 "affiché est toujours celui du dernier événement ajouté "
                 "(candidature envoyée, accusé de réception, entretien, "
                 "réponse...), jamais un champ à part qu'on pourrait perdre."
@@ -202,7 +202,7 @@ class VueAide(QWidget):
             disposition,
             "Offre dépubliée",
             "Badge affiché quand l'offre a disparu du site — vérifiable "
-            "avec le bouton « Vérifier les offres » de cet écran. "
+            "avec le bouton «\u00a0Vérifier les offres\u00a0» de cet écran. "
             "L'essentiel de la fiche de poste reste consultable même "
             "après dépublication.",
         )
@@ -210,7 +210,7 @@ class VueAide(QWidget):
             disposition,
             "Clavier",
             "Entrée (ou double-clic) ouvre le détail de la candidature "
-            "sélectionnée, Suppr arrête son suivi ; clic droit pour toutes "
+            "sélectionnée, Suppr arrête son suivi\u00a0; clic droit pour toutes "
             "les actions.",
         )
         return groupe

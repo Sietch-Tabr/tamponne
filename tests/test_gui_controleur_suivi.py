@@ -178,7 +178,7 @@ def test_ajout_d_un_evenement_en_double_est_refuse(qapp: QApplication) -> None:
     controleur = ControleurSuivi(qapp)
     erreur = controleur.ajouter_evenement("REF-B", "candidature_envoyee", "2026-09-11", "")
     assert erreur == (
-        "Déjà tamponné : un événement « Candidature envoyée » existe à cette date."
+        "Déjà tamponné\u00a0: un événement «\u00a0Candidature envoyée\u00a0» existe à cette date."
     )
     assert len(candidatures.charger_candidatures()["REF-B"]["historique"]) == 1
 
@@ -189,7 +189,7 @@ def test_modifier_puis_supprimer_un_evenement(qapp: QApplication) -> None:
     assert controleur.ajouter_evenement("REF-B", "relance", "2026-09-30", "") == ""
     assert controleur.evenement("REF-B", 1)["libelle"] == "Relance"
     assert controleur.modifier_evenement("REF-B", 1, "candidature_envoyee", "2026-09-11", "") == (
-        "Déjà tamponné : un événement « Candidature envoyée » existe à cette date."
+        "Déjà tamponné\u00a0: un événement «\u00a0Candidature envoyée\u00a0» existe à cette date."
     )
     assert controleur.modifier_evenement("REF-B", 1, "accuse_reception", "2026-09-30", "ok") == ""
     assert candidatures.charger_candidatures()["REF-B"]["historique"][1]["type"] == "accuse_reception"

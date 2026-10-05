@@ -94,7 +94,7 @@ def _contraste(premier: QColor, second: QColor) -> float:
 
 def _couleur(theme: QObject, jeton: str) -> QColor:
     valeur = theme.property(jeton)
-    assert isinstance(valeur, QColor), f"jeton inconnu ou non couleur : {jeton}"
+    assert isinstance(valeur, QColor), f"jeton inconnu ou non couleur\u00a0: {jeton}"
     return valeur
 
 
@@ -105,7 +105,7 @@ def test_paires_texte_respectent_wcag_aa(
 ) -> None:
     theme.setProperty("mode", mode)
     ratio = _contraste(_couleur(theme, texte), _couleur(theme, fond))
-    assert ratio >= 4.5, f"{texte}/{fond} en mode {mode} : {ratio:.2f}"
+    assert ratio >= 4.5, f"{texte}/{fond} en mode {mode}\u00a0: {ratio:.2f}"
 
 
 @pytest.mark.parametrize("mode", ["clair", "sombre"])
@@ -115,7 +115,7 @@ def test_elements_graphiques_respectent_seuil_non_textuel(
 ) -> None:
     theme.setProperty("mode", mode)
     ratio = _contraste(_couleur(theme, element), _couleur(theme, fond))
-    assert ratio >= 3.0, f"{element}/{fond} en mode {mode} : {ratio:.2f}"
+    assert ratio >= 3.0, f"{element}/{fond} en mode {mode}\u00a0: {ratio:.2f}"
 
 
 @pytest.mark.parametrize(

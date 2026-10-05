@@ -30,7 +30,7 @@ def charger_mode_theme() -> ModeTheme:
         donnees = json.loads(CHEMIN_AFFICHAGE.read_text(encoding="utf-8"))
     except json.JSONDecodeError, OSError:
         print(
-            f"Avertissement : {CHEMIN_AFFICHAGE.name} illisible ou corrompu, "
+            f"Avertissement\u00a0: {CHEMIN_AFFICHAGE.name} illisible ou corrompu, "
             "thème automatique utilisé.",
             file=sys.stderr,
         )

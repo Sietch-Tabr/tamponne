@@ -124,7 +124,7 @@ class VueCandidatures(QWidget):
         disposition.addLayout(entete)
 
         self.label_vide = QLabel(
-            "Aucune candidature suivie — utilise « Suivre cette offre » "
+            "Aucune candidature suivie — utilise «\u00a0Suivre cette offre\u00a0» "
             "depuis un résultat de recherche"
         )
         self.label_vide.setProperty("role", "sousTexte")
@@ -285,7 +285,7 @@ class VueCandidatures(QWidget):
         if question_oui_non(
             self,
             "Arrêter le suivi",
-            f"Arrêter le suivi de « {candidature['offre_titre']} » ?",
+            f"Arrêter le suivi de «\u00a0{candidature['offre_titre']}\u00a0»\u00a0?",
         ):
             supprimer_candidature(reference)
             self.rafraichir()

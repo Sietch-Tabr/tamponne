@@ -20,7 +20,7 @@ AbstractButton {
     text: Qt.formatDate(dateChoisie, "dd/MM/yyyy")
 
     Accessible.role: Accessible.Button
-    Accessible.name: "Date : " + text
+    Accessible.name: "Date\u00a0: " + text
 
     onClicked: calendrier.open()
 

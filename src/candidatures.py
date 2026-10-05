@@ -53,7 +53,7 @@ def generer_archive_pdf(reference: str, page_html: str) -> bool:
     url_pdf = _extraire_url_pdf(page_html)
     if not url_pdf:
         print(
-            "Avertissement : lien PDF introuvable, archive non générée.",
+            "Avertissement\u00a0: lien PDF introuvable, archive non générée.",
             file=sys.stderr,
         )
         return False
@@ -61,7 +61,7 @@ def generer_archive_pdf(reference: str, page_html: str) -> bool:
         contenu = telecharger_binaire(url_pdf)
     except RuntimeError:
         print(
-            f"Avertissement : échec de téléchargement du PDF ({url_pdf}).",
+            f"Avertissement\u00a0: échec de téléchargement du PDF ({url_pdf}).",
             file=sys.stderr,
         )
         return False
@@ -72,7 +72,7 @@ def generer_archive_pdf(reference: str, page_html: str) -> bool:
         chemin.write_bytes(contenu)
     except OSError:
         print(
-            f"Avertissement : échec d'écriture de l'archive PDF ({chemin}).",
+            f"Avertissement\u00a0: échec d'écriture de l'archive PDF ({chemin}).",
             file=sys.stderr,
         )
         return False
@@ -109,7 +109,7 @@ def charger_candidatures() -> dict[str, Candidature]:
         return json.loads(CHEMIN_CANDIDATURES.read_text(encoding="utf-8"))
     except json.JSONDecodeError, OSError:
         print(
-            f"Avertissement : {CHEMIN_CANDIDATURES.name} illisible ou corrompu, "
+            f"Avertissement\u00a0: {CHEMIN_CANDIDATURES.name} illisible ou corrompu, "
             "aucune candidature chargée.",
             file=sys.stderr,
         )
@@ -203,7 +203,7 @@ def ajouter_evenement(
     """Ajoute un événement à l'historique d'une candidature suivie."""
     candidatures = charger_candidatures()
     if reference not in candidatures:
-        raise KeyError(f"Candidature introuvable : {reference}")
+        raise KeyError(f"Candidature introuvable\u00a0: {reference}")
     evenement: EvenementCandidature = {
         "date": evenement_date or date.today().isoformat(),
         "type": type_evenement,
@@ -239,7 +239,7 @@ def modifier_evenement(
     candidatures = charger_candidatures()
     historique = candidatures[reference]["historique"]
     if not 0 <= indice < len(historique):
-        raise IndexError(f"Événement introuvable : {indice}")
+        raise IndexError(f"Événement introuvable\u00a0: {indice}")
     historique[indice] = {"date": evenement_date, "type": type_evenement, "note": note}
     sauvegarder_candidatures(candidatures)
 
@@ -249,7 +249,7 @@ def supprimer_evenement(reference: str, indice: int) -> None:
     candidatures = charger_candidatures()
     historique = candidatures[reference]["historique"]
     if not 0 <= indice < len(historique):
-        raise IndexError(f"Événement introuvable : {indice}")
+        raise IndexError(f"Événement introuvable\u00a0: {indice}")
     del historique[indice]
     sauvegarder_candidatures(candidatures)
 

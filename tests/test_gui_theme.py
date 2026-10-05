@@ -101,7 +101,7 @@ _PAIRES_TEXTE_FOND = [
 @pytest.mark.parametrize("texte, fond", _PAIRES_TEXTE_FOND)
 def test_palette_contraste_wcag_aa(palette: Palette, texte: str, fond: str) -> None:
     rapport = _contraste(getattr(palette, texte), getattr(palette, fond))
-    assert rapport >= 4.5, f"{texte}/{fond} : {rapport:.2f}:1"
+    assert rapport >= 4.5, f"{texte}/{fond}\u00a0: {rapport:.2f}:1"
 
 
 @pytest.mark.parametrize("palette", [PALETTE_SOMBRE, PALETTE_CLAIRE])

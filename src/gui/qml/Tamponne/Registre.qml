@@ -127,9 +127,12 @@ Item {
                     y: 10
                     width: cellule.width - 20
                     // Tampon « Nouveau » à la suite de la dernière ligne de l'intitulé, ou dessous s'il n'y tient pas.
-                    readonly property bool tamponALaSuite: texteCellule.largeurDerniereLigne + 6 + tamponNouveau.implicitWidth <= width
+                    // L'espace entre l'intitulé et le tampon dans le HTML, plus « margin-left: 6px ».
+                    readonly property real ecartTampon: espaceIntitule.advanceWidth + 6
+                    readonly property bool tamponALaSuite: texteCellule.largeurDerniereLigne + ecartTampon + tamponNouveau.implicitWidth <= width
                     implicitHeight: tamponNouveau.visible
-                        ? Math.max(texteCellule.height, tamponNouveau.y + tamponNouveau.implicitHeight)
+                        ? Math.max(texteCellule.yDerniereLigne + texteCellule.lineHeight,
+                                   tamponNouveau.y + tamponNouveau.implicitHeight)
                         : texteCellule.height
 
                     Texte {
@@ -140,20 +143,31 @@ Item {
                         text: cellule.display
                         color: cellule.selectionnee ? Theme.surligneTexte : Theme.encre
                         font.family: cellule.column === 0 || cellule.column === 4 ? Theme.policeMono : Theme.policeTexte
-                        font.pixelSize: cellule.column === 0 || cellule.column === 4 ? 14 : 16
+                        // 16 px partout : dans la maquette, « .registre td » l'emporte sur « .mono ».
+                        font.pixelSize: 16
                         font.weight: cellule.column === 1 ? Font.Bold : Font.Normal
                         Accessible.ignored: true
                         onLineLaidOut: (ligne) => {
-                            if (ligne.isLast) {
-                                largeurDerniereLigne = ligne.implicitWidth
-                                yDerniereLigne = ligne.y
-                            }
+                            if (!ligne.isLast)
+                                return
+                            largeurDerniereLigne = ligne.implicitWidth
+                            // Tampon accolé (« vertical-align: bottom ») : il agrandit la
+                            // dernière ligne, que le navigateur descend d'autant.
+                            if (tamponNouveau.visible
+                                    && ligne.implicitWidth + contenu.ecartTampon + tamponNouveau.implicitWidth <= contenu.width)
+                                ligne.y += Math.max(0, tamponNouveau.implicitHeight - lineHeight)
+                            yDerniereLigne = ligne.y
                         }
+                    }
+                    TextMetrics {
+                        id: espaceIntitule
+                        font: texteCellule.font
+                        text: " "
                     }
                     Tampon {
                         id: tamponNouveau
                         visible: cellule.nouvelle
-                        x: contenu.tamponALaSuite ? texteCellule.largeurDerniereLigne + 6 : 0
+                        x: contenu.tamponALaSuite ? texteCellule.largeurDerniereLigne + contenu.ecartTampon : 0
                         // Aligné sur le bas de la dernière ligne pour ne pas mordre sur la ligne du dessus.
                         y: contenu.tamponALaSuite
                             ? texteCellule.yDerniereLigne + texteCellule.lineHeight - implicitHeight

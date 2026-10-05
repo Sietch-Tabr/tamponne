@@ -159,7 +159,7 @@ def test_contenu_detail_ordonne_rubriques_et_ignore_valeurs_vides() -> None:
         ("Publiée le", "01/10/2026"),
     )
     assert contenu.rubriques == (
-        ("Qui sommes-nous ?", "Préfecture de région."),
+        ("Qui sommes-nous\u00a0?", "Préfecture de région."),
         ("Profil recherché", "Rigueur."),
     )
     assert contenu.lien_postuler == "https://portail.example.org"
@@ -203,7 +203,7 @@ def test_lignes_fiche_troisieme_ligne_pour_les_autres_criteres() -> None:
     assert lignes_fiche(profil) == [
         "Cat. A · Hospitalier",
         "Toute la France",
-        "Achats +1 · Direction des achats · mot-clé « achat »",
+        "Achats +1 · Direction des achats · mot-clé «\u00a0achat\u00a0»",
     ]
 
 

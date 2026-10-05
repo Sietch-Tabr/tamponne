@@ -137,15 +137,15 @@ Item {
                 FeuilleNotice {
                     titre: "Les cases du formulaire"
                     Terme { text: "Catégorie" }
-                    Definition { text: "Niveau hiérarchique du poste : A+ (encadrement supérieur), A (cadre), B (profession intermédiaire), C (employé). Le corps / grade affine la catégorie : Attaché, Attaché principal, Attaché hors classe, Adjoint administratif…" }
+                    Definition { text: "Niveau hiérarchique du poste\u00a0: A+ (encadrement supérieur), A (cadre), B (profession intermédiaire), C (employé). Le corps / grade affine la catégorie\u00a0: Attaché, Attaché principal, Attaché hors classe, Adjoint administratif…" }
                     Terme { text: "Versant" }
-                    Definition { text: "La branche de la fonction publique : État, Hospitalier, Territorial. Plusieurs cases à la fois possibles ; aucune cochée = tous les versants." }
+                    Definition { text: "La branche de la fonction publique\u00a0: État, Hospitalier, Territorial. Plusieurs cases à la fois possibles\u00a0; aucune cochée = tous les versants." }
                     Terme { text: "Poste et Lieu" }
-                    Definition { text: "Domaines, localisations et organisations s'ouvrent dans une fenêtre de sélection avec un champ de recherche : pratique avec 114 localisations et environ 2 400 sous-organisations." }
+                    Definition { text: "Domaines, localisations et organisations s'ouvrent dans une fenêtre de sélection avec un champ de recherche\u00a0: pratique avec 114 localisations et environ 2 400 sous-organisations." }
                     Terme { text: "Type de poste" }
-                    Definition { text: "Par défaut, seuls les postes ouverts aux titulaires sont affichés (titulaires + postes ouverts aux deux statuts). Choisir « Tous » pour voir aussi les postes réservés aux contractuels." }
+                    Definition { text: "Par défaut, seuls les postes ouverts aux titulaires sont affichés (titulaires + postes ouverts aux deux statuts). Choisir «\u00a0Tous\u00a0» pour voir aussi les postes réservés aux contractuels." }
                     Terme { text: "Options" }
-                    Definition { text: "Management et Télétravail : cochés = seulement les postes concernés. Le mot-clé cherche dans le titre et le corps de l'offre, pas seulement l'intitulé." }
+                    Definition { text: "Management et Télétravail\u00a0: cochés = seulement les postes concernés. Le mot-clé cherche dans le titre et le corps de l'offre, pas seulement l'intitulé." }
                 }
 
                 ColumnLayout {
@@ -157,21 +157,21 @@ Item {
                         titre: "Exemples de demande"
                         Terme { text: "Attaché principal territorial (Hérault)" }
                         Exemple { text: "Catégorie → A<br>Corps / grade → Attaché principal<br>Versant → Territorial<br>Lieu → Localisation Hérault" }
-                        Definition { text: "Le grade repère « attaché principal » dans le titre, quel que soit le versant." }
+                        Definition { text: "Le grade repère «\u00a0attaché principal\u00a0» dans le titre, quel que soit le versant." }
                         Terme { text: "Chef de projet informatique (État)" }
-                        Exemple { text: "Catégorie → A<br>Versant → État<br>Poste → Domaine « Numérique »<br>Options → mot-clé « chef de projet »" }
-                        Definition { text: "Pas de grade statutaire pour ce métier : le mot-clé resserre sur l'intitulé." }
+                        Exemple { text: "Catégorie → A<br>Versant → État<br>Poste → Domaine «\u00a0Numérique\u00a0»<br>Options → mot-clé «\u00a0chef de projet\u00a0»" }
+                        Definition { text: "Pas de grade statutaire pour ce métier\u00a0: le mot-clé resserre sur l'intitulé." }
                     }
 
                     FeuilleNotice {
                         titre: "Grades supérieurs (IDIV / IP / AFIPA)"
-                        Definition { text: "Par défaut, les offres dont le titre commence par un grade d'encadrement supérieur de la DGFiP (IDIV, AFIPA, IP suivi d'une majuscule, ex. IPFiP) sont écartées du registre : postes très spécifiques, peu pertinents pour une recherche large. Cocher « Grades supérieurs » dans la demande pour les voir quand même." }
+                        Definition { text: "Par défaut, les offres dont le titre commence par un grade d'encadrement supérieur de la DGFiP (IDIV, AFIPA, IP suivi d'une majuscule, ex. IPFiP) sont écartées du registre\u00a0: postes très spécifiques, peu pertinents pour une recherche large. Cocher «\u00a0Grades supérieurs\u00a0» dans la demande pour les voir quand même." }
                     }
                 }
 
                 FeuilleNotice {
                     titre: "Les fiches de recherche"
-                    Definition { text: "Une fiche, c'est une demande de recherche classée sous un nom, avec « Classer en profil »." }
+                    Definition { text: "Une fiche, c'est une demande de recherche classée sous un nom, avec «\u00a0Classer en profil\u00a0»." }
                     Terme { text: "Lancer" }
                     Definition { text: "Lance la recherche immédiatement (double-clic sur la fiche aussi)." }
                     Terme { text: "Nouvelles" }
@@ -182,15 +182,15 @@ Item {
 
                 FeuilleNotice {
                     titre: "Les dossiers de suivi"
-                    Definition { text: "Dans le registre, sélectionner une offre puis « Tamponner pour suivi » ouvre un dossier et archive la fiche de poste en PDF. Le statut est toujours celui du dernier tampon de l'historique." }
+                    Definition { text: "Dans le registre, sélectionner une offre puis «\u00a0Tamponner pour suivi\u00a0» ouvre un dossier et archive la fiche de poste en PDF. Le statut est toujours celui du dernier tampon de l'historique." }
                     Terme { text: "Relance suggérée" }
                     Definition { text: "Post-it collé quand rien ne s'est passé depuis 3 semaines et que le dossier n'est pas clos (réponse positive ou refus)." }
                     Terme { text: "Offre dépubliée" }
-                    Definition { text: "L'offre a disparu du site (« Vérifier les offres ») ; la copie archivée reste consultable." }
+                    Definition { text: "L'offre a disparu du site («\u00a0Vérifier les offres\u00a0»)\u00a0; la copie archivée reste consultable." }
                     Terme { text: "Tampons" }
-                    Definition { text: "Un clic sur un tampon de l'historique permet de modifier ou de supprimer l'événement ; un même événement ne peut pas être tamponné deux fois à la même date." }
+                    Definition { text: "Un clic sur un tampon de l'historique permet de modifier ou de supprimer l'événement\u00a0; un même événement ne peut pas être tamponné deux fois à la même date." }
                     Terme { text: "Clavier" }
-                    Definition { text: "Entrée ouvre le détail du dossier sélectionné, Suppr arrête son suivi ; clic droit pour toutes les actions." }
+                    Definition { text: "Entrée ouvre le détail du dossier sélectionné, Suppr arrête son suivi\u00a0; clic droit pour toutes les actions." }
                 }
             }
         }

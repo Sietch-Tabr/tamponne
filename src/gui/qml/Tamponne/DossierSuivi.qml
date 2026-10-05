@@ -96,7 +96,7 @@ Feuille {
                 Layout.fillWidth: true
                 Layout.topMargin: 2
                 textFormat: Text.StyledText
-                text: "<b>Statut :</b> " + racine.echapper(racine.statut)
+                text: "<b>Statut\u00a0:</b> " + racine.echapper(racine.statut)
             }
             Row {
                 spacing: 4

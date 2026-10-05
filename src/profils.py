@@ -23,7 +23,7 @@ def charger_profils() -> dict[str, Profil]:
         # stderr, pas de bibliothèque d'UI : ce module n'est lié à
         # aucune interface particulière.
         print(
-            f"Avertissement : {CHEMIN_PROFILS.name} illisible ou corrompu, "
+            f"Avertissement\u00a0: {CHEMIN_PROFILS.name} illisible ou corrompu, "
             "aucun profil chargé.",
             file=sys.stderr,
         )
@@ -81,7 +81,7 @@ def dupliquer_profil(
     with VERROU_DONNEES:
         profils = charger_profils()
         if nom_source not in profils:
-            raise KeyError(f"Profil introuvable : {nom_source}")
+            raise KeyError(f"Profil introuvable\u00a0: {nom_source}")
         profils[nouveau_nom] = {
             **profils[nom_source],
             "cree_le": date.today().isoformat(),

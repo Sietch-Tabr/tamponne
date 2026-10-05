@@ -75,7 +75,7 @@ def test_afficher_avis_reprend_version_date_et_notes(qapp: QApplication) -> None
         "disponible": True,
         "numero": "Avis n° 2.0.1",
         "date": "04/10/2026",
-        "objet": "version 2.0.1 disponible (installée : 2.0.0).",
+        "objet": "version 2.0.1 disponible (installée\u00a0: 2.0.0).",
         "notes": '<ul style="margin-top:4px;margin-bottom:0"><li>Correctifs</li></ul>',
     }
     assert reglages.property("pastille") is True

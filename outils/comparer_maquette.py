@@ -195,7 +195,7 @@ def main() -> int:
     arguments = parseur.parse_args()
     if not FIREFOX.exists():
         print(
-            "Firefox introuvable : capture de la maquette impossible.", file=sys.stderr
+            "Firefox introuvable\u00a0: capture de la maquette impossible.", file=sys.stderr
         )
         return 1
 

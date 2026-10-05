@@ -15,7 +15,7 @@ AbstractButton {
     focusPolicy: Qt.StrongFocus
 
     Accessible.role: Accessible.Button
-    Accessible.name: text + " : " + valeur
+    Accessible.name: text + "\u00a0: " + valeur
 
     contentItem: RowLayout {
         spacing: 12

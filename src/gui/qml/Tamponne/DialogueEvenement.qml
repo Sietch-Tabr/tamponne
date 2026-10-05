@@ -85,7 +85,7 @@ Dialogue {
             objectName: "champType"
             Layout.fillWidth: true
             model: racine.types
-            Accessible.name: "Type : " + displayText
+            Accessible.name: "Type\u00a0: " + displayText
             onActivated: racine.erreur = ""
         }
     }

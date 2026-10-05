@@ -103,7 +103,7 @@ def obtenir_page_offres(url: str) -> PageAPI:
         raise RuntimeError(f"Erreur HTTP {e.code} lors du chargement de {url}") from e
     except urllib.error.URLError as e:
         raise RuntimeError(
-            f"Erreur réseau lors du chargement de {url} : {e.reason}"
+            f"Erreur réseau lors du chargement de {url}\u00a0: {e.reason}"
         ) from e
     title_m = re.search(r"<title>(.*?)</title>", contenu)
     return {
@@ -121,7 +121,7 @@ def telecharger_binaire(url: str) -> bytes:
         raise RuntimeError(f"Erreur HTTP {e.code} lors du chargement de {url}") from e
     except urllib.error.URLError as e:
         raise RuntimeError(
-            f"Erreur réseau lors du chargement de {url} : {e.reason}"
+            f"Erreur réseau lors du chargement de {url}\u00a0: {e.reason}"
         ) from e
 
 
@@ -136,5 +136,5 @@ def telecharger_page_offres() -> str:
         ) from e
     except urllib.error.URLError as e:
         raise RuntimeError(
-            f"Erreur réseau lors du chargement de {URL_OFFRES} : {e.reason}"
+            f"Erreur réseau lors du chargement de {URL_OFFRES}\u00a0: {e.reason}"
         ) from e

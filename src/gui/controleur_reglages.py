@@ -135,7 +135,7 @@ class ControleurReglages(QObject):
             "disponible": True,
             "numero": f"Avis n° {info['version']}",
             "date": self._date_avis,
-            "objet": f"version {info['version']} disponible (installée : {installee}).",
+            "objet": f"version {info['version']} disponible (installée\u00a0: {installee}).",
             "notes": notes_en_html(info["notes"] or "Pas de notes de version."),
         }
 

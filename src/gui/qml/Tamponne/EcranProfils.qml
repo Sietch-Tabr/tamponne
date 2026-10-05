@@ -22,7 +22,7 @@ Item {
     function demanderSuppression(nom: string) {
         confirmation.action = () => racine.profils.supprimer(nom)
         confirmation.demander("Supprimer la fiche",
-            "Supprimer la fiche « " + profils.intitule(nom) + " » ?")
+            "Supprimer la fiche «\u00a0" + profils.intitule(nom) + "\u00a0»\u00a0?")
     }
 
     DialogueDupliquer {
@@ -191,7 +191,7 @@ Item {
                         width: parent.width
                         horizontalAlignment: Text.AlignHCenter
                         lineHeight: 24
-                        text: "Aucune fiche classée.\nLancer une recherche puis « Classer en profil »."
+                        text: "Aucune fiche classée.\nLancer une recherche puis «\u00a0Classer en profil\u00a0»."
                     }
                     BoutonEtiquette {
                         anchors.horizontalCenter: parent.horizontalCenter

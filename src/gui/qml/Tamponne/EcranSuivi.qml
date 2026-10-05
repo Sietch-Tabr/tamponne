@@ -36,7 +36,7 @@ Item {
             return
         confirmation.action = () => racine.suivi.supprimer(reference)
         confirmation.demander("Arrêter le suivi",
-            "Retirer le dossier « " + titreDe(reference) + " » du suivi ? Son historique et sa copie archivée seront jetés.")
+            "Retirer le dossier «\u00a0" + titreDe(reference) + "\u00a0» du suivi\u00a0? Son historique et sa copie archivée seront jetés.")
     }
 
     function demanderSuppressionEvenement(reference: string, indice: int) {
@@ -46,7 +46,7 @@ Item {
             evenement.close()
         }
         confirmation.demander("Supprimer l'événement",
-            "Retirer « " + (fiche.libelle || "") + " » du " + (fiche.dateAffichee || "") + " de l'historique de ce dossier ?")
+            "Retirer «\u00a0" + (fiche.libelle || "") + "\u00a0» du " + (fiche.dateAffichee || "") + " de l'historique de ce dossier\u00a0?")
     }
 
     DialogueDetail {
@@ -205,7 +205,7 @@ Item {
                     horizontalAlignment: Text.AlignHCenter
                     lineHeightMode: Text.FixedHeight
                     lineHeight: 24
-                    text: "Aucun dossier en cours.\nDans le registre, « Tamponner pour suivi »."
+                    text: "Aucun dossier en cours.\nDans le registre, «\u00a0Tamponner pour suivi\u00a0»."
                 }
             }
         }

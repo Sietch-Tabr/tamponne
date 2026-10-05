@@ -83,7 +83,7 @@ Dialogue {
         id: champRecherche
         Layout.fillWidth: true
         placeholderText: "Rechercher..."
-        Accessible.name: "Rechercher dans « " + racine.titre + " »"
+        Accessible.name: "Rechercher dans «\u00a0" + racine.titre + "\u00a0»"
         onTextEdited: racine.filtre = text
     }
 

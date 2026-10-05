@@ -12,7 +12,7 @@ from pytestqt.qtbot import QtBot
 
 from src import parametres_sources, profils
 from src.gui import controleur_recherche
-from src.filtres import CATEGORIES
+from src.filtres import CATEGORIES, resumer_filtres
 from src.gui.controleur_recherche import ControleurRecherche
 from src.gui.modele_offres import ProxyOffres
 from src.profils import versants_compatibles
@@ -322,3 +322,48 @@ def test_grades_superieurs_enregistres_avec_la_fiche_et_relus(qapp: QApplication
     autre = ControleurRecherche({}, qapp)
     autre.modifier_profil("f")
     assert autre.property("etat")["grades_superieurs"] is True
+
+
+def test_fiche_lancee_telle_quelle_est_consultee(
+    controleur: ControleurRecherche, qtbot: QtBot
+) -> None:
+    profils.sauvegarder_profils({"f": {"label": "F", "versants": ["etat"]}})
+    controleur.lancer_profil("f")
+    _attendre(controleur, qtbot)
+    fiche = profils.charger_profils()["f"]
+    assert fiche.get("dernier_lancement") is not None
+    assert fiche.get("nb_nouvelles") == 0
+
+
+def test_fiche_aux_criteres_modifies_n_est_pas_touchee(
+    controleur: ControleurRecherche, qtbot: QtBot
+) -> None:
+    profils.sauvegarder_profils(
+        {"f": {"label": "F", "versants": ["etat"], "nb_nouvelles": 3, "nouvelles_le": "2026-10-05"}}
+    )
+    controleur.lancer_profil("f")
+    _attendre(controleur, qtbot)
+    profils.mettre_a_jour_stats("f", 3, consultation=False)
+    controleur.basculer("categories", "B", True)
+    controleur.lancer()
+    _attendre(controleur, qtbot)
+    assert profils.charger_profils()["f"].get("nb_nouvelles") == 3
+    assert "nouvelle" not in controleur.property("resume")
+
+
+def test_export_resume_les_criteres_de_la_recherche_affichee(
+    controleur: ControleurRecherche, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    recus: list[str] = []
+
+    def exporter(offres: object, resume: str, nb_pages: int, profil: object) -> Path:
+        recus.append(resume)
+        return Path("export.html")
+
+    monkeypatch.setattr(controleur_recherche, "exporter_html", exporter)
+    controleur.basculer("categories", "A", True)
+    controleur.lancer()
+    _attendre(controleur, qtbot)
+    controleur.basculer("categories", "C", True)
+    controleur.exporter()
+    assert recus[0] == resumer_filtres({**controleur.construire_filtres(), "categories": ["A"]})

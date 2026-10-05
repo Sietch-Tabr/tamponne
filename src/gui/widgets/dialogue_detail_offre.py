@@ -92,8 +92,8 @@ class DialogueDetailOffre(QDialog):
             self.bouton_archive.clicked.connect(lambda: webbrowser.open(uri_pdf))
         else:
             self.bouton_archive.setToolTip(
-                "Aucune archive : elle est générée automatiquement en "
-                "cliquant sur « Suivre cette offre »."
+                "Aucune archive\u00a0: elle est générée automatiquement en "
+                "cliquant sur «\u00a0Suivre cette offre\u00a0»."
             )
         ligne_actions.addWidget(self.bouton_archive)
         ligne_actions.addStretch()
@@ -111,23 +111,23 @@ class DialogueDetailOffre(QDialog):
 
         infos = []
         if detail.get("salaire"):
-            infos.append(f"Salaire : {detail['salaire']}")
+            infos.append(f"Salaire\u00a0: {detail['salaire']}")
         if detail.get("experience_requise"):
-            infos.append(f"Expérience requise : {detail['experience_requise']}")
+            infos.append(f"Expérience requise\u00a0: {detail['experience_requise']}")
         if detail.get("formation_requise"):
-            infos.append(f"Formation requise : {detail['formation_requise']}")
+            infos.append(f"Formation requise\u00a0: {detail['formation_requise']}")
         if detail.get("secteur"):
-            infos.append(f"Secteur : {detail['secteur']}")
+            infos.append(f"Secteur\u00a0: {detail['secteur']}")
         if detail.get("date_publication"):
-            infos.append(f"Publiée le : {detail['date_publication']}")
+            infos.append(f"Publiée le\u00a0: {detail['date_publication']}")
         if detail.get("date_limite"):
-            infos.append(f"Date limite de candidature : {detail['date_limite']}")
+            infos.append(f"Date limite de candidature\u00a0: {detail['date_limite']}")
         if infos:
             _ajouter_section(pile, "Informations", "\n".join(infos))
             rien_a_montrer = False
 
         if detail.get("a_propos_employeur"):
-            _ajouter_section(pile, "Qui sommes-nous ?", detail["a_propos_employeur"])
+            _ajouter_section(pile, "Qui sommes-nous\u00a0?", detail["a_propos_employeur"])
             rien_a_montrer = False
 
         for section_titre, section_contenu in (

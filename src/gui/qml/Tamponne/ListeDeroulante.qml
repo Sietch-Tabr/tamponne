@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Effects
+import QtQuick.Shapes
 import Tamponne
 
 /*! Liste déroulante soulignée ; la liste ouverte est une petite feuille
@@ -11,8 +12,9 @@ ComboBox {
     id: racine
 
     implicitHeight: 42
-    leftPadding: 2
-    rightPadding: 24
+    // Zone de texte d'un « select » Firefox : 4 px à gauche, coupé à 18 px du bord droit.
+    leftPadding: 4
+    rightPadding: 18
     textRole: "libelle"
     valueRole: "cle"
     font.family: Theme.policeTexte
@@ -21,20 +23,37 @@ ComboBox {
     Accessible.role: Accessible.ComboBox
     Accessible.name: displayText
 
+    // Texte coupé net, sans points de suspension, comme un « select » du navigateur.
     contentItem: Text {
         text: racine.displayText
         color: Theme.encre
         font: racine.font
         verticalAlignment: Text.AlignVCenter
-        elide: Text.ElideRight
+        elide: Text.ElideNone
+        clip: true
     }
 
-    indicator: Text {
-        x: racine.width - width - 2
-        anchors.verticalCenter: parent.verticalCenter
-        text: "▾"
-        color: Theme.encre
-        font.pixelSize: 16
+    // Chevron du « select » de Firefox : emprise de 8 × 6 px, à 5 px du bord droit.
+    indicator: Shape {
+        // Rendue en texture : une Shape échappe sinon au découpage d'une zone défilante.
+        layer.enabled: true
+        layer.samples: 4
+        x: racine.width - 5 - width
+        // Centré sur toute la hauteur, bordure basse comprise, comme Firefox.
+        y: Math.round((racine.height - height) / 2)
+        width: 8
+        height: 6
+        ShapePath {
+            strokeColor: Theme.encre
+            strokeWidth: 1.5
+            fillColor: "transparent"
+            capStyle: ShapePath.FlatCap
+            joinStyle: ShapePath.BevelJoin
+            startX: 0.5
+            startY: 0.75
+            PathLine { x: 4; y: 4.75 }
+            PathLine { x: 7.5; y: 0.75 }
+        }
     }
 
     background: Item {

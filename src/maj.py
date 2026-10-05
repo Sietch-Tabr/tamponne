@@ -125,7 +125,7 @@ def appliquer_maj(info: InfoMaj) -> None:
                         (Path(dossier_tmp) / membre.filename).chmod(permissions)
         except (urllib.error.URLError, OSError, zipfile.BadZipFile) as e:
             raise RuntimeError(
-                f"Impossible de télécharger ou d'extraire la mise à jour : {e}"
+                f"Impossible de télécharger ou d'extraire la mise à jour\u00a0: {e}"
             ) from e
 
         # Dossier racine unique de l'archive (ex. « tamponne-abc1234/ ») déduit
@@ -148,7 +148,7 @@ def appliquer_maj(info: InfoMaj) -> None:
 
 if __name__ == "__main__":
     if "--appliquer" not in sys.argv:
-        print("Usage : python -m src.maj --appliquer", file=sys.stderr)
+        print("Usage\u00a0: python -m src.maj --appliquer", file=sys.stderr)
         sys.exit(1)
 
     info_en_attente = lire_maj_disponible()

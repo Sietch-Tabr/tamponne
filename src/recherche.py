@@ -131,7 +131,7 @@ def rechercher_toutes_sources(
     sources = sources_a_interroger(filtres, orgas_cache)
     if not sources:
         raise RechercheImpossible(
-            "Aucune source cochée : voir Réglages › Sources consultées."
+            "Aucune source cochée\u00a0: voir Réglages › Sources consultées."
         )
 
     def _interroger(
@@ -168,7 +168,7 @@ def rechercher_toutes_sources(
                 offres, nb_pages, arret_anticipe = futur.result()
             except RuntimeError as erreur:
                 nb_echecs += 1
-                on_avertissement(f"{nom_affiche} indisponible : {erreur}")
+                on_avertissement(f"{nom_affiche} indisponible\u00a0: {erreur}")
                 continue
             if cle == "fhf":
                 offres = filtrer_doublons_fhf(offres, toutes_offres)
@@ -238,7 +238,7 @@ def lignes_resume(
     offres = resultat["offres"]
     nouvelles = resultat["nouvelles"]
     lignes = [
-        f"Filtres : {resumer_filtres(filtres)}",
+        f"Filtres\u00a0: {resumer_filtres(filtres)}",
         f"{len(offres)} offre(s)" + (f" · {nb_pages} page(s)" if nb_pages > 1 else ""),
     ]
     if nouvelles:

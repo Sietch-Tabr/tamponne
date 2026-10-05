@@ -37,7 +37,7 @@ def _requete(opener: urllib.request.OpenerDirector, url: str) -> str:
         raise RuntimeError(f"Erreur HTTP {e.code} lors du chargement de {url}") from e
     except urllib.error.URLError as e:
         raise RuntimeError(
-            f"Erreur réseau lors du chargement de {url} : {e.reason}"
+            f"Erreur réseau lors du chargement de {url}\u00a0: {e.reason}"
         ) from e
 
 

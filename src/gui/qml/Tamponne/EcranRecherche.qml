@@ -27,7 +27,7 @@ Item {
     function exporter() {
         const resultat = recherche.exporter()
         avisExport.chemin = resultat.chemin
-        avisExport.message = "Registre exporté (" + resultat.nombre + " offre" + (resultat.nombre > 1 ? "s" : "") + ") :"
+        avisExport.message = "Registre exporté (" + resultat.nombre + " offre" + (resultat.nombre > 1 ? "s" : "") + ")\u00a0:"
         avisExport.open()
     }
 
@@ -35,7 +35,7 @@ Item {
         target: racine.recherche
         function onDetail_pret(fiche: var) { detail.afficher(fiche) }
         function onSuivi_termine(titre: string) {
-            avisSuivi.message = "« " + titre + " » rejoint les dossiers en cours, avec sa fiche archivée."
+            avisSuivi.message = "«\u00a0" + titre + "\u00a0» rejoint les dossiers en cours, avec sa fiche archivée."
             avisSuivi.open()
         }
         function onAction_echouee(message: string) {
@@ -258,7 +258,7 @@ Item {
                             Layout.fillWidth: true
                             implicitHeight: 34
                             Accessible.role: Accessible.ListItem
-                            Accessible.name: modelData.nom + " : " + modelData.etat
+                            Accessible.name: modelData.nom + "\u00a0: " + modelData.etat
 
                             Texte {
                                 anchors.left: parent.left
@@ -318,7 +318,7 @@ Item {
                                 ? "<b>Recherche impossible.</b><br>" + racine.recherche.erreur
                                 : (racine.phase === "aucun"
                                    ? "Aucune offre trouvée.<br>Élargir la demande (versants, lieu, mot-clé)."
-                                   : "Aucune recherche lancée.<br>Remplir la demande puis « Lancer la recherche ».")
+                                   : "Aucune recherche lancée.<br>Remplir la demande puis «\u00a0Lancer la recherche\u00a0».")
                             Accessible.role: racine.phase === "erreur" ? Accessible.AlertMessage : Accessible.StaticText
                         }
                     }
@@ -385,7 +385,7 @@ Item {
                         Texte {
                             Layout.fillWidth: true
                             text: racine.recherche.numero_selection !== ""
-                                ? "Sélection : ligne " + racine.recherche.numero_selection
+                                ? "Sélection\u00a0: ligne " + racine.recherche.numero_selection
                                 : ""
                             color: Theme.encre2
                             font.family: Theme.policeMono

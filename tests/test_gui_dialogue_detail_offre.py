@@ -55,12 +55,12 @@ def test_dialogue_detail_affiche_toutes_les_sections_renseignees(
     assert "Ministère de test" in texte
     assert "Description du poste" in texte
     assert "Missions principales : piloter le projet X." in texte
-    assert "Salaire : Non renseigné" in texte
-    assert "Qui sommes-nous ?" in texte
+    assert "Salaire\u00a0: Non renseigné" in texte
+    assert "Qui sommes-nous\u00a0?" in texte
     assert "Présentation du service employeur." in texte
     assert "Informations complémentaires" in texte
     assert "Contact : Jean Dupont" in texte
-    assert "Date limite de candidature : 06/09/2026" in texte
+    assert "Date limite de candidature\u00a0: 06/09/2026" in texte
     assert dialogue.bouton_postuler.isEnabled() is True
     assert dialogue.bouton_en_ligne.isEnabled() is True
     assert dialogue.bouton_archive.isEnabled() is True

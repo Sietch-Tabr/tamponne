@@ -198,7 +198,7 @@ def contenu_detail(
         if detail.get(cle)
     )
     if detail.get("a_propos_employeur"):
-        rubriques.append(("Qui sommes-nous ?", detail["a_propos_employeur"]))
+        rubriques.append(("Qui sommes-nous\u00a0?", detail["a_propos_employeur"]))
     rubriques.extend((detail.get("sections_complementaires") or {}).items())
     lien = detail.get("lien_postuler") or ""
     return ContenuDetail(
@@ -269,7 +269,7 @@ def lignes_fiche(profil: Profil) -> list[str]:
     if date_publication := profil.get("date_publication"):
         autres.append(date_publication.lower())
     if mot_cle := profil.get("query"):
-        autres.append(f"mot-clé « {mot_cle} »")
+        autres.append(f"mot-clé «\u00a0{mot_cle}\u00a0»")
     # Les grades supérieurs (IDIV, IP, AFIPA) ne concernent que la catégorie A+.
     if not categories or any(c.startswith("A+") for c in categories):
         inclus = profil.get("grades_superieurs")

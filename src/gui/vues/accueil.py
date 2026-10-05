@@ -152,7 +152,7 @@ class VueAccueil(QWidget):
         nouveau_nom, ok = QInputDialog.getText(
             self,
             "Dupliquer le profil",
-            "Nom du nouveau profil :",
+            "Nom du nouveau profil\u00a0:",
             text=f"{nom}-copie",
         )
         if ok and nouveau_nom.strip():
@@ -163,7 +163,7 @@ class VueAccueil(QWidget):
         if question_oui_non(
             self,
             "Supprimer le profil",
-            f"Supprimer le profil « {profil.get('label', nom)} » ?",
+            f"Supprimer le profil «\u00a0{profil.get('label', nom)}\u00a0»\u00a0?",
         ):
             supprimer_profil(nom)
             self.rafraichir()
