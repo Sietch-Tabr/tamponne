@@ -9,6 +9,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from src.sources.base import USER_AGENT_IDENTIFIE
 from src.types import PageAPI
 
 URL_SITE = "https://emploi.fhf.fr"
@@ -16,7 +17,7 @@ URL_RECHERCHE = f"{URL_SITE}/emploi/search"
 
 _TIMEOUT = 30
 _HEADERS = {
-    "User-Agent": "recherche-offres-publiques/1.0 (+https://github.com/kwaite/recherche-offres-publiques)",
+    "User-Agent": USER_AGENT_IDENTIFIE,
     "Accept-Language": "fr-FR,fr;q=0.9",
 }
 

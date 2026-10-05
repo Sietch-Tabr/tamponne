@@ -1,6 +1,9 @@
 """Tests du dédoublonnage multi-source (src/sources/base.py)."""
 
-from src.sources.base import deduplique_offres
+from src.sources.base import USER_AGENT_IDENTIFIE, deduplique_offres
+from src.sources.choisirleservicepublic import api as api_csp
+from src.sources.fhf import api as api_fhf
+from src.sources.passerellesmef import api as api_mef
 from src.types import Offre
 
 
@@ -49,3 +52,14 @@ def test_deduplique_reference_vide_jamais_fusionnee() -> None:
 
 def test_deduplique_liste_vide() -> None:
     assert deduplique_offres([]) == []
+
+
+def test_user_agent_identifie_designe_le_depot_codeberg() -> None:
+    assert USER_AGENT_IDENTIFIE.startswith("tamponne ")
+    assert "https://codeberg.org/Kwaite/tamponne" in USER_AGENT_IDENTIFIE
+
+
+def test_sources_sans_waf_envoient_le_user_agent_identifie() -> None:
+    assert ("User-Agent", USER_AGENT_IDENTIFIE) in api_csp._OPENER.addheaders
+    assert api_fhf._HEADERS["User-Agent"] == USER_AGENT_IDENTIFIE
+    assert api_mef._HEADERS["User-Agent"] == USER_AGENT_IDENTIFIE
