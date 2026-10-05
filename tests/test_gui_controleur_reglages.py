@@ -76,7 +76,7 @@ def test_afficher_avis_reprend_version_date_et_notes(qapp: QApplication) -> None
         "numero": "Avis n° 2.0.1",
         "date": "04/10/2026",
         "objet": "version 2.0.1 disponible (installée : 2.0.0).",
-        "notes": "- Correctifs",
+        "notes": '<ul style="margin-top:4px;margin-bottom:0"><li>Correctifs</li></ul>',
     }
     assert reglages.property("pastille") is True
 
@@ -84,7 +84,7 @@ def test_afficher_avis_reprend_version_date_et_notes(qapp: QApplication) -> None
 def test_afficher_avis_sans_notes_le_signale(qapp: QApplication) -> None:
     reglages = ControleurReglages()
     reglages.afficher_avis({**INFO, "notes": ""})
-    assert reglages.property("avis")["notes"] == "Pas de notes de version."
+    assert "Pas de notes de version." in reglages.property("avis")["notes"]
 
 
 def test_reporter_maj_efface_la_pastille(qapp: QApplication) -> None:

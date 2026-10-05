@@ -7,6 +7,7 @@ from typing import cast
 from PySide6.QtCore import Property, QObject, QThread, Signal, Slot
 
 from src.cache import obtenir_organisations
+from src.gui.presentation import notes_en_html
 from src.gui.travailleurs import TacheReseau, VerificateurMiseAJour
 from src.maj import version_locale
 from src.parametres_affichage import (
@@ -135,7 +136,7 @@ class ControleurReglages(QObject):
             "numero": f"Avis n° {info['version']}",
             "date": self._date_avis,
             "objet": f"version {info['version']} disponible (installée : {installee}).",
-            "notes": info["notes"] or "Pas de notes de version.",
+            "notes": notes_en_html(info["notes"] or "Pas de notes de version."),
         }
 
     avis = Property(dict, _lire_avis, notify=etat_change)

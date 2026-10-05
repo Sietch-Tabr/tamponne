@@ -1,6 +1,8 @@
 """Textes affichés par l'interface, calculés sans Qt pour rester testables
 sans rendu : l'interface QML ne fait que les afficher."""
 
+import html
+import re
 from dataclasses import dataclass
 from datetime import date, datetime
 
@@ -336,3 +338,79 @@ def evenement_propose(candidature: Candidature, aujourd_hui: date) -> tuple[str,
         return types[0], aujourd_hui.isoformat()
     rang = types.index(dernier["type"]) if dernier["type"] in types else len(types) - 1
     return types[min(rang + 1, len(types) - 1)], dernier["date"]
+
+
+_CODE = re.compile(r"`([^`]+)`")
+_GRAS = re.compile(r"\*\*(.+?)\*\*")
+_LIEN = re.compile(r"\[([^\]]+)\]\(([^)\s\"<>]+)\)")
+_PUCE = re.compile(r"^[-*+] +")
+
+
+def _en_ligne(texte: str) -> str:
+    """Code, gras et liens d'une ligne Markdown, après échappement HTML."""
+    texte = html.escape(texte, quote=False)
+    texte = _CODE.sub(r'<span style="font-weight:600">\1</span>', texte)
+    texte = _GRAS.sub(r"<b>\1</b>", texte)
+
+    def lien(trouve: re.Match[str]) -> str:
+        libelle, url = trouve.group(1), trouve.group(2)
+        if not url.startswith("https://"):
+            return libelle
+        return f'<a href="{url}">{libelle}</a>'
+
+    return _LIEN.sub(lien, texte)
+
+
+def _marges(blocs: list[str]) -> str:
+    """12 px avant un bloc, sauf le premier ; 0 après (titre collé à sa liste)."""
+    haut = 12 if blocs else 0
+    return f' style="margin-top:{haut}px;margin-bottom:0"'
+
+
+def notes_en_html(markdown: str) -> str:
+    """Notes de version Codeberg (Markdown) en HTML au style maîtrisé.
+
+    Le rendu Markdown de Qt affiche le code dans une police de secours et
+    agrandit les titres : seuls les éléments des publications du projet
+    sont convertis (titres, listes à puces, paragraphes, `code`, gras,
+    liens https), le reste est gardé en texte échappé.
+
+    Args:
+        markdown: Corps de la publication (`InfoMaj["notes"]`).
+
+    Returns:
+        Fragment HTML pour un `Text` QML en `RichText`.
+    """
+    blocs: list[str] = []
+    paragraphe: list[str] = []
+    puces: list[str] = []
+
+    def fermer() -> None:
+        if paragraphe:
+            blocs.append(f"<p{_marges(blocs)}>{_en_ligne(' '.join(paragraphe))}</p>")
+            paragraphe.clear()
+        if puces:
+            elements = "".join(f"<li>{_en_ligne(p)}</li>" for p in puces)
+            blocs.append(f'<ul style="margin-top:4px;margin-bottom:0">{elements}</ul>')
+            puces.clear()
+
+    for ligne in markdown.replace("\r\n", "\n").split("\n"):
+        brute = ligne.strip()
+        if not brute:
+            fermer()
+        elif brute.startswith("#"):
+            fermer()
+            titre = _en_ligne(brute.lstrip("#").strip())
+            blocs.append(f"<p{_marges(blocs)}><b>{titre}</b></p>")
+        elif _PUCE.match(brute):
+            if paragraphe:
+                fermer()
+            puces.append(_PUCE.sub("", brute))
+        elif puces and ligne[:1].isspace():
+            puces[-1] += " " + brute
+        else:
+            if puces:
+                fermer()
+            paragraphe.append(brute)
+    fermer()
+    return "".join(blocs)

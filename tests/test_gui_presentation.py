@@ -9,6 +9,7 @@ from src.gui.presentation import (
     evenement_propose,
     libelle_selection,
     lignes_fiche,
+    notes_en_html,
     reformater_date_iso,
     resume_registre,
     texte_nombre_fiches,
@@ -260,3 +261,37 @@ def test_evenement_propose_suit_le_dernier_evenement() -> None:
     assert evenement_propose(
         _candidature([_evt("2026-09-26", "autre")]), date(2026, 10, 4)
     ) == ("autre", "2026-09-26")
+
+
+def test_notes_en_html_titres_et_listes_sans_marge_avant_le_premier_bloc() -> None:
+    notes = "### Recherche\n\n- Plus rapide\n- Tri des colonnes\n\n### Corrections\n\n- Titres rognés"
+    assert notes_en_html(notes) == (
+        '<p style="margin-top:0px;margin-bottom:0"><b>Recherche</b></p>'
+        '<ul style="margin-top:4px;margin-bottom:0"><li>Plus rapide</li>'
+        "<li>Tri des colonnes</li></ul>"
+        '<p style="margin-top:12px;margin-bottom:0"><b>Corrections</b></p>'
+        '<ul style="margin-top:4px;margin-bottom:0"><li>Titres rognés</li></ul>'
+    )
+
+
+def test_notes_en_html_paragraphe_sur_plusieurs_lignes() -> None:
+    assert notes_en_html("Migration vers Python 3.14.\r\nCorrectif.") == (
+        '<p style="margin-top:0px;margin-bottom:0">Migration vers Python 3.14. Correctif.</p>'
+    )
+
+
+def test_notes_en_html_puce_continuee_sur_la_ligne_suivante() -> None:
+    assert "<li>Premier point suite</li>" in notes_en_html("- Premier point\n  suite")
+
+
+def test_notes_en_html_code_gras_et_echappement() -> None:
+    html = notes_en_html("- `chmod +x lancer.sh` **avant** <script> & co")
+    assert '<span style="font-weight:600">chmod +x lancer.sh</span>' in html
+    assert "<b>avant</b>" in html
+    assert "&lt;script&gt; &amp; co" in html
+
+
+def test_notes_en_html_liens_https_seulement() -> None:
+    html = notes_en_html("[README](https://codeberg.org/r) et [local](file:///etc)")
+    assert '<a href="https://codeberg.org/r">README</a>' in html
+    assert "local" in html and "file://" not in html

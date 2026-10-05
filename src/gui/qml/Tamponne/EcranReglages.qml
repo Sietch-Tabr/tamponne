@@ -137,14 +137,23 @@ Item {
                         visible: racine.avis.disponible
                         width: parent.width
                         text: racine.avis.notes ?? ""
-                        textFormat: Text.MarkdownText
+                        // HTML préparé par `presentation.notes_en_html` (Markdown converti).
+                        textFormat: Text.RichText
+                        linkColor: Theme.encre
+                        onLinkActivated: lien => {
+                            if (lien.startsWith("https://"))
+                                Qt.openUrlExternally(lien)
+                        }
                         font.family: Theme.policeMono
                         font.pixelSize: 14
                         lineHeight: 14 * 1.6
-                        height: lineCount * lineHeight + topPadding + bottomPadding
+                        // Hauteur du contenu (titres, listes), dont Qt compte la dernière
+                        // ligne sans son interligne ; aligné en haut, sinon il déborde.
+                        height: implicitHeight + lineHeight - Theme.ligneNormale(true, 14)
+                        verticalAlignment: Text.AlignTop
                         leftPadding: 17
                         rightPadding: 14
-                        // Le rendu Markdown place tout l'interligne au-dessus de la ligne,
+                        // Le rendu riche place tout l'interligne au-dessus de la ligne,
                         // le navigateur le partage : on remonte d'un demi-interligne.
                         topPadding: 12 - (lineHeight - Theme.ligneNormale(true, 14)) / 2
                         bottomPadding: 12 + (lineHeight - Theme.ligneNormale(true, 14)) / 2
