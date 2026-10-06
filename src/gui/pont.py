@@ -31,6 +31,14 @@ class Pont(QObject):
         self._reglages.organisations_rafraichies.connect(
             self._recherche.remplacer_organisations
         )
+        self._reglages.etat_change.connect(self._relayer_chargement_organisations)
+
+    def _relayer_chargement_organisations(self) -> None:
+        """La recherche affiche « chargement… » tant que Réglages recharge
+        la liste des organisations."""
+        self._recherche.definir_chargement_organisations(
+            bool(self._reglages.property("cache_en_cours"))
+        )
 
     def _lire_suivi(self) -> QObject:
         return self._suivi

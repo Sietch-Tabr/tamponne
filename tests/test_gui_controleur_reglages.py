@@ -162,6 +162,25 @@ def test_pont_transmet_le_cache_rafraichi_a_la_recherche(qapp: QApplication) -> 
     assert groupes[0]["elements"][0]["valeur"] == "Ministère - Direction"
 
 
+def test_pont_relaie_le_chargement_des_organisations_a_la_recherche(
+    qapp: QApplication, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    orgas: Organisations = {"Ministère": {"Direction": 12}}
+    monkeypatch.setattr(
+        controleur_reglages, "obtenir_organisations", lambda forcer=False: orgas
+    )
+    pont = Pont()
+    recherche = pont.property("recherche")
+    assert recherche.property("etat_organisations") == "indisponible"
+    with qtbot.waitSignal(
+        pont.reglages_controleur.organisations_rafraichies, timeout=5000
+    ):
+        pont.reglages_controleur.rafraichir_cache()
+        assert recherche.property("etat_organisations") == "chargement…"
+    pont.arreter()
+    assert recherche.property("etat_organisations") == ""
+
+
 def test_pont_pastille_suit_l_avis(qapp: QApplication) -> None:
     pont = Pont()
     assert pont.property("mise_a_jour_disponible") is False

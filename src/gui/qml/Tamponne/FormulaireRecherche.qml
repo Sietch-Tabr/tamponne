@@ -213,7 +213,9 @@ Feuille {
             LigneChoix {
                 Layout.fillWidth: true
                 text: "Organisations"
-                valeur: racine.etat.libelle_organisations
+                // Liste pas encore chargée (premier lancement) : rien à choisir.
+                enabled: racine.recherche.etat_organisations === ""
+                valeur: enabled ? racine.etat.libelle_organisations : racine.recherche.etat_organisations
                 onClicked: racine.selectionDemandee("organisations", "Organisations")
             }
         }

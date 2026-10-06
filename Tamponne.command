@@ -61,7 +61,9 @@ fi
 # retire, ici comme dans `uv run` et src.lanceur qui héritent de la variable.
 [ -e .git ] || export UV_NO_DEV=1
 
+premier_lancement=
 if [ ! -d .venv ]; then
+    premier_lancement=1
     echo "Premier lancement : téléchargement de Python et des composants (quelques minutes)…"
     uv sync
 else
@@ -71,6 +73,8 @@ fi || {
     exit 1
 }
 
+[ -n "$premier_lancement" ] \
+    && echo "Installation terminée. Tamponné s'ouvre dans quelques instants (jusqu'à une minute la première fois)…"
 uv run --quiet python -m src.lanceur \
     || signaler "Tamponné s'est arrêté sur une erreur. Relancez-le ; si le problème persiste, signalez-le sur Codeberg."
 exit 0

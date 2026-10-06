@@ -63,6 +63,10 @@ TYPES_POSTE: list[tuple[str, list[str] | str | None]] = [
 
 LIBELLE_LANCER = "Lancer la recherche"
 LIBELLE_ENREGISTRER = "Enregistrer la fiche"
+MESSAGE_ORGANISATIONS_ABSENTES = (
+    "La liste des organisations n'est pas encore chargée\u00a0: relancez la "
+    "recherche dans un instant, ou rafraîchissez-la dans Réglages."
+)
 
 LISTES_SELECTION = ("domaines", "localisations", "organisations", "grades")
 
@@ -130,6 +134,7 @@ class ControleurRecherche(QObject):
         self._suites: dict[int, Callable[[object], None]] = {}
         self._grades: list[str] = []
         self._grades_superieurs = False
+        self._chargement_organisations = False
 
     # --- Propriétés exposées au QML ---
 
@@ -167,6 +172,11 @@ class ControleurRecherche(QObject):
 
     def _lire_erreur(self) -> str:
         return self._erreur
+
+    def _lire_etat_organisations(self) -> str:
+        if self._orgas_cache:
+            return ""
+        return "chargement…" if self._chargement_organisations else "indisponible"
 
     def _lire_edition(self) -> bool:
         return self._edition
@@ -216,6 +226,9 @@ class ControleurRecherche(QObject):
     resume = Property(str, _lire_resume, notify=etat_change)
     avertissements = Property(str, _lire_avertissements, notify=etat_change)
     erreur = Property(str, _lire_erreur, notify=etat_change)
+    etat_organisations = Property(str, _lire_etat_organisations, notify=etat_change)
+    """Vide si la liste des organisations est chargée, sinon « chargement… »
+    ou « indisponible », affiché à la place de la sélection."""
     edition = Property(bool, _lire_edition, notify=etat_change)
     intitule_edition = Property(str, _lire_intitule_edition, notify=etat_change)
     peut_filtrer_nouvelles = Property(
@@ -434,6 +447,12 @@ class ControleurRecherche(QObject):
         if self._thread is not None:
             return
         filtres = self.construire_filtres()
+        if filtres.get("organisations") and not self._orgas_cache:
+            # Sans la liste, le filtre serait abandonné sans rien dire.
+            self._phase = "erreur"
+            self._erreur = MESSAGE_ORGANISATIONS_ABSENTES
+            self.etat_change.emit()
+            return
         self._filtres_lances = filtres
         self._profil_lance = (
             self._nom_profil
@@ -523,9 +542,16 @@ class ControleurRecherche(QObject):
         self.etat_change.emit()
 
     def remplacer_organisations(self, organisations: Organisations) -> None:
-        """Nouveau cache des organisations (Réglages › Rafraîchir le cache),
-        utilisé dès la prochaine sélection ou recherche."""
+        """Nouveau cache des organisations (Réglages › Rafraîchir le cache,
+        ou au lancement), utilisé dès la prochaine sélection ou recherche."""
         self._orgas_cache = organisations
+        self.etat_change.emit()
+
+    def definir_chargement_organisations(self, en_cours: bool) -> None:
+        """Signale un chargement de la liste des organisations en cours."""
+        if en_cours != self._chargement_organisations:
+            self._chargement_organisations = en_cours
+            self.etat_change.emit()
 
     def arreter(self) -> None:
         """Attend la fin d'une recherche ou d'un appel réseau en cours :

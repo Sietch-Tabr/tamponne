@@ -487,11 +487,26 @@ Item {
                             }
                         }
 
-                        BoutonEtiquette {
-                            objectName: "boutonCache"
-                            enabled: !racine.reglages.cache_en_cours
-                            text: racine.reglages.cache_en_cours ? "Rafraîchissement…" : "Rafraîchir le cache"
-                            onClicked: racine.reglages.rafraichir_cache()
+                        Column {
+                            width: parent.width
+                            spacing: 4
+                            Texte {
+                                text: "Liste des organisations"
+                                color: Theme.encre2
+                                font.family: Theme.policeMono
+                                font.pixelSize: 13
+                                font.capitalization: Font.AllUppercase
+                                font.letterSpacing: 0.5
+                                wrapMode: Text.NoWrap
+                                Accessible.ignored: true
+                            }
+                            BoutonEtiquette {
+                                objectName: "boutonCache"
+                                enabled: !racine.reglages.cache_en_cours
+                                text: racine.reglages.cache_en_cours ? "Rafraîchissement…" : "Rafraîchir le cache"
+                                Accessible.name: "Liste des organisations\u00a0: " + text
+                                onClicked: racine.reglages.rafraichir_cache()
+                            }
                         }
 
                         Texte {

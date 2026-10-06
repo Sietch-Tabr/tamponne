@@ -70,3 +70,18 @@ def test_lanceurs_sans_outils_de_developpement_hors_clone_git() -> None:
         assert lignes.index(garde) < next(
             i for i, ligne in enumerate(lignes) if ligne.strip().startswith("uv sync")
         )
+
+
+def test_lanceurs_demandent_de_patienter_au_premier_lancement() -> None:
+    """La première ouverture est longue (Qt chargé pour la première fois) :
+    la console le dit, et celle de Windows reste ouverte le temps de lire."""
+    message = "Installation terminée. Tamponné s'ouvre dans quelques instants"
+    commande = (RACINE / "Tamponne.command").read_text(encoding="utf-8")
+    assert message in commande
+    assert commande.index(message) < commande.index("uv run --quiet python")
+    bat = (RACINE / "Tamponne.bat").read_bytes().decode("utf-8")
+    lignes = bat.splitlines()
+    lancement = lignes.index(".venv\\Scripts\\python.exe -m src.lanceur")
+    assert lignes[lancement + 1] == "if defined TAMPONNE_PREMIER_LANCEMENT ("
+    assert message in lignes[lancement + 2]
+    assert lignes.index("setlocal") < lignes.index('set "TAMPONNE_PREMIER_LANCEMENT="')

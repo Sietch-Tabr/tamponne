@@ -1,16 +1,14 @@
 """Point d'entrée de l'interface QML (thème « dossier administratif »)."""
 
 import ctypes
-import json
 import sys
-import urllib.error
 from pathlib import Path
 
 from PySide6.QtCore import QObject, Qt, QUrl
 from PySide6.QtGui import QGuiApplication, QIcon, QWindow
 from PySide6.QtQml import QQmlApplicationEngine
 
-from src.cache import obtenir_organisations
+from src.cache import organisations_en_cache
 from src.gui.pont import Pont
 from src.lanceur import CODE_REDEMARRAGE
 from src.nettoyage import nettoyer_fichiers_obsoletes
@@ -63,7 +61,8 @@ def adapter_a_l_ecran(fenetre: QWindow) -> None:
 
 def main() -> int:
     """Lance l'application QML, après avoir retiré les fichiers obsolètes
-    laissés par les mises à jour (`src.nettoyage`).
+    laissés par les mises à jour (`src.nettoyage`). Les organisations
+    absentes ou périmées sont rechargées en arrière-plan, fenêtre affichée.
 
     Returns:
         `CODE_REDEMARRAGE` si l'utilisateur a choisi « Installer et
@@ -90,10 +89,9 @@ def main() -> int:
     app.setWindowIcon(QIcon(str(ICONE)))
     app.setDesktopFileName("tamponne")
 
-    try:
-        orgas_cache = obtenir_organisations()
-    except OSError, json.JSONDecodeError, urllib.error.URLError, RuntimeError:
-        orgas_cache = {}
+    # Le site n'est consulté qu'après l'affichage : au premier lancement, la
+    # fenêtre attendait la page des organisations (jusqu'à 30 s derrière un proxy).
+    orgas_cache, orgas_a_rafraichir = organisations_en_cache()
 
     pont = Pont(orgas_cache=orgas_cache)
     app.aboutToQuit.connect(pont.arreter)
@@ -107,6 +105,8 @@ def main() -> int:
         adapter_a_l_ecran(fenetre)
     pont.reglages_controleur.verifier_mise_a_jour()
     pont.reglages_controleur.verifier_raccourci()
+    if orgas_a_rafraichir:
+        pont.reglages_controleur.rafraichir_cache()
     code = app.exec()
     return CODE_REDEMARRAGE if pont.reglages_controleur.redemarrage_demande else code
 
