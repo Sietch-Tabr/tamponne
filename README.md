@@ -24,6 +24,8 @@ Rien à installer au préalable : au premier lancement, Tamponné installe lui-m
 
 Au premier lancement, une fenêtre de terminal montre l'installation, puis Tamponné propose de s'ajouter au menu des applications (voir [Raccourci](#raccourci)) : il se lance ensuite comme n'importe quelle application.
 
+> **Windows derrière un proxy d'entreprise** : le proxy configuré dans Windows (Options Internet, script de configuration automatique) est détecté au lancement. Pour en imposer un autre, définissez la variable d'environnement `HTTPS_PROXY` (ex. `http://proxy:3128`) avant de lancer `Tamponne.bat`.
+
 > **macOS : « Tamponne.command ne peut pas être ouvert »**. Au premier double-clic, macOS bloque les fichiers téléchargés qui ne viennent pas de l'App Store ou d'un développeur identifié. Ouvrez **Réglages Système › Confidentialité et sécurité**, descendez jusqu'au message sur `Tamponne.command`, cliquez sur **« Ouvrir quand même »** et confirmez avec votre mot de passe. Une seule fois : les lancements suivants (et le raccourci) ne sont plus bloqués.
 
 ## Raccourci

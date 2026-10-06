@@ -37,3 +37,20 @@ def test_tamponne_bat_lu_d_un_bloc() -> None:
     bloc = "\n".join(lignes[debut:])
     assert "goto" not in bloc.lower() and "%ERRORLEVEL%" not in bloc.upper()
     assert ".venv\\Scripts\\python.exe -m src.lanceur" in bloc
+
+
+def test_tamponne_bat_transmet_le_proxy_de_windows_a_uv() -> None:
+    """uv ne lit pas le proxy de Windows : le lanceur le lui passe par
+    `HTTPS_PROXY` avant `uv sync`, sans écraser une valeur déjà définie."""
+    contenu = (RACINE / "Tamponne.bat").read_bytes().decode("utf-8")
+    lignes = contenu.splitlines()
+    detection = next(
+        i for i, ligne in enumerate(lignes) if "GetSystemWebProxy()" in ligne
+    )
+    assert lignes[detection].startswith("if not defined HTTPS_PROXY for /f ")
+    assert lignes[detection + 1 : detection + 3] == [
+        '    set "HTTPS_PROXY=%%P"',
+        '    set "HTTP_PROXY=%%P"',
+    ]
+    assert detection > lignes.index("(")
+    assert detection < next(i for i, ligne in enumerate(lignes) if "uv sync" in ligne)

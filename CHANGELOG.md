@@ -4,6 +4,12 @@ Toutes les évolutions notables de Tamponné, de la plus récente à la plus
 ancienne. Le détail de chaque version est aussi publié sur la page
 [Releases](https://codeberg.org/Kwaite/tamponne/releases) du dépôt.
 
+## [1.2.2] — 2026-10-06
+
+### Corrections
+
+- Windows : derrière un proxy d'entreprise, le premier lancement télécharge Python et les composants au lieu d'échouer (« Hôte inconnu ») ; le proxy configuré dans Windows est détecté à chaque lancement et utilisé aussi pour les recherches et la mise à jour
+
 ## [1.2.1] — 2026-10-05
 
 ### Corrections
