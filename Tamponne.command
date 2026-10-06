@@ -57,6 +57,10 @@ if ! command -v uv >/dev/null 2>&1; then
     fi
 fi
 
+# Hors clone git, pas d'outils de développement (mypy, pytest) : uv les
+# retire, ici comme dans `uv run` et src.lanceur qui héritent de la variable.
+[ -e .git ] || export UV_NO_DEV=1
+
 if [ ! -d .venv ]; then
     echo "Premier lancement : téléchargement de Python et des composants (quelques minutes)…"
     uv sync

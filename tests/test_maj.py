@@ -269,7 +269,7 @@ def _installation(racine: Path, fichiers: dict[str, str]) -> None:
         chemin.write_text(contenu, encoding="utf-8")
 
 
-def test_installer_archive_purge_src_et_tests_seulement(tmp_path: Path) -> None:
+def test_installer_archive_purge_src_seulement(tmp_path: Path) -> None:
     racine = tmp_path / "installation"
     _installation(
         racine,
@@ -282,14 +282,13 @@ def test_installer_archive_purge_src_et_tests_seulement(tmp_path: Path) -> None:
             "notes-perso.md": "à garder",
         },
     )
-    publication = _publication(tmp_path, {"src/garde.py": "nouveau", "tests/test_x.py": ""})
+    publication = _publication(tmp_path, {"src/garde.py": "nouveau"})
 
     maj.installer_archive(publication, racine)
 
     assert (racine / "src/garde.py").read_text(encoding="utf-8") == "nouveau"
     assert not (racine / "src/gui").exists()
-    assert not (racine / "tests/test_ancien.py").exists()
-    assert (racine / "tests/test_x.py").exists()
+    assert (racine / "tests/test_ancien.py").exists()
     assert (racine / "data/profils.json").read_text(encoding="utf-8") == "{}"
     assert (racine / "notes-perso.md").exists()
 
