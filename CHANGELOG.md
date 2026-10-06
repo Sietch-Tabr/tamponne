@@ -10,6 +10,13 @@ ancienne. Le détail de chaque version est aussi publié sur la page
 
 - Le zip publié ne contient plus les fichiers de développement (tests, outils, maquette, captures, notes techniques) ; ils sont retirés des installations existantes au prochain lancement
 - Les outils de développement (mypy, pytest) ne sont plus installés avec Tamponné et sont retirés des installations existantes
+- À la fin de l'installation, un message invite à patienter pendant la première ouverture (Windows : la console reste ouverte quelques secondes)
+
+### Démarrage
+
+- La fenêtre s'ouvre sans attendre le site : la liste des organisations est chargée en arrière-plan quand elle est absente ou a plus de 7 jours, l'ancienne servant en attendant
+- Tant que la liste n'est pas chargée, la ligne Organisations du formulaire l'indique (« chargement… ») et une recherche filtrée par organisation est refusée au lieu d'ignorer ce filtre
+- Réglages › Classement : titre « Liste des organisations » au-dessus du bouton « Rafraîchir le cache »
 
 ## [1.2.2] — 2026-10-06
 

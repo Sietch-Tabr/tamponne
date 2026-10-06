@@ -93,6 +93,23 @@ def _scraper_organisations() -> Organisations:
     return dict(sorted(resultat.items()))
 
 
+def organisations_en_cache() -> tuple[Organisations, bool]:
+    """Organisations lues sur le disque, même périmées, sans accès réseau.
+
+    Returns:
+        Les organisations (vides si le cache est absent ou illisible) et
+        vrai s'il faut les rafraîchir (absentes ou plus vieilles que
+        `TTL_ORGANISATIONS`).
+    """
+    cache = _charger_cache()
+    entree = cache.get("organisations")
+    donnees = entree.get("data") if isinstance(entree, dict) else None
+    return (
+        donnees if isinstance(donnees, dict) else {},
+        _organisations_expirees(cache),
+    )
+
+
 def obtenir_organisations(forcer: bool = False) -> Organisations:
     """Retourne les organisations depuis le cache ou scrape si expiré."""
     cache = _charger_cache()

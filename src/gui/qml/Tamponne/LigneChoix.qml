@@ -4,8 +4,8 @@ import QtQuick.Layouts
 import Tamponne
 
 /*! Ligne du formulaire qui ouvre une fenêtre de sélection : intitulé à
-    gauche, valeur à chasse fixe à droite (« tous › », « 2 cochés › »),
-    filet pointillé dessous. */
+    gauche, valeur à chasse fixe à droite (« tous › », « 2 cochés › »,
+    sans chevron une fois désactivée), filet pointillé dessous. */
 AbstractButton {
     id: racine
 
@@ -29,7 +29,7 @@ AbstractButton {
             Layout.minimumWidth: 0
             Layout.preferredWidth: 0
             horizontalAlignment: Text.AlignRight
-            text: racine.valeur + " ›"
+            text: racine.enabled ? racine.valeur + " ›" : racine.valeur
             font.family: Theme.policeMono
             font.pixelSize: 14
             wrapMode: Text.NoWrap

@@ -19,7 +19,11 @@
             background: #0f1512;
           }
           .app {
---bristol:#FFFFFF;--bristol-ligne:#C9D6EE;--bristol-tete:#C8423B;--surligneur:#F4E27A;--surligne-texte:#1C1A17;
+            --bristol: #ffffff;
+            --bristol-ligne: #c9d6ee;
+            --bristol-tete: #c8423b;
+            --surligneur: #f4e27a;
+            --surligne-texte: #1c1a17;
             --bureau: #23302a;
             --kraft: #d9bf8c;
             --onglet: #c4a66c;
@@ -44,7 +48,11 @@
             --melange: multiply;
           }
           .app.nuit {
---bristol:#1E2530;--bristol-ligne:#2D3A50;--bristol-tete:#E36A60;--surligneur:#5B521C;--surligne-texte:#FFF4C2;
+            --bristol: #1e2530;
+            --bristol-ligne: #2d3a50;
+            --bristol-tete: #e36a60;
+            --surligneur: #5b521c;
+            --surligne-texte: #fff4c2;
             --bureau: #0f1512;
             --kraft: #4a3b24;
             --onglet: #33291a;
@@ -338,13 +346,42 @@
               border-color: ButtonText;
             }
           }
-        
 
-.menubar{display:flex;align-items:stretch;gap:2px;margin:-22px -24px 16px;padding:0 18px;min-height:40px;background:var(--bristol);border-top:3px solid var(--bristol-tete);border-bottom:1px solid var(--bristol-ligne)}
-.menubar .menu-entree{all:unset;cursor:pointer;padding:0 14px;display:inline-flex;align-items:center;font-family:Archivo,system-ui,sans-serif;font-weight:800;font-stretch:85%;font-size:15px;text-transform:uppercase;letter-spacing:1px;color:var(--encre)}
-.menubar .menu-entree:hover,.menubar .menu-entree[aria-expanded="true"]{background:var(--surligneur);color:var(--surligne-texte)}
-.menubar .menu-entree:focus-visible{outline:3px solid var(--tampon);outline-offset:-3px}
-</style>
+          .menubar {
+            display: flex;
+            align-items: stretch;
+            gap: 2px;
+            margin: -22px -24px 16px;
+            padding: 0 18px;
+            min-height: 40px;
+            background: var(--bristol);
+            border-top: 3px solid var(--bristol-tete);
+            border-bottom: 1px solid var(--bristol-ligne);
+          }
+          .menubar .menu-entree {
+            all: unset;
+            cursor: pointer;
+            padding: 0 14px;
+            display: inline-flex;
+            align-items: center;
+            font-family: Archivo, system-ui, sans-serif;
+            font-weight: 800;
+            font-stretch: 85%;
+            font-size: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--encre);
+          }
+          .menubar .menu-entree:hover,
+          .menubar .menu-entree[aria-expanded="true"] {
+            background: var(--surligneur);
+            color: var(--surligne-texte);
+          }
+          .menubar .menu-entree:focus-visible {
+            outline: 3px solid var(--tampon);
+            outline-offset: -3px;
+          }
+        </style>
       </helmet>
       <div
         class="{{classe}}"
@@ -359,7 +396,23 @@
           color: var(--encre);
         "
       >
-<div class="menubar" role="menubar" aria-label="Menu de l'application"><a class="menu-entree" href="Dossier-Menu.dc.html" role="menuitem" aria-haspopup="menu" aria-expanded="false">Fichier</a><a class="menu-entree" href="Dossier-Menu.dc.html" role="menuitem" aria-haspopup="menu" aria-expanded="false">Aide</a></div>
+        <div class="menubar" role="menubar" aria-label="Menu de l'application">
+          <a
+            class="menu-entree"
+            href="Dossier-Menu.dc.html"
+            role="menuitem"
+            aria-haspopup="menu"
+            aria-expanded="false"
+            >Fichier</a
+          ><a
+            class="menu-entree"
+            href="Dossier-Menu.dc.html"
+            role="menuitem"
+            aria-haspopup="menu"
+            aria-expanded="false"
+            >Aide</a
+          >
+        </div>
         <div
           style="
             display: flex;
@@ -390,7 +443,9 @@
             aria-pressed="{{pressee}}"
             onClick="{{basculer}}"
             style="margin-left: auto"
-          >{{libelleLampe}}</button>
+          >
+            {{libelleLampe}}
+          </button>
         </div>
 
         <nav
@@ -403,24 +458,15 @@
             padding: 0 20px;
           "
         >
-          <a class="onglet" href="Dossier-Accueil.dc.html"
-            >Profils</a
-          >
-          <a class="onglet" href="Dossier-Recherche.dc.html"
-            >Recherche</a
-          >
-          <a class="onglet" href="Dossier-Suivi.dc.html"
-            >Suivi</a
-          >
-          <a class="onglet" href="Dossier-Aide.dc.html"
-            >Aide</a
-          >
+          <a class="onglet" href="Dossier-Accueil.dc.html">Profils</a>
+          <a class="onglet" href="Dossier-Recherche.dc.html">Recherche</a>
+          <a class="onglet" href="Dossier-Suivi.dc.html">Suivi</a>
+          <a class="onglet" href="Dossier-Aide.dc.html">Aide</a>
           <a
             class="onglet onglet-actif"
             href="Dossier-Parametres.dc.html"
             aria-current="page"
-            >Réglages
-            <span class="point" aria-hidden="true"></span
+            >Réglages <span class="point" aria-hidden="true"></span
             ><span class="sr">(mise à jour disponible)</span></a
           >
         </nav>
@@ -446,73 +492,72 @@
               gap: 22px;
             "
           >
-          <section
-            class="feuille"
-            aria-labelledby="titre-avis"
-            style="
-              position: relative;
-              padding: 26px 28px;
-            "
-          >
-            <div
-              style="
-                display: flex;
-                flex-wrap: wrap;
-                justify-content: space-between;
-                gap: 8px;
-                align-items: baseline;
-              "
+            <section
+              class="feuille"
+              aria-labelledby="titre-avis"
+              style="position: relative; padding: 26px 28px"
             >
-              <span class="mono" style="color: var(--encre-2)"
-                >Avis n° 2.0.1</span
+              <div
+                style="
+                  display: flex;
+                  flex-wrap: wrap;
+                  justify-content: space-between;
+                  gap: 8px;
+                  align-items: baseline;
+                "
               >
-              <span class="mono" style="color: var(--encre-2)">04/10/2026</span>
-            </div>
-            <h1
-              id="titre-avis"
-              style="
-                margin: 0;
-                font-size: 40px;
-                font-weight: 800;
-                font-stretch: 80%;
-                text-transform: uppercase;
-                line-height: 1;
-              "
-            >
-              Avis de mise à jour
-            </h1>
-            <p style="margin: 0; font-size: 17px; line-height: 1.55">
-              <strong>Objet&nbsp;:</strong> version 2.0.1 disponible (installée&nbsp;:
-              2.0.0).
-            </p>
-            <div
-              class="mono"
-              style="
-                padding: 12px 14px;
-                border-left: 3px solid var(--encre);
-                background: var(--papier-2);
-                line-height: 1.6;
-              "
-            >
-              [Notes de version reprises de la publication Codeberg]
-            </div>
-            <div
-              style="
-                display: flex;
-                flex-wrap: wrap;
-                gap: 14px;
-                align-items: center;
-                margin-top: 6px;
-              "
-            >
-              <button class="btn-tampon" type="button" style="margin: 4px">
-                Installer et redémarrer
-              </button>
-              <button class="btn-etiquette" type="button">
-                Au prochain lancement
-              </button>
-            </div>
-          </section>
+                <span class="mono" style="color: var(--encre-2)"
+                  >Avis n° 2.0.1</span
+                >
+                <span class="mono" style="color: var(--encre-2)"
+                  >04/10/2026</span
+                >
+              </div>
+              <h1
+                id="titre-avis"
+                style="
+                  margin: 0;
+                  font-size: 40px;
+                  font-weight: 800;
+                  font-stretch: 80%;
+                  text-transform: uppercase;
+                  line-height: 1;
+                "
+              >
+                Avis de mise à jour
+              </h1>
+              <p style="margin: 0; font-size: 17px; line-height: 1.55">
+                <strong>Objet&nbsp;:</strong> version 2.0.1 disponible
+                (installée&nbsp;: 2.0.0).
+              </p>
+              <div
+                class="mono"
+                style="
+                  padding: 12px 14px;
+                  border-left: 3px solid var(--encre);
+                  background: var(--papier-2);
+                  line-height: 1.6;
+                "
+              >
+                [Notes de version reprises de la publication Codeberg]
+              </div>
+              <div
+                style="
+                  display: flex;
+                  flex-wrap: wrap;
+                  gap: 14px;
+                  align-items: center;
+                  margin-top: 6px;
+                "
+              >
+                <button class="btn-tampon" type="button" style="margin: 4px">
+                  Installer et redémarrer
+                </button>
+                <button class="btn-etiquette" type="button">
+                  Au prochain lancement
+                </button>
+              </div>
+            </section>
             <div
               style="
                 display: flex;
@@ -521,37 +566,37 @@
                 align-items: stretch;
               "
             >
-            <section
-              class="feuille"
-              aria-labelledby="titre-raccourci"
-              style="flex: 1 1 260px"
-            >
-              <h2 id="titre-raccourci">Raccourci</h2>
-              <p style="margin: 0; font-size: 16px; line-height: 1.5">
-                Tamponné n'est pas encore dans le menu des applications.
-              </p>
-              <div style="display: flex; flex-wrap: wrap; gap: 8px">
-                <button class="btn-etiquette" type="button">
-                  Ajouter au menu
-                </button>
-              </div>
-            </section>
+              <section
+                class="feuille"
+                aria-labelledby="titre-raccourci"
+                style="flex: 1 1 260px"
+              >
+                <h2 id="titre-raccourci">Raccourci</h2>
+                <p style="margin: 0; font-size: 16px; line-height: 1.5">
+                  Tamponné n'est pas encore dans le menu des applications.
+                </p>
+                <div style="display: flex; flex-wrap: wrap; gap: 8px">
+                  <button class="btn-etiquette" type="button">
+                    Ajouter au menu
+                  </button>
+                </div>
+              </section>
 
-            <section
-              class="feuille"
-              aria-labelledby="titre-sauvegarde"
-              style="flex: 1 1 260px"
-            >
-              <h2 id="titre-sauvegarde">Sauvegarde</h2>
-              <p style="margin: 0; font-size: 16px; line-height: 1.5">
-                Fiches, dossiers suivis et réglages réunis dans un fichier, à
-                garder ou à reprendre sur un autre ordinateur.
-              </p>
-              <div style="display: flex; flex-wrap: wrap; gap: 8px">
-                <button class="btn-etiquette" type="button">Exporter…</button>
-                <button class="btn-etiquette" type="button">Importer…</button>
-              </div>
-            </section>
+              <section
+                class="feuille"
+                aria-labelledby="titre-sauvegarde"
+                style="flex: 1 1 260px"
+              >
+                <h2 id="titre-sauvegarde">Sauvegarde</h2>
+                <p style="margin: 0; font-size: 16px; line-height: 1.5">
+                  Fiches, dossiers suivis et réglages réunis dans un fichier, à
+                  garder ou à reprendre sur un autre ordinateur.
+                </p>
+                <div style="display: flex; flex-wrap: wrap; gap: 8px">
+                  <button class="btn-etiquette" type="button">Exporter…</button>
+                  <button class="btn-etiquette" type="button">Importer…</button>
+                </div>
+              </section>
             </div>
           </div>
 
@@ -570,13 +615,16 @@
                 public</label
               >
               <label class="coche"
-                ><input type="checkbox" checked="checked" /> Fonction publique territoriale (emploi-territorial.fr)</label
+                ><input type="checkbox" checked="checked" /> Fonction publique
+                territoriale (emploi-territorial.fr)</label
               >
               <label class="coche"
-                ><input type="checkbox" checked="checked" /> Passerelles - Bercy (passerelles.economie.gouv.fr)</label
+                ><input type="checkbox" checked="checked" /> Passerelles - Bercy
+                (passerelles.economie.gouv.fr)</label
               >
               <label class="coche"
-                ><input type="checkbox" checked="checked" /> Fonction publique hospitalière (emploi.fhf.fr)</label
+                ><input type="checkbox" checked="checked" /> Fonction publique
+                hospitalière (emploi.fhf.fr)</label
               >
             </section>
 
@@ -602,10 +650,22 @@
               <label class="coche"
                 ><input type="checkbox" /> Réduire les animations</label
               >
-              <div style="display: flex; flex-wrap: wrap; gap: 8px">
-                <button class="btn-etiquette" type="button">
-                  Rafraîchir le cache
-                </button>
+              <div style="display: flex; flex-direction: column; gap: 4px">
+                <span
+                  class="mono"
+                  style="
+                    text-transform: uppercase;
+                    font-size: 13px;
+                    letter-spacing: 0.5px;
+                    color: var(--encre-2);
+                  "
+                  >Liste des organisations</span
+                >
+                <div style="display: flex; flex-wrap: wrap; gap: 8px">
+                  <button class="btn-etiquette" type="button">
+                    Rafraîchir le cache
+                  </button>
+                </div>
               </div>
             </section>
           </div>

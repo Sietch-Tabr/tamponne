@@ -174,3 +174,36 @@ def test_maj_cache_offres_ignore_offres_sans_reference() -> None:
     nouvelles = cache.maj_cache_offres("mon-profil", [offre_sans_ref])
     assert nouvelles == set()
     assert cache.obtenir_offres_cachetees("mon-profil") == {}
+
+
+# --- organisations_en_cache ---
+
+
+def test_organisations_en_cache_absentes_a_rafraichir() -> None:
+    assert cache.organisations_en_cache() == ({}, True)
+
+
+def test_organisations_en_cache_perimees_gardees_en_attendant(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Le démarrage ne consulte jamais le site : une liste périmée sert en
+    attendant son rafraîchissement en arrière-plan."""
+
+    def interdit() -> str:
+        raise AssertionError("aucun accès réseau attendu")
+
+    monkeypatch.setattr(cache, "telecharger_page_offres", interdit)
+    orgas = {"Ministère": {"Direction": 12}}
+    cache._sauvegarder_cache(
+        {
+            "organisations": {
+                "cached_at": _iso_il_y_a(cache.TTL_ORGANISATIONS + 60),
+                "data": orgas,
+            }
+        }
+    )
+    assert cache.organisations_en_cache() == (orgas, True)
+    cache._sauvegarder_cache(
+        {"organisations": {"cached_at": _iso_il_y_a(60), "data": orgas}}
+    )
+    assert cache.organisations_en_cache() == (orgas, False)

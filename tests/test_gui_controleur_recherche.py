@@ -398,3 +398,28 @@ def test_nouvelles_seulement_et_export_des_offres_visibles(
     _attendre(controleur, qtbot)
     controleur.nouvelles_seulement(True)
     assert controleur.property("modele").rowCount() == 0
+
+
+def test_organisations_absentes_affichees_et_recherche_refusee(
+    qapp: QApplication,
+) -> None:
+    """Sans la liste (premier lancement), la ligne Organisations indique le
+    chargement et une recherche filtrée par organisation est refusée plutôt
+    que lancée sans ce filtre."""
+    controleur = ControleurRecherche({}, qapp)
+    assert controleur.property("etat_organisations") == "indisponible"
+    controleur.definir_chargement_organisations(True)
+    assert controleur.property("etat_organisations") == "chargement…"
+
+    controleur.definir("organisations", ["Ministère - Direction des achats"])
+    controleur.lancer()
+    assert controleur.property("phase") == "erreur"
+    assert (
+        controleur.property("erreur")
+        == controleur_recherche.MESSAGE_ORGANISATIONS_ABSENTES
+    )
+
+    controleur.remplacer_organisations({"Ministère": {"Direction des achats": 1}})
+    controleur.definir_chargement_organisations(False)
+    assert controleur.property("etat_organisations") == ""
+    controleur.arreter()
