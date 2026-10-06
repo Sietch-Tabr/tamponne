@@ -14,6 +14,12 @@ where uv >nul 2>&1 || (
     powershell -NoProfile -Command "Add-Type -AssemblyName PresentationFramework; [void][System.Windows.MessageBox]::Show('Impossible d''installer uv : vérifiez la connexion internet puis relancez Tamponné.', 'Tamponné', 'OK', 'Error')"
     exit /b 1
 )
+rem uv ignore le proxy de Windows (réglages Internet, script PAC) : il le reçoit
+rem par HTTPS_PROXY, hérité aussi par l'application. Rien en connexion directe.
+if not defined HTTPS_PROXY for /f "usebackq delims=" %%P in (`powershell -NoProfile -Command "$u = [uri]'https://github.com'; $p = [System.Net.WebRequest]::GetSystemWebProxy().GetProxy($u); if ($p -ne $u) { $p.Scheme + '://' + $p.Authority }" 2^>nul`) do (
+    set "HTTPS_PROXY=%%P"
+    set "HTTP_PROXY=%%P"
+)
 if not exist .venv (
     echo Premier lancement : téléchargement de Python et des composants ^(quelques minutes^)…
     uv sync
