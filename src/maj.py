@@ -101,8 +101,8 @@ def appliquer_maj(info: InfoMaj) -> None:
 
     Installe les fichiers de l'archive dans la racine du projet (voir
     `installer_archive`) : l'archive Codeberg ne contient que les fichiers
-    suivis par git, donc `data/`, `.git/` et les fichiers non versionnés
-    hors de `src/` et `tests/` ne sont jamais touchés.
+    suivis par git et publiés, donc `data/`, `.git/` et les fichiers non
+    versionnés hors de `src/` ne sont jamais touchés.
 
     Raises:
         RuntimeError: Téléchargement ou extraction impossible — l'appelant
@@ -140,7 +140,7 @@ def appliquer_maj(info: InfoMaj) -> None:
         installer_archive(dossier_extrait, CHEMIN_RACINE)
 
 
-DOSSIERS_PURGES = ("src", "tests")
+DOSSIERS_PURGES = ("src",)
 """Dossiers où un fichier absent de la nouvelle version est supprimé."""
 
 
@@ -149,7 +149,7 @@ def installer_archive(dossier_extrait: Path, racine: Path) -> None:
 
     Chaque fichier est écrit dans un temporaire puis renommé : un script en
     cours d'exécution (`Tamponne.command` lu par bash) garde son ancien
-    contenu au lieu d'être réécrit sous ses pieds. Ensuite, sous `src/` et `tests/`
+    contenu au lieu d'être réécrit sous ses pieds. Ensuite, sous `src/`
     seulement, les fichiers absents de la publication sont supprimés avec
     leurs `__pycache__` ; rien n'est purgé dans un clone git (`.git/`).
 

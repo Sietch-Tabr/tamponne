@@ -4,7 +4,11 @@
 from pathlib import Path
 
 from src import nettoyage
-from src.nettoyage import FICHIERS_OBSOLETES, nettoyer_fichiers_obsoletes
+from src.nettoyage import (
+    FICHIERS_DEVELOPPEMENT,
+    FICHIERS_OBSOLETES,
+    nettoyer_fichiers_obsoletes,
+)
 
 
 def _creer(racine: Path, relatif: str, contenu: str = "") -> Path:
@@ -39,6 +43,7 @@ def test_ancienne_installation_nettoyee_donnees_intactes(tmp_path: Path) -> None
         "tests/test_gui_app.py",
         "lancer.sh",
         "lancer.bat",
+        "tests",
     }
     assert not (tmp_path / "src/gui/theme.py").exists()
     assert not (tmp_path / "src/gui/__pycache__/theme.cpython-314.pyc").exists()
@@ -46,6 +51,30 @@ def test_ancienne_installation_nettoyee_donnees_intactes(tmp_path: Path) -> None
     assert not (tmp_path / "lancer.sh").exists()
     assert (tmp_path / "src/gui/application.py").exists()
     assert profils.read_text(encoding="utf-8") == '{"f": {}}'
+
+
+def test_fichiers_de_developpement_exclus_des_publications() -> None:
+    """Chaque fichier retiré des installations est aussi exclu du zip de
+    Codeberg (`git archive`), sinon la mise à jour suivante le réinstalle."""
+    attributs = (nettoyage.CHEMIN_RACINE / ".gitattributes").read_text(
+        encoding="utf-8"
+    )
+    for relatif in FICHIERS_DEVELOPPEMENT:
+        assert (nettoyage.CHEMIN_RACINE / relatif).exists(), relatif
+        assert f"/{relatif} export-ignore" in attributs.splitlines(), relatif
+
+
+def test_installation_existante_debarrassee_du_developpement(tmp_path: Path) -> None:
+    for relatif in ("tests/test_x.py", "outils/maquette/a.html", "docs/captures/c.jpg"):
+        _creer(tmp_path, relatif)
+    for relatif in (".gitattributes", ".gitignore", "RECHERCHES.md"):
+        _creer(tmp_path, relatif)
+    _creer(tmp_path, "README.md", "conservé")
+
+    supprimes = nettoyer_fichiers_obsoletes(tmp_path)
+
+    assert set(supprimes) == set(FICHIERS_DEVELOPPEMENT)
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["README.md"]
 
 
 def test_nettoyage_idempotent(tmp_path: Path) -> None:

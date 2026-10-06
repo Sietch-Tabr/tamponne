@@ -54,3 +54,19 @@ def test_tamponne_bat_transmet_le_proxy_de_windows_a_uv() -> None:
     ]
     assert detection > lignes.index("(")
     assert detection < next(i for i, ligne in enumerate(lignes) if "uv sync" in ligne)
+
+
+def test_lanceurs_sans_outils_de_developpement_hors_clone_git() -> None:
+    """Une installation n'a pas besoin de mypy ni de pytest : `UV_NO_DEV`,
+    posé avant le premier `uv`, vaut aussi pour `src.lanceur`."""
+    commande = (RACINE / "Tamponne.command").read_text(encoding="utf-8")
+    bat = (RACINE / "Tamponne.bat").read_bytes().decode("utf-8")
+    for contenu, garde in (
+        (commande, "[ -e .git ] || export UV_NO_DEV=1"),
+        (bat, 'if not exist .git set "UV_NO_DEV=1"'),
+    ):
+        lignes = contenu.splitlines()
+        assert garde in lignes
+        assert lignes.index(garde) < next(
+            i for i, ligne in enumerate(lignes) if ligne.strip().startswith("uv sync")
+        )

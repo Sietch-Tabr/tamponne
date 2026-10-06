@@ -1,2 +1,11 @@
 *.bat text eol=crlf
 *.command text eol=lf
+
+# Développement seulement : exclus du zip des publications (git archive),
+# retirés des installations existantes par src/nettoyage.py.
+/.gitattributes export-ignore
+/.gitignore export-ignore
+/RECHERCHES.md export-ignore
+/docs export-ignore
+/outils export-ignore
+/tests export-ignore

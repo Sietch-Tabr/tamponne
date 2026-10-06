@@ -1,9 +1,9 @@
 """Nettoyage des fichiers retirés que la mise à jour laisse sur le disque.
 
 La mise à jour de la 1.0.x copiait la nouvelle version par-dessus l'ancienne
-sans rien supprimer, et `maj.py` ne purge que `src/` et `tests/` : les
-anciens lanceurs de la racine resteraient. Ce nettoyage, lancé au démarrage,
-les retire une fois pour toutes.
+sans rien supprimer, et `maj.py` ne purge que `src/` : les anciens lanceurs
+de la racine et les fichiers de développement livrés jusqu'à la 1.2.2
+resteraient. Ce nettoyage, lancé au démarrage, les retire une fois pour toutes.
 """
 
 import shutil
@@ -36,6 +36,18 @@ relatifs à la racine ; un dossier est retiré avec tout son contenu. Les
 lanceurs remplacés par `Tamponne.*` en 1.2.0 sont supprimés même en cours
 d'exécution : bash a déjà lu tout son bloc."""
 
+FICHIERS_DEVELOPPEMENT: tuple[str, ...] = (
+    ".gitattributes",
+    ".gitignore",
+    "RECHERCHES.md",
+    "docs",
+    "outils",
+    "tests",
+)
+"""Fichiers du dépôt qui ne servent qu'au développement : exclus du zip des
+publications (`export-ignore` dans `.gitattributes`) depuis la 1.2.3, mais
+livrés avant."""
+
 _DOSSIERS_INTERDITS = ("data", ".git")
 
 
@@ -57,7 +69,8 @@ def _cache_compile(chemin: Path) -> list[Path]:
 
 
 def nettoyer_fichiers_obsoletes(racine: Path = CHEMIN_RACINE) -> list[str]:
-    """Supprime les fichiers et dossiers de `FICHIERS_OBSOLETES` encore présents.
+    """Supprime les fichiers et dossiers de `FICHIERS_OBSOLETES` et de
+    `FICHIERS_DEVELOPPEMENT` encore présents.
 
     Sans effet sur un clone de développement (`.git/` présent : git gère
     déjà les suppressions) et sans effet si tout est déjà propre. Une
@@ -73,7 +86,7 @@ def nettoyer_fichiers_obsoletes(racine: Path = CHEMIN_RACINE) -> list[str]:
     if (racine / ".git").exists():
         return []
     supprimes: list[str] = []
-    for relatif in FICHIERS_OBSOLETES:
+    for relatif in FICHIERS_OBSOLETES + FICHIERS_DEVELOPPEMENT:
         cible = racine / relatif
         if not cible.exists() or not _cible_autorisee(cible, racine):
             continue

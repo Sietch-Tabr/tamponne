@@ -4,6 +4,13 @@ Toutes les évolutions notables de Tamponné, de la plus récente à la plus
 ancienne. Le détail de chaque version est aussi publié sur la page
 [Releases](https://codeberg.org/Kwaite/tamponne/releases) du dépôt.
 
+## [1.2.3] — 2026-10-06
+
+### Installation
+
+- Le zip publié ne contient plus les fichiers de développement (tests, outils, maquette, captures, notes techniques) ; ils sont retirés des installations existantes au prochain lancement
+- Les outils de développement (mypy, pytest) ne sont plus installés avec Tamponné et sont retirés des installations existantes
+
 ## [1.2.2] — 2026-10-06
 
 ### Corrections

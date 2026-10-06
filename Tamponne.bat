@@ -20,6 +20,9 @@ if not defined HTTPS_PROXY for /f "usebackq delims=" %%P in (`powershell -NoProf
     set "HTTPS_PROXY=%%P"
     set "HTTP_PROXY=%%P"
 )
+rem Hors clone git, pas d'outils de développement (mypy, pytest) : uv les
+rem retire, ici comme dans src.lanceur qui hérite de la variable.
+if not exist .git set "UV_NO_DEV=1"
 if not exist .venv (
     echo Premier lancement : téléchargement de Python et des composants ^(quelques minutes^)…
     uv sync
