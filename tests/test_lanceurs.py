@@ -85,3 +85,24 @@ def test_lanceurs_demandent_de_patienter_au_premier_lancement() -> None:
     assert lignes[lancement + 1] == "if defined TAMPONNE_PREMIER_LANCEMENT ("
     assert message in lignes[lancement + 2]
     assert lignes.index("setlocal") < lignes.index('set "TAMPONNE_PREMIER_LANCEMENT="')
+
+
+def test_lanceurs_mettent_uv_a_jour_avant_d_abandonner() -> None:
+    """Un uv trop ancien ne connaît pas le Python demandé (`required-version`) :
+    les scripts le mettent à jour et resynchronisent avant le message
+    d'échec ; sous Windows, l'installeur sert de secours derrière le proxy."""
+    commande = (RACINE / "Tamponne.command").read_text(encoding="utf-8")
+    assert commande.index("uv self update") < commande.index(
+        "même après la mise à jour de uv"
+    )
+    bat = (RACINE / "Tamponne.bat").read_bytes().decode("utf-8")
+    lignes = bat.splitlines()
+    mise_a_jour = next(i for i, ligne in enumerate(lignes) if "uv self update" in ligne)
+    assert "irm https://astral.sh/uv/install.ps1 | iex" in lignes[mise_a_jour]
+    assert lignes[mise_a_jour + 1].strip() == "uv sync"
+    assert mise_a_jour < next(
+        i for i, ligne in enumerate(lignes) if "même après la mise à jour de uv" in ligne
+    )
+    assert mise_a_jour > next(
+        i for i, ligne in enumerate(lignes) if "GetSystemWebProxy()" in ligne
+    )

@@ -4,6 +4,15 @@ Toutes les évolutions notables de Tamponné, de la plus récente à la plus
 ancienne. Le détail de chaque version est aussi publié sur la page
 [Releases](https://codeberg.org/Kwaite/tamponne/releases) du dépôt.
 
+## [1.3.1] — 2026-10-12
+
+### Mise à jour
+
+- Si une mise à jour ne s'installe pas ou ne démarre pas, Tamponné revient tout seul à la version précédente : vos données restent intactes et un message explique ce qui s'est passé
+- La mise à jour qui a échoué n'est plus retentée à chaque lancement : Réglages › Avis de mise à jour en donne la raison, et « Installer et redémarrer » permet de réessayer
+- uv, le gestionnaire de Python de Tamponné, se met à jour de lui-même quand il est trop ancien pour la version de Python demandée, y compris derrière un proxy (cause du blocage de la 1.3.0 sous Windows)
+- Les messages d'erreur au lancement disent quoi faire et donnent le détail technique de l'erreur ; le journal du dernier lancement est enregistré dans `data/journal_lancement.log`, à joindre à un signalement
+
 ## [1.3.0] — 2026-10-12
 
 ### Installation

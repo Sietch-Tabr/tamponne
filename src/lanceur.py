@@ -6,23 +6,32 @@ sous-processus et la relance quand elle quitte avec `CODE_REDEMARRAGE`
 que dans les scripts : Python garde ce module en mémoire, une mise à jour
 peut donc remplacer les scripts et `src/` pendant qu'il tourne.
 
+Une mise à jour qui ne s'installe pas (synchronisation impossible même
+après mise à jour de uv) ou ne démarre pas (interface arrêtée avant d'avoir
+chargé sa fenêtre) est annulée : la version précédente, sauvegardée par
+`src.maj`, est restaurée et relancée.
+
 Sous Windows, `Tamponne.bat` le lance dans sa console : il s'y relance
 aussitôt sans console (`CREATE_NO_WINDOW`) pour que le `.bat` se ferme et
 que fermer cette console ne ferme pas l'application. Les erreurs
-s'affichent alors dans une boîte de dialogue.
+s'affichent alors dans une boîte de dialogue. La relance utilise
+l'interpréteur de base, hors de `.venv` : `uv sync` peut alors recréer
+l'environnement sans buter sur un exécutable verrouillé.
 
 Sans dépendance à Qt : l'interface n'est importée que par le sous-processus.
 """
 
 import ctypes
 import os
+import re
 import shutil
 import subprocess
 import sys
 from collections.abc import Callable, Sequence
 from pathlib import Path
 
-from src.maj import CHEMIN_MARQUEUR, CHEMIN_RACINE
+from src import maj
+from src.maj import CHEMIN_RACINE
 
 CODE_REDEMARRAGE = 42
 """Code de sortie de l'interface qui demande à la boucle de la relancer."""
@@ -30,21 +39,92 @@ CODE_MAJ_INACHEVEE = 3
 """Code de sortie du lanceur quand une mise à jour n'a pu être terminée
 (déjà signalé : distinct du 1 d'une interface arrêtée sur une erreur)."""
 
+JOURNAL_AFFICHE = str(Path("data") / "journal_lancement.log")
+"""Journal du lancement (`CHEMIN_JOURNAL`), tel que nommé à l'utilisateur."""
 MESSAGE_MAJ_INDISPONIBLE = (
     "Mise à jour indisponible, on continue avec la version actuelle."
 )
-MESSAGE_RELANCER = "Relancez Tamponné pour terminer la mise à jour."
-MESSAGE_ERREUR = (
-    "Tamponné s'est arrêté sur une erreur. Relancez-le\u00a0; si le problème "
-    "persiste, signalez-le sur Codeberg."
+MESSAGE_RELANCER = (
+    "La mise à jour de Tamponné n'a pas pu se terminer\u00a0: uv n'a pas pu "
+    "télécharger Python ou ses composants, même après sa propre mise à jour.\n\n"
+    "Vérifiez que l'ordinateur est connecté à internet (et le proxy éventuel), "
+    "puis relancez Tamponné. Si ce message revient, signalez-le sur Codeberg "
+    f"en joignant le fichier «\u00a0{JOURNAL_AFFICHE}\u00a0» du dossier de "
+    "Tamponné."
 )
+MESSAGE_ERREUR = (
+    "Tamponné s'est arrêté sur une erreur.\n\n"
+    "Relancez-le\u00a0; si le problème persiste, signalez-le sur Codeberg en "
+    f"joignant le fichier «\u00a0{JOURNAL_AFFICHE}\u00a0» du dossier de "
+    "Tamponné."
+)
+MOTIF_SYNCHRONISATION = "Python ou ses composants n'ont pas pu être téléchargés"
+MOTIF_DEMARRAGE = "la nouvelle version ne démarrait pas"
+LONGUEUR_DETAIL = 300
+MOTIF_ERREUR = re.compile(r"(error:|[A-Za-z_.]*(Error|Exception)\b)")
+"""Au-delà, la dernière erreur est tronquée dans la boîte de dialogue (le
+journal garde tout)."""
+
+
+def premiere_erreur() -> str:
+    """Première erreur écrite dans le journal du lancement : ligne `error:`
+    de uv ou exception Python (`…Error: …`), sinon dernière ligne écrite ;
+    la première est la cause, les suivantes en découlent."""
+    try:
+        texte = CHEMIN_JOURNAL.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return ""
+    lignes = [
+        ligne.strip()
+        for ligne in texte.splitlines()
+        if ligne.strip() and not ligne.startswith("$ ")
+    ]
+    erreur = next((ligne for ligne in lignes if MOTIF_ERREUR.match(ligne)), None)
+    if erreur is None:
+        erreur = lignes[-1] if lignes else ""
+    return erreur[:LONGUEUR_DETAIL]
+
+
+def avec_detail(message: str) -> str:
+    """`message` suivi de l'erreur réelle (`premiere_erreur`), pour le
+    diagnostic."""
+    erreur = premiere_erreur()
+    return f"{message}\n\nDétail\u00a0: {erreur}" if erreur else message
+
+
+def message_maj_annulee(version: str, motif: str, precedente: str) -> str:
+    """Message affiché quand le lanceur revient à la version `precedente`
+    après l'échec de la mise à jour `version` (vide si inconnue)."""
+    mise_a_jour = f"La mise à jour {version}" if version else "La mise à jour"
+    return (
+        f"{mise_a_jour} de Tamponné n'a pas pu être installée\u00a0: {motif}.\n\n"
+        f"Pas d'inquiétude\u00a0: Tamponné redémarre dans sa version précédente "
+        f"({precedente}) et vos données sont intactes. Vous pourrez réessayer "
+        "plus tard depuis Réglages, «\u00a0Avis de mise à jour\u00a0», bouton "
+        "«\u00a0Installer et redémarrer\u00a0»."
+    )
+
+
 VARIABLE_DETACHE = "TAMPONNE_SANS_CONSOLE"
 """Posée sur le lanceur relancé sans console (Windows)."""
 
 FLUX_MARQUE_DU_WEB = ":Zone.Identifier"
 """Flux NTFS posé par Windows sur un fichier téléchargé (ou extrait d'un zip
 téléchargé) : il fait afficher un avertissement à chaque ouverture."""
-DOSSIERS_SANS_MARQUE = {".git", ".venv", "data"}
+DOSSIERS_SANS_MARQUE = {".git", ".venv", "data", maj.NOM_PRECEDENTE}
+CHEMIN_JOURNAL = CHEMIN_RACINE / "data" / "journal_lancement.log"
+"""Sorties des commandes du dernier lancement (uv, interface), pour le
+diagnostic : sous Windows, elles n'ont pas de console où s'afficher."""
+INSTALLEUR_UV_WINDOWS = (
+    "powershell",
+    "-NoProfile",
+    "-ExecutionPolicy",
+    "ByPass",
+    "-Command",
+    "irm https://astral.sh/uv/install.ps1 | iex",
+)
+"""Secours de `uv self update` : PowerShell passe nativement le proxy
+système, et l'installeur ne dépend pas de l'API GitHub."""
 
 type Executer = Callable[[Sequence[str]], int]
 
@@ -75,16 +155,37 @@ def retirer_marque_du_web(racine: Path = CHEMIN_RACINE) -> int:
 
 
 def _executer(commande: Sequence[str]) -> int:
-    """Lance `commande` depuis la racine de l'installation et attend sa fin ;
-    sous Windows, sans fenêtre de console."""
-    if sys.platform == "win32":
+    """Lance `commande` depuis la racine de l'installation et attend sa fin,
+    sorties ajoutées à `CHEMIN_JOURNAL` ; sous Windows, sans console."""
+    CHEMIN_JOURNAL.parent.mkdir(parents=True, exist_ok=True)
+    with CHEMIN_JOURNAL.open("a", encoding="utf-8") as journal:
+        journal.write(f"$ {' '.join(commande)}\n")
+        journal.flush()
+        drapeaux = 0
+        if sys.platform == "win32":
+            drapeaux = subprocess.CREATE_NO_WINDOW
         return subprocess.run(
             commande,
             cwd=CHEMIN_RACINE,
             check=False,
-            creationflags=subprocess.CREATE_NO_WINDOW,
+            stdout=journal,
+            stderr=subprocess.STDOUT,
+            creationflags=drapeaux,
         ).returncode
-    return subprocess.run(commande, cwd=CHEMIN_RACINE, check=False).returncode
+
+
+def python_environnement() -> Path:
+    """Interpréteur de `.venv`, celui qui fait tourner l'interface et
+    `src.maj` (le lanceur peut tourner sur l'interpréteur de base)."""
+    if sys.platform == "win32":
+        return CHEMIN_RACINE / ".venv" / "Scripts" / "python.exe"
+    return CHEMIN_RACINE / ".venv" / "bin" / "python"
+
+
+def python_de_base() -> Path:
+    """Interpréteur Windows dont dérive `.venv`, sur lequel le lanceur se
+    relance pour ne pas verrouiller `.venv` pendant `uv sync`."""
+    return Path(sys.base_prefix) / "python.exe"
 
 
 def signaler(message: str) -> None:
@@ -105,7 +206,7 @@ def _relancer_sans_console() -> None:
     if sys.platform != "win32":
         return
     environnement = {**os.environ, VARIABLE_DETACHE: "1"}
-    commande = [sys.executable, "-m", "src.lanceur"]
+    commande = [str(python_de_base()), "-m", "src.lanceur"]
     drapeaux = subprocess.CREATE_NO_WINDOW | subprocess.CREATE_NEW_PROCESS_GROUP
     try:
         subprocess.Popen(
@@ -120,25 +221,76 @@ def _relancer_sans_console() -> None:
         )
 
 
-def _appliquer_maj_en_attente(executer: Executer) -> bool:
-    """Applique la mise à jour en attente puis resynchronise les dépendances.
+def _mettre_a_jour_uv(executer: Executer, uv: str) -> bool:
+    """`uv self update`, puis l'installeur sous Windows s'il échoue. Le
+    proxy arrive par `HTTPS_PROXY`, posé par `Tamponne.bat` et hérité."""
+    if executer([uv, "self", "update"]) == 0:
+        return True
+    return sys.platform == "win32" and executer(INSTALLEUR_UV_WINDOWS) == 0
+
+
+def synchroniser(executer: Executer) -> bool:
+    """`uv sync`, retenté une fois après mise à jour de uv : un uv trop
+    ancien ne connaît pas les dernières versions de Python
+    (`required-version` de `pyproject.toml`).
 
     Returns:
-        Faux si la synchronisation a échoué : l'environnement Python peut
-        alors être incomplet et il faut relancer depuis le script.
+        Vrai si l'environnement est à jour.
     """
-    if executer([sys.executable, "-m", "src.maj", "--appliquer"]) != 0:
+    uv = shutil.which("uv")
+    if uv is None:
+        return False
+    if executer([uv, "sync", "--quiet"]) == 0:
+        return True
+    return _mettre_a_jour_uv(executer, uv) and executer([uv, "sync", "--quiet"]) == 0
+
+
+def _annuler_maj(executer: Executer, motif: str, version: str) -> bool:
+    """Revient à la version sauvegardée avant la mise à jour, mémorise
+    l'échec de `version` (pas de nouvel essai automatique) et resynchronise.
+
+    Returns:
+        Faux si l'ancienne version n'a pas pu être remise en état : il faut
+        alors relancer depuis le script.
+    """
+    if not maj.restaurer_version_precedente():
+        signaler(avec_detail(MESSAGE_RELANCER))
+        return False
+    maj.enregistrer_echec(version, motif)
+    if not synchroniser(executer):
+        signaler(avec_detail(MESSAGE_RELANCER))
+        return False
+    signaler(avec_detail(message_maj_annulee(version, motif, maj.version_locale())))
+    return True
+
+
+def _appliquer_maj_en_attente(executer: Executer) -> bool:
+    """Applique la mise à jour en attente puis resynchronise les
+    dépendances ; l'annule si l'une ou l'autre étape échoue.
+
+    Returns:
+        Faux si aucune version utilisable n'a pu être remise en état.
+    """
+    # Version lue avant l'installation : interrompue, elle peut laisser un
+    # pyproject.toml illisible.
+    info = maj.lire_maj_disponible()
+    version = info.get("version", "") if info is not None else ""
+    if executer([str(python_environnement()), "-m", "src.maj", "--appliquer"]) != 0:
+        if maj.dossier_precedente().is_dir():
+            return _annuler_maj(executer, MOTIF_SYNCHRONISATION, version)
         print(MESSAGE_MAJ_INDISPONIBLE, file=sys.stderr)
         return True
-    uv = shutil.which("uv")
-    if uv is None or executer([uv, "sync", "--quiet"]) != 0:
-        signaler(MESSAGE_RELANCER)
-        return False
-    return True
+    if synchroniser(executer):
+        return True
+    return _annuler_maj(executer, MOTIF_SYNCHRONISATION, version)
 
 
 def lancer(executer: Executer = _executer) -> int:
     """Démarre l'interface, en la relançant tant qu'elle le demande.
+
+    Une interface arrêtée avant de valider la mise à jour (`maj.valider_maj`,
+    appelée une fois la fenêtre chargée) déclenche le retour à la version
+    précédente, puis la relance.
 
     Args:
         executer: Lance une commande et renvoie son code de sortie
@@ -149,9 +301,13 @@ def lancer(executer: Executer = _executer) -> int:
         `CODE_MAJ_INACHEVEE` si une mise à jour n'a pas pu être terminée.
     """
     while True:
-        if CHEMIN_MARQUEUR.exists() and not _appliquer_maj_en_attente(executer):
+        if maj.CHEMIN_MARQUEUR.exists() and not _appliquer_maj_en_attente(executer):
             return CODE_MAJ_INACHEVEE
-        code = executer([sys.executable, "-m", "src.gui.application"])
+        code = executer([str(python_environnement()), "-m", "src.gui.application"])
+        if maj.dossier_precedente().is_dir():
+            if not _annuler_maj(executer, MOTIF_DEMARRAGE, maj.version_locale()):
+                return CODE_MAJ_INACHEVEE
+            continue
         if code != CODE_REDEMARRAGE:
             return code
 
@@ -161,7 +317,8 @@ if __name__ == "__main__":
         retirer_marque_du_web()
         _relancer_sans_console()
         raise SystemExit(0)
+    CHEMIN_JOURNAL.unlink(missing_ok=True)
     code_sortie = lancer()
     if sys.platform == "win32" and code_sortie not in (0, CODE_MAJ_INACHEVEE):
-        signaler(MESSAGE_ERREUR)
+        signaler(avec_detail(MESSAGE_ERREUR))
     raise SystemExit(code_sortie)

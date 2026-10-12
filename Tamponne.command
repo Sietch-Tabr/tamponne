@@ -52,7 +52,11 @@ if ! command -v uv >/dev/null 2>&1; then
         wget -qO- https://astral.sh/uv/install.sh | sh
     fi
     if ! command -v uv >/dev/null 2>&1; then
-        signaler "Impossible d'installer uv : vérifiez la connexion internet puis relancez Tamponné."
+        signaler "Tamponné n'a pas pu installer uv, l'outil qui télécharge Python et ses composants.
+
+Vérifiez que l'ordinateur est connecté à internet (et le proxy éventuel), puis relancez Tamponné.
+
+Détail : l'installeur de uv (astral.sh) a échoué ; son message exact est affiché dans le terminal."
         exit 1
     fi
 fi
@@ -69,13 +73,25 @@ if [ ! -d .venv ]; then
 else
     uv sync --quiet
 fi || {
-    signaler "Impossible de préparer Tamponné : vérifiez la connexion internet puis relancez."
+    # Un uv trop ancien ne connaît pas la version de Python demandée
+    # (required-version) ; installé par Homebrew, il refuse sans dommage.
+    echo "Mise à jour de uv, le gestionnaire de Python de Tamponné…"
+    uv self update
+    uv sync
+} || {
+    signaler "Tamponné n'a pas pu télécharger Python ou ses composants, même après la mise à jour de uv.
+
+Vérifiez que l'ordinateur est connecté à internet (et le proxy éventuel), puis relancez Tamponné. Si le problème continue, signalez-le sur Codeberg avec une capture du texte affiché dans le terminal.
+
+Détail : « uv sync » a échoué ; son message exact est affiché dans le terminal."
     exit 1
 }
 
 [ -n "$premier_lancement" ] \
     && echo "Installation terminée. Tamponné s'ouvre dans quelques instants (jusqu'à une minute la première fois)…"
 uv run --quiet python -m src.lanceur \
-    || signaler "Tamponné s'est arrêté sur une erreur. Relancez-le ; si le problème persiste, signalez-le sur Codeberg."
+    || signaler "Tamponné s'est arrêté sur une erreur.
+
+Relancez-le ; si le problème persiste, signalez-le sur Codeberg en joignant le fichier « data/journal_lancement.log » du dossier de Tamponné."
 exit 0
 }
