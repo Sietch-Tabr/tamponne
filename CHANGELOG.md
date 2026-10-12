@@ -4,6 +4,16 @@ Toutes les évolutions notables de Tamponné, de la plus récente à la plus
 ancienne. Le détail de chaque version est aussi publié sur la page
 [Releases](https://codeberg.org/Kwaite/tamponne/releases) du dépôt.
 
+## [1.3.0] — 2026-10-12
+
+### Installation
+
+- Tamponné fonctionne désormais avec Python 3.15 et PySide6 6.12 : au premier lancement après la mise à jour, la nouvelle version de Python et les composants sont téléchargés une fois
+
+### Démarrage
+
+- Ouverture plus rapide : les modules réseau et d'analyse des pages ne sont chargés qu'à la première recherche
+
 ## [1.2.3] — 2026-10-06
 
 ### Installation
