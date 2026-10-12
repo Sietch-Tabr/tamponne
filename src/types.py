@@ -261,6 +261,20 @@ class InfoMaj(TypedDict):
     url_publication: str
 
 
+class EchecMaj(TypedDict):
+    """Mise à jour annulée par le lanceur (retour à la version précédente).
+
+    Attributes:
+        version: Version qui n'a pas pu être installée.
+        motif: Cause affichée dans l'avis de mise à jour.
+        date: Date de l'échec (ISO 8601).
+    """
+
+    version: str
+    motif: str
+    date: str
+
+
 class ResultatTraite(TypedDict):
     """Résultat d'une recherche après post-traitement
     (`src.recherche.post_traiter_resultats`).

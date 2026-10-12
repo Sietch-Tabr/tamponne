@@ -20,15 +20,22 @@ import tomllib
 lazy import urllib.error
 lazy import urllib.request
 lazy import zipfile
+from datetime import date
 from pathlib import Path
 
-from src.types import InfoMaj
+from src.types import EchecMaj, InfoMaj
 from src.utils import ecriture_atomique
 
 URL_API_RELEASES = "https://codeberg.org/api/v1/repos/Kwaite/tamponne/releases/latest"
 CHEMIN_RACINE = Path(__file__).parent.parent
 CHEMIN_PYPROJECT = CHEMIN_RACINE / "pyproject.toml"
 CHEMIN_MARQUEUR = CHEMIN_RACINE / "data" / "maj_disponible.json"
+CHEMIN_ECHEC = CHEMIN_RACINE / "data" / "maj_echouee.json"
+"""Dernière mise à jour annulée : pas de nouvel essai automatique."""
+NOM_PRECEDENTE = ".maj-precedente"
+"""Copie de la version remplacée, à la racine (hors de l'export de `data/`),
+supprimée une fois la nouvelle version démarrée."""
+EXCLUS_SAUVEGARDE = {".git", ".venv", "data", NOM_PRECEDENTE}
 _TIMEOUT = 15
 
 
@@ -96,17 +103,101 @@ def effacer_maj_disponible() -> None:
     CHEMIN_MARQUEUR.unlink(missing_ok=True)
 
 
+def lire_echec() -> EchecMaj | None:
+    """Dernière mise à jour annulée, `None` si aucune (ou fichier illisible)."""
+    if not CHEMIN_ECHEC.exists():
+        return None
+    try:
+        return json.loads(CHEMIN_ECHEC.read_text(encoding="utf-8"))
+    except json.JSONDecodeError, OSError:
+        return None
+
+
+def enregistrer_echec(version: str, motif: str) -> None:
+    """Mémorise l'annulation de `version` : la vérification ne la reprogramme
+    plus d'elle-même, seul « Installer et redémarrer » la retente."""
+    echec: EchecMaj = {
+        "version": version,
+        "motif": motif,
+        "date": date.today().isoformat(),
+    }
+    ecriture_atomique(CHEMIN_ECHEC, dict(echec))
+
+
+def maj_en_echec(version: str) -> bool:
+    """Vrai si `version` est la dernière mise à jour annulée."""
+    echec = lire_echec()
+    return echec is not None and echec["version"] == version
+
+
+def dossier_precedente() -> Path:
+    """Copie de la version remplacée par la dernière mise à jour."""
+    return CHEMIN_RACINE / NOM_PRECEDENTE
+
+
+def sauvegarder_version_actuelle() -> None:
+    """Copie l'installation (hors `EXCLUS_SAUVEGARDE`) dans
+    `dossier_precedente()`, pour revenir en arrière si la mise à jour ne
+    démarre pas. Écrite à côté puis renommée : une copie interrompue n'est
+    jamais prise pour une sauvegarde complète."""
+    dossier = dossier_precedente()
+    temporaire = dossier.with_name(dossier.name + ".tmp")
+    shutil.rmtree(temporaire, ignore_errors=True)
+    temporaire.mkdir()
+    for element in CHEMIN_RACINE.iterdir():
+        if element.name in EXCLUS_SAUVEGARDE or element == temporaire:
+            continue
+        if element.is_dir():
+            shutil.copytree(
+                element,
+                temporaire / element.name,
+                symlinks=True,
+                ignore=shutil.ignore_patterns("__pycache__"),
+            )
+        else:
+            shutil.copy2(element, temporaire / element.name)
+    shutil.rmtree(dossier, ignore_errors=True)
+    temporaire.replace(dossier)
+
+
+def restaurer_version_precedente() -> bool:
+    """Réinstalle la version sauvegardée avant la dernière mise à jour
+    (fichiers ajoutés depuis sous `src/` retirés), puis efface la copie.
+
+    Returns:
+        Faux s'il n'y avait aucune sauvegarde.
+    """
+    dossier = dossier_precedente()
+    if not dossier.is_dir():
+        return False
+    installer_archive(dossier, CHEMIN_RACINE)
+    shutil.rmtree(dossier, ignore_errors=True)
+    return True
+
+
+def valider_maj() -> None:
+    """Rend la dernière mise à jour définitive, une fois l'interface
+    chargée : plus de retour arrière possible, échec antérieur oublié."""
+    dossier = dossier_precedente()
+    if dossier.exists():
+        shutil.rmtree(dossier, ignore_errors=True)
+        CHEMIN_ECHEC.unlink(missing_ok=True)
+
+
 def appliquer_maj(info: InfoMaj) -> None:
     """Télécharge et applique la publication `info`.
 
     Installe les fichiers de l'archive dans la racine du projet (voir
     `installer_archive`) : l'archive Codeberg ne contient que les fichiers
     suivis par git et publiés, donc `data/`, `.git/` et les fichiers non
-    versionnés hors de `src/` ne sont jamais touchés.
+    versionnés hors de `src/` ne sont jamais touchés. La version remplacée
+    est d'abord copiée (`sauvegarder_version_actuelle`) pour le retour
+    arrière du lanceur.
 
     Raises:
-        RuntimeError: Téléchargement ou extraction impossible — l'appelant
-            décide de continuer avec la version actuelle plutôt que bloquer.
+        RuntimeError: Téléchargement, extraction ou sauvegarde impossible,
+            rien n'est installé — l'appelant décide de continuer avec la
+            version actuelle plutôt que bloquer.
     """
     if not info["url_zip"]:
         raise RuntimeError("URL de l'archive de mise à jour manquante.")
@@ -137,6 +228,12 @@ def appliquer_maj(info: InfoMaj) -> None:
             )
         dossier_extrait = racines[0]
 
+        try:
+            sauvegarder_version_actuelle()
+        except OSError as e:
+            raise RuntimeError(
+                f"Impossible de sauvegarder la version actuelle\u00a0: {e}"
+            ) from e
         installer_archive(dossier_extrait, CHEMIN_RACINE)
 
 

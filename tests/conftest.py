@@ -9,7 +9,14 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pytest  # noqa: E402
 
-from src import cache, candidatures, parametres_affichage, profils, raccourci  # noqa: E402
+from src import (  # noqa: E402
+    cache,
+    candidatures,
+    maj,
+    parametres_affichage,
+    profils,
+    raccourci,
+)
 from src.gui import travailleurs  # noqa: E402
 
 
@@ -71,3 +78,18 @@ def _rediriger_raccourci_vers_tmp(
     monkeypatch.setenv("APPDATA", str(profil / "AppData/Roaming"))
     monkeypatch.setenv("XDG_DATA_HOME", str(profil / ".local/share"))
     monkeypatch.setattr(raccourci, "CHEMIN_PREFERENCE", tmp_path / "raccourci.json")
+
+
+@pytest.fixture(autouse=True)
+def _rediriger_maj_vers_tmp(
+    tmp_path: Path,
+    tmp_path_factory: pytest.TempPathFactory,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """« Installer et redémarrer » pose le marqueur de mise à jour et
+    l'interface valide la dernière : jamais dans le vrai data/ ni à la
+    racine de l'installation pendant les tests (racine hors de `tmp_path`,
+    que certains tests inventorient)."""
+    monkeypatch.setattr(maj, "CHEMIN_RACINE", tmp_path_factory.mktemp("installation"))
+    monkeypatch.setattr(maj, "CHEMIN_MARQUEUR", tmp_path / "maj_disponible.json")
+    monkeypatch.setattr(maj, "CHEMIN_ECHEC", tmp_path / "maj_echouee.json")

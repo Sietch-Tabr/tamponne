@@ -14,7 +14,7 @@ where uv >nul 2>&1 || (
     powershell -NoProfile -ExecutionPolicy ByPass -Command "irm https://astral.sh/uv/install.ps1 | iex"
 )
 where uv >nul 2>&1 || (
-    powershell -NoProfile -Command "Add-Type -AssemblyName PresentationFramework; [void][System.Windows.MessageBox]::Show('Impossible d''installer uv : vérifiez la connexion internet puis relancez Tamponné.', 'Tamponné', 'OK', 'Error')"
+    powershell -NoProfile -Command "Add-Type -AssemblyName PresentationFramework; [void][System.Windows.MessageBox]::Show('Tamponné n''a pas pu installer uv, l''outil qui télécharge Python et ses composants.' + [char]10 + [char]10 + 'Vérifiez que l''ordinateur est connecté à internet (et le proxy éventuel), puis relancez Tamponné.' + [char]10 + [char]10 + 'Détail : l''installeur de uv (astral.sh) a échoué ; son message exact est affiché dans la fenêtre noire. ' + 'Proxy utilisé : ' + $(if ($env:HTTPS_PROXY) { $env:HTTPS_PROXY } else { 'aucun' }), 'Tamponné', 'OK', 'Error')"
     exit /b 1
 )
 rem uv ignore le proxy de Windows (réglages Internet, script PAC) : il le reçoit
@@ -33,8 +33,15 @@ if not exist .venv (
 ) else (
     uv sync --quiet
 )
+rem Un uv trop ancien ne connaît pas la version de Python demandée
+rem (required-version) : mis à jour, par l'installeur si l'API GitHub refuse.
 if errorlevel 1 (
-    powershell -NoProfile -Command "Add-Type -AssemblyName PresentationFramework; [void][System.Windows.MessageBox]::Show('Impossible de préparer Tamponné : vérifiez la connexion internet puis relancez.', 'Tamponné', 'OK', 'Error')"
+    echo Mise à jour de uv, le gestionnaire de Python de Tamponné…
+    uv self update || powershell -NoProfile -ExecutionPolicy ByPass -Command "irm https://astral.sh/uv/install.ps1 | iex"
+    uv sync
+)
+if errorlevel 1 (
+    powershell -NoProfile -Command "Add-Type -AssemblyName PresentationFramework; [void][System.Windows.MessageBox]::Show('Tamponné n''a pas pu télécharger Python ou ses composants, même après la mise à jour de uv.' + [char]10 + [char]10 + 'Vérifiez que l''ordinateur est connecté à internet (et le proxy éventuel), puis relancez Tamponné. Si le problème continue, signalez-le sur Codeberg avec une capture de la fenêtre noire restée ouverte.' + [char]10 + [char]10 + 'Détail : « uv sync » a échoué ; son message exact est affiché dans la fenêtre noire. ' + 'Proxy utilisé : ' + $(if ($env:HTTPS_PROXY) { $env:HTTPS_PROXY } else { 'aucun' }), 'Tamponné', 'OK', 'Error')"
     exit /b 1
 )
 rem Le lanceur se relance sans console puis rend la main : cette fenêtre se ferme,

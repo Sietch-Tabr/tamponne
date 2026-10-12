@@ -12,7 +12,11 @@ from collections.abc import Callable
 from PySide6.QtCore import QObject, Signal
 
 from src.candidatures import verifier_disponibilite
-from src.maj import ecrire_maj_disponible, verifier_derniere_publication
+from src.maj import (
+    ecrire_maj_disponible,
+    maj_en_echec,
+    verifier_derniere_publication,
+)
 from src.recherche import RechercheImpossible, rechercher_toutes_sources
 from src.types import Candidature, FiltresRecherche, Organisations
 
@@ -108,9 +112,10 @@ class VerificateurMiseAJour(QObject):
         à jour disponible si une publication plus récente est trouvée —
         c'est ce marqueur qui déclenche l'application automatique au
         prochain lancement (`src.lanceur`), indépendamment
-        d'un clic utilisateur."""
+        d'un clic utilisateur. Pas pour une version déjà annulée par le
+        lanceur : seul « Installer et redémarrer » la retente."""
         info = verifier_derniere_publication()
-        if info is not None:
+        if info is not None and not maj_en_echec(info["version"]):
             ecrire_maj_disponible(info)
         self.resultat.emit(info)
 

@@ -18,7 +18,7 @@ from src.gui.presentation import (
     texte_confirmation_import,
 )
 from src.gui.travailleurs import TacheReseau, VerificateurMiseAJour
-from src.maj import version_locale
+from src.maj import ecrire_maj_disponible, lire_echec, version_locale
 from src.parametres_affichage import (
     charger_reduire_animations,
     sauvegarder_reduire_animations,
@@ -149,11 +149,18 @@ class ControleurReglages(QObject):
                 "disponible": False,
                 "objet": f"version {installee} installée, rien de plus récent.",
             }
+        objet = f"version {info['version']} disponible (installée\u00a0: {installee})."
+        echec = lire_echec()
+        if echec is not None and echec["version"] == info["version"]:
+            objet = (
+                f"version {info['version']} non installée au dernier essai\u00a0: "
+                f"{echec['motif']} (installée\u00a0: {installee})."
+            )
         return {
             "disponible": True,
             "numero": f"Avis n° {info['version']}",
             "date": self._date_avis,
-            "objet": f"version {info['version']} disponible (installée\u00a0: {installee}).",
+            "objet": objet,
             "notes": notes_en_html(info["notes"] or "Pas de notes de version."),
         }
 
@@ -168,17 +175,22 @@ class ControleurReglages(QObject):
 
     @Slot()
     def installer_maj(self) -> None:
-        """Quitte avec le code dédié : le lanceur applique la mise à jour
-        (marqueur déjà posé par la vérification) et relance aussitôt."""
+        """Quitte avec le code dédié : le lanceur applique la mise à jour et
+        relance aussitôt. Le marqueur est reposé ici : la vérification ne le
+        pose pas pour une version déjà annulée (nouvel essai à la demande)."""
         if self._info_maj is None:
             return
+        ecrire_maj_disponible(self._info_maj)
         self._redemarrage_demande = True
         self.quitter_demande.emit()
 
     @Slot()
     def reporter_maj(self) -> None:
-        """« Au prochain lancement » : le marqueur reste posé, le lanceur
-        l'appliquera au démarrage suivant ; seule la pastille s'efface."""
+        """« Au prochain lancement » : le lanceur appliquera la mise à jour au
+        démarrage suivant (marqueur reposé, même pour une version annulée) ;
+        la pastille s'efface."""
+        if self._info_maj is not None:
+            ecrire_maj_disponible(self._info_maj)
         self._avis_lu = True
         self.etat_change.emit()
 

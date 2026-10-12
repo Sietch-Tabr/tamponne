@@ -11,6 +11,7 @@ from PySide6.QtQml import QQmlApplicationEngine
 from src.cache import organisations_en_cache
 from src.gui.pont import Pont
 from src.lanceur import CODE_REDEMARRAGE
+from src.maj import valider_maj
 from src.nettoyage import nettoyer_fichiers_obsoletes
 from src.parametres_affichage import charger_mode_theme, charger_reduire_animations
 
@@ -63,6 +64,8 @@ def main() -> int:
     """Lance l'application QML, après avoir retiré les fichiers obsolètes
     laissés par les mises à jour (`src.nettoyage`). Les organisations
     absentes ou périmées sont rechargées en arrière-plan, fenêtre affichée.
+    Une fois la fenêtre chargée, la dernière mise à jour est validée
+    (`maj.valider_maj`).
 
     Returns:
         `CODE_REDEMARRAGE` si l'utilisateur a choisi « Installer et
@@ -100,6 +103,9 @@ def main() -> int:
     moteur.load(QUrl.fromLocalFile(str(DOSSIER_QML / "Tamponne" / "Fenetre.qml")))
     if not moteur.rootObjects():
         return 1
+    # Fenêtre chargée : la mise à jour qui vient d'être installée devient
+    # définitive (sinon le lanceur revient à la version précédente).
+    valider_maj()
     fenetre = moteur.rootObjects()[0]
     if isinstance(fenetre, QWindow):
         adapter_a_l_ecran(fenetre)

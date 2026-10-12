@@ -313,3 +313,90 @@ def test_installer_archive_remplace_sans_reecrire_le_fichier_ouvert(
         assert ouvert.read() == "ancien contenu\n"
     assert (racine / "Tamponne.command").read_text(encoding="utf-8") == "nouveau\n"
     assert not list(racine.glob("*.maj"))
+
+
+# --- retour arrière ---
+
+
+def _installation_1_0(racine: Path) -> None:
+    """Version installée : un module, des données, un environnement Python."""
+    (racine / "src").mkdir()
+    (racine / "src" / "ancien.py").write_text("# 1.0\n", encoding="utf-8")
+    (racine / "data").mkdir()
+    (racine / "data" / "profils.json").write_text("{}", encoding="utf-8")
+    (racine / ".venv").mkdir()
+    (racine / ".venv" / "pyvenv.cfg").write_text("", encoding="utf-8")
+
+
+def test_appliquer_maj_sauvegarde_la_version_actuelle_hors_donnees_et_venv(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _installation_1_0(maj.CHEMIN_RACINE)
+    chemin_zip = _construire_zip_test(tmp_path)
+    monkeypatch.setattr(
+        urllib.request,
+        "urlretrieve",
+        lambda url, filename: shutil.copy(chemin_zip, filename),
+    )
+
+    maj.appliquer_maj(_info())
+
+    sauvegarde = maj.dossier_precedente()
+    assert (sauvegarde / "src" / "ancien.py").exists()
+    assert 'version = "1.0.0"' in (sauvegarde / "pyproject.toml").read_text(
+        encoding="utf-8"
+    )
+    assert not (sauvegarde / "data").exists()
+    assert not (sauvegarde / ".venv").exists()
+
+
+def test_restaurer_version_precedente_remet_l_ancienne_version(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _installation_1_0(maj.CHEMIN_RACINE)
+    chemin_zip = _construire_zip_test(tmp_path)
+    monkeypatch.setattr(
+        urllib.request,
+        "urlretrieve",
+        lambda url, filename: shutil.copy(chemin_zip, filename),
+    )
+    maj.appliquer_maj(_info())
+
+    assert maj.restaurer_version_precedente()
+
+    assert maj.version_locale() == "1.0.0"
+    assert (maj.CHEMIN_RACINE / "src" / "ancien.py").exists()
+    assert not (maj.CHEMIN_RACINE / "src" / "nouveau.py").exists()
+    assert (maj.CHEMIN_RACINE / "data" / "profils.json").exists()
+    assert not maj.dossier_precedente().exists()
+
+
+def test_restaurer_version_precedente_sans_sauvegarde_retourne_faux() -> None:
+    assert not maj.restaurer_version_precedente()
+
+
+def test_valider_maj_supprime_la_sauvegarde_et_l_echec() -> None:
+    maj.dossier_precedente().mkdir()
+    maj.enregistrer_echec("1.1.0", "motif")
+
+    maj.valider_maj()
+
+    assert not maj.dossier_precedente().exists()
+    assert maj.lire_echec() is None
+
+
+def test_valider_maj_sans_sauvegarde_garde_l_echec() -> None:
+    """Version précédente relancée après une annulation : l'échec reste
+    mémorisé, la version annulée n'est pas reprogrammée."""
+    maj.enregistrer_echec("1.1.0", "motif")
+
+    maj.valider_maj()
+
+    assert maj.maj_en_echec("1.1.0")
+
+
+def test_maj_en_echec_seulement_pour_la_version_annulee() -> None:
+    maj.enregistrer_echec("1.1.0", "motif")
+
+    assert maj.maj_en_echec("1.1.0")
+    assert not maj.maj_en_echec("1.1.1")

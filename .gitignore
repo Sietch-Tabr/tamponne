@@ -2,6 +2,8 @@ __pycache__/
 *.pyc
 *.pyo
 .venv/
+.maj-precedente/
+.maj-precedente.tmp/
 venv/
 data/
 exports/

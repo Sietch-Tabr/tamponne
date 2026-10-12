@@ -8,7 +8,7 @@ import pytest
 from PySide6.QtWidgets import QApplication
 from pytestqt.qtbot import QtBot
 
-from src import parametres_affichage, parametres_sources, profils, raccourci
+from src import maj, parametres_affichage, parametres_sources, profils, raccourci
 from src.gui import controleur_reglages, travailleurs
 from src.gui.controleur_reglages import (
     MESSAGE_CACHE_INDISPONIBLE,
@@ -101,6 +101,59 @@ def test_installer_maj_demande_a_quitter(qapp: QApplication, qtbot: QtBot) -> No
     with qtbot.waitSignal(reglages.quitter_demande, timeout=1000):
         reglages.installer_maj()
     assert reglages.redemarrage_demande is True
+
+
+def test_installer_maj_repose_le_marqueur(qapp: QApplication) -> None:
+    """La vérification ne pose pas le marqueur d'une version annulée : le
+    clic le repose, c'est le nouvel essai à la demande."""
+    reglages = ControleurReglages()
+    reglages.afficher_avis(INFO)
+    reglages.installer_maj()
+    assert maj.lire_maj_disponible() == INFO
+
+
+def test_reporter_maj_repose_le_marqueur(qapp: QApplication) -> None:
+    reglages = ControleurReglages()
+    reglages.afficher_avis(INFO)
+    reglages.reporter_maj()
+    assert maj.lire_maj_disponible() == INFO
+
+
+def test_avis_d_une_version_annulee_donne_le_motif(qapp: QApplication) -> None:
+    maj.enregistrer_echec("2.0.1", "l'application ne démarrait pas")
+    reglages = ControleurReglages()
+    reglages.afficher_avis(INFO)
+    assert reglages.property("avis")["objet"] == (
+        "version 2.0.1 non installée au dernier essai\u00a0: l'application ne "
+        "démarrait pas (installée\u00a0: 2.0.0)."
+    )
+
+
+def test_avis_d_une_version_plus_recente_que_l_annulee_reste_normal(
+    qapp: QApplication,
+) -> None:
+    maj.enregistrer_echec("2.0.0", "motif")
+    reglages = ControleurReglages()
+    reglages.afficher_avis(INFO)
+    assert reglages.property("avis")["objet"].startswith("version 2.0.1 disponible")
+
+
+def test_verification_ne_reprogramme_pas_une_version_annulee(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    maj.enregistrer_echec("2.0.1", "motif")
+    monkeypatch.setattr(travailleurs, "verifier_derniere_publication", lambda: INFO)
+    travailleurs.VerificateurMiseAJour().executer()
+    assert maj.lire_maj_disponible() is None
+
+
+def test_verification_programme_une_version_plus_recente_que_l_annulee(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    maj.enregistrer_echec("2.0.0", "motif")
+    monkeypatch.setattr(travailleurs, "verifier_derniere_publication", lambda: INFO)
+    travailleurs.VerificateurMiseAJour().executer()
+    assert maj.lire_maj_disponible() == INFO
 
 
 def test_installer_maj_sans_avis_ne_fait_rien(qapp: QApplication, qtbot: QtBot) -> None:
