@@ -1,5 +1,11 @@
 """Tests du dédoublonnage multi-source (src/sources/base.py)."""
 
+import io
+import urllib.request
+from collections.abc import Callable
+
+import pytest
+
 from src.sources.base import USER_AGENT_IDENTIFIE, deduplique_offres
 from src.sources.choisirleservicepublic import api as api_csp
 from src.sources.fhf import api as api_fhf
@@ -60,6 +66,30 @@ def test_user_agent_identifie_designe_le_depot_codeberg() -> None:
 
 
 def test_sources_sans_waf_envoient_le_user_agent_identifie() -> None:
-    assert ("User-Agent", USER_AGENT_IDENTIFIE) in api_csp._OPENER.addheaders
     assert api_fhf._HEADERS["User-Agent"] == USER_AGENT_IDENTIFIE
     assert api_mef._HEADERS["User-Agent"] == USER_AGENT_IDENTIFIE
+
+
+@pytest.mark.parametrize(
+    "telecharger",
+    [
+        lambda: api_csp.obtenir_page_offres("https://exemple.test/"),
+        lambda: api_csp.telecharger_binaire("https://exemple.test/a.pdf"),
+        api_csp.telecharger_page_offres,
+    ],
+)
+def test_choisirleservicepublic_envoie_le_user_agent_identifie(
+    monkeypatch: pytest.MonkeyPatch, telecharger: Callable[[], object]
+) -> None:
+    requetes: list[urllib.request.Request] = []
+
+    def urlopen_factice(
+        requete: urllib.request.Request, timeout: float
+    ) -> io.BytesIO:
+        requetes.append(requete)
+        return io.BytesIO(b"<title>t</title>")
+
+    monkeypatch.setattr(urllib.request, "urlopen", urlopen_factice)
+    telecharger()
+
+    assert requetes[0].get_header("User-agent") == USER_AGENT_IDENTIFIE

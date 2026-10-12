@@ -10,7 +10,7 @@ import sys
 from datetime import date
 from pathlib import Path
 
-from bs4 import BeautifulSoup, Tag
+lazy from bs4 import BeautifulSoup, Tag
 
 from src.sources.choisirleservicepublic import recuperer_detail_offre
 from src.sources.choisirleservicepublic.api import (

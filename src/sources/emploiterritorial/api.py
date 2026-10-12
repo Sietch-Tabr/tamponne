@@ -10,10 +10,10 @@ nécessaire pour passer.
 """
 
 import re
-import urllib.error
+lazy import urllib.error
 import urllib.parse
-import urllib.request
-from http.cookiejar import CookieJar
+lazy import urllib.request
+lazy from http.cookiejar import CookieJar
 
 from src.sources.emploiterritorial.filtres import VALEUR_OUI
 from src.types import PageAPI

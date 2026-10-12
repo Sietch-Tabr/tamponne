@@ -2,6 +2,7 @@
 
 import json
 import shutil
+import urllib.request
 import zipfile
 from collections.abc import Callable
 from pathlib import Path
@@ -101,7 +102,7 @@ def test_verifier_derniere_publication_version_plus_recente(
             "html_url": "https://codeberg.org/x",
         }
     ).encode("utf-8")
-    monkeypatch.setattr(maj.urllib.request, "urlopen", _urlopen_factice(reponse))
+    monkeypatch.setattr(urllib.request, "urlopen", _urlopen_factice(reponse))
     info = maj.verifier_derniere_publication()
     assert info == {
         "version": "1.1.0",
@@ -117,7 +118,7 @@ def test_verifier_derniere_publication_deja_a_jour_retourne_none(
     reponse = json.dumps({"tag_name": "v1.0.0", "body": "", "zipball_url": ""}).encode(
         "utf-8"
     )
-    monkeypatch.setattr(maj.urllib.request, "urlopen", _urlopen_factice(reponse))
+    monkeypatch.setattr(urllib.request, "urlopen", _urlopen_factice(reponse))
     assert maj.verifier_derniere_publication() is None
 
 
@@ -127,14 +128,14 @@ def test_verifier_derniere_publication_erreur_reseau_retourne_none(
     def _leve(*args: object, **kwargs: object) -> None:
         raise URLError("hors ligne")
 
-    monkeypatch.setattr(maj.urllib.request, "urlopen", _leve)
+    monkeypatch.setattr(urllib.request, "urlopen", _leve)
     assert maj.verifier_derniere_publication() is None
 
 
 def test_verifier_derniere_publication_json_invalide_retourne_none(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(maj.urllib.request, "urlopen", _urlopen_factice(b"pas du json"))
+    monkeypatch.setattr(urllib.request, "urlopen", _urlopen_factice(b"pas du json"))
     assert maj.verifier_derniere_publication() is None
 
 
@@ -172,7 +173,7 @@ def test_appliquer_maj_copie_les_fichiers_de_larchive(
 ) -> None:
     chemin_zip = _construire_zip_test(tmp_path)
     monkeypatch.setattr(
-        maj.urllib.request,
+        urllib.request,
         "urlretrieve",
         lambda url, filename: shutil.copy(chemin_zip, filename),
     )
@@ -203,7 +204,7 @@ def test_appliquer_maj_fichier_executable_dans_larchive_reste_executable(
     restauration manuelle, Tamponne.command perdrait son +x à chaque mise à jour."""
     chemin_zip = _construire_zip_test_avec_executable(tmp_path)
     monkeypatch.setattr(
-        maj.urllib.request,
+        urllib.request,
         "urlretrieve",
         lambda url, filename: shutil.copy(chemin_zip, filename),
     )
@@ -224,7 +225,7 @@ def test_appliquer_maj_ne_touche_pas_data(
 
     chemin_zip = _construire_zip_test(tmp_path)
     monkeypatch.setattr(
-        maj.urllib.request,
+        urllib.request,
         "urlretrieve",
         lambda url, filename: shutil.copy(chemin_zip, filename),
     )
@@ -245,7 +246,7 @@ def test_appliquer_maj_echec_telechargement_leve_runtime_error(
     def _leve(url: str, filename: str) -> None:
         raise URLError("hors ligne")
 
-    monkeypatch.setattr(maj.urllib.request, "urlretrieve", _leve)
+    monkeypatch.setattr(urllib.request, "urlretrieve", _leve)
     with pytest.raises(RuntimeError):
         maj.appliquer_maj(_info())
 

@@ -17,7 +17,7 @@ import os
 import plistlib
 import shlex
 import shutil
-import subprocess
+lazy import subprocess
 import sys
 from pathlib import Path
 from typing import Literal
