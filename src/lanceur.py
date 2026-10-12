@@ -27,8 +27,10 @@ import re
 import shutil
 import subprocess
 import sys
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterator, Sequence
+from contextlib import contextmanager
 from pathlib import Path
+from typing import TextIO
 
 from src import maj
 from src.maj import CHEMIN_RACINE
@@ -58,6 +60,11 @@ MESSAGE_ERREUR = (
     f"joignant le fichier «\u00a0{JOURNAL_AFFICHE}\u00a0» du dossier de "
     "Tamponné."
 )
+TITRE_SYNCHRONISATION = (
+    "Tamponné\u00a0: téléchargement de Python et des composants (uv sync), "
+    "quelques minutes peuvent être nécessaires…"
+)
+TITRE_MAJ_UV = "Mise à jour de uv, le gestionnaire de Python de Tamponné…"
 MOTIF_SYNCHRONISATION = "Python ou ses composants n'ont pas pu être téléchargés"
 MOTIF_DEMARRAGE = "la nouvelle version ne démarrait pas"
 LONGUEUR_DETAIL = 300
@@ -155,8 +162,9 @@ def retirer_marque_du_web(racine: Path = CHEMIN_RACINE) -> int:
 
 
 def _executer(commande: Sequence[str]) -> int:
-    """Lance `commande` depuis la racine de l'installation et attend sa fin,
-    sorties ajoutées à `CHEMIN_JOURNAL` ; sous Windows, sans console."""
+    """Lance `commande` depuis la racine de l'installation et attend sa fin.
+    Ses sorties s'affichent au fil de l'eau (`_afficher`) et sont ajoutées à
+    `CHEMIN_JOURNAL` ; sous Windows, sans fenêtre propre."""
     CHEMIN_JOURNAL.parent.mkdir(parents=True, exist_ok=True)
     with CHEMIN_JOURNAL.open("a", encoding="utf-8") as journal:
         journal.write(f"$ {' '.join(commande)}\n")
@@ -164,14 +172,59 @@ def _executer(commande: Sequence[str]) -> int:
         drapeaux = 0
         if sys.platform == "win32":
             drapeaux = subprocess.CREATE_NO_WINDOW
-        return subprocess.run(
+        processus = subprocess.Popen(
             commande,
             cwd=CHEMIN_RACINE,
-            check=False,
-            stdout=journal,
+            stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
+            encoding="utf-8",
+            errors="replace",
             creationflags=drapeaux,
-        ).returncode
+        )
+        assert processus.stdout is not None
+        for ligne in processus.stdout:
+            journal.write(ligne)
+            journal.flush()
+            _afficher(ligne)
+        return processus.wait()
+
+
+_sortie: TextIO | None = sys.stdout
+"""Où `_afficher` écrit : le terminal, ou la console ouverte par
+`console_visible` (le lanceur Windows n'en a pas)."""
+
+
+def _afficher(texte: str) -> None:
+    """Écrit `texte` pour l'utilisateur, si une sortie est disponible."""
+    if _sortie is None:
+        return
+    try:
+        _sortie.write(texte)
+        _sortie.flush()
+    except OSError, ValueError:
+        pass
+
+
+@contextmanager
+def console_visible(titre: str) -> Iterator[None]:
+    """Sous Windows, ouvre une console le temps du bloc pour montrer la
+    progression (téléchargements de uv) au lieu de travailler sans rien
+    afficher ; ailleurs, le terminal du lanceur suffit."""
+    global _sortie
+    if sys.platform != "win32" or not ctypes.windll.kernel32.AllocConsole():
+        _afficher(f"{titre}\n")
+        yield
+        return
+    precedente = _sortie
+    try:
+        with open("CONOUT$", "w", encoding="utf-8") as console:
+            _sortie = console
+            ctypes.windll.kernel32.SetConsoleTitleW("Tamponné")
+            _afficher(f"{titre}\n\n")
+            yield
+    finally:
+        _sortie = precedente
+        ctypes.windll.kernel32.FreeConsole()
 
 
 def python_environnement() -> Path:
@@ -232,7 +285,8 @@ def _mettre_a_jour_uv(executer: Executer, uv: str) -> bool:
 def synchroniser(executer: Executer) -> bool:
     """`uv sync`, retenté une fois après mise à jour de uv : un uv trop
     ancien ne connaît pas les dernières versions de Python
-    (`required-version` de `pyproject.toml`).
+    (`required-version` de `pyproject.toml`). La progression reste visible
+    (`console_visible`) : le téléchargement peut prendre plusieurs minutes.
 
     Returns:
         Vrai si l'environnement est à jour.
@@ -240,9 +294,11 @@ def synchroniser(executer: Executer) -> bool:
     uv = shutil.which("uv")
     if uv is None:
         return False
-    if executer([uv, "sync", "--quiet"]) == 0:
-        return True
-    return _mettre_a_jour_uv(executer, uv) and executer([uv, "sync", "--quiet"]) == 0
+    with console_visible(TITRE_SYNCHRONISATION):
+        if executer([uv, "sync"]) == 0:
+            return True
+        _afficher(f"\n{TITRE_MAJ_UV}\n")
+        return _mettre_a_jour_uv(executer, uv) and executer([uv, "sync"]) == 0
 
 
 def _annuler_maj(executer: Executer, motif: str, version: str) -> bool:

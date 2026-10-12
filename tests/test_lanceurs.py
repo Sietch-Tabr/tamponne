@@ -14,7 +14,7 @@ def test_tamponne_command_executable_et_lu_d_un_bloc() -> None:
     lignes = chemin.read_text(encoding="utf-8").splitlines()
     assert lignes[0] == "#!/bin/bash"
     assert "{" in lignes and lignes[-2:] == ["exit 0", "}"]
-    assert "uv run --quiet python -m src.lanceur \\" in lignes
+    assert "uv run python -m src.lanceur \\" in lignes
 
 
 def test_tamponne_command_se_relance_dans_un_terminal_sous_linux() -> None:
@@ -78,7 +78,7 @@ def test_lanceurs_demandent_de_patienter_au_premier_lancement() -> None:
     message = "Installation terminée. Tamponné s'ouvre dans quelques instants"
     commande = (RACINE / "Tamponne.command").read_text(encoding="utf-8")
     assert message in commande
-    assert commande.index(message) < commande.index("uv run --quiet python")
+    assert commande.index(message) < commande.index("uv run python")
     bat = (RACINE / "Tamponne.bat").read_bytes().decode("utf-8")
     lignes = bat.splitlines()
     lancement = lignes.index(".venv\\Scripts\\python.exe -m src.lanceur")
@@ -106,3 +106,12 @@ def test_lanceurs_mettent_uv_a_jour_avant_d_abandonner() -> None:
     assert mise_a_jour > next(
         i for i, ligne in enumerate(lignes) if "GetSystemWebProxy()" in ligne
     )
+
+
+def test_lanceurs_montrent_la_progression_de_uv() -> None:
+    """Le téléchargement de Python et des composants prend du temps :
+    l'utilisateur voit ce qui se passe, jamais un terminal vide."""
+    commande = (RACINE / "Tamponne.command").read_text(encoding="utf-8")
+    bat = (RACINE / "Tamponne.bat").read_bytes().decode("utf-8")
+    for contenu in (commande, bat):
+        assert "--quiet" not in contenu and " -q " not in contenu

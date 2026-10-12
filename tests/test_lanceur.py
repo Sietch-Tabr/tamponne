@@ -13,7 +13,7 @@ from src.lanceur import CODE_REDEMARRAGE, lancer
 PYTHON = str(lanceur.python_environnement())
 APPLICATION = [PYTHON, "-m", "src.gui.application"]
 APPLIQUER = [PYTHON, "-m", "src.maj", "--appliquer"]
-SYNC = ["/bin/uv", "sync", "--quiet"]
+SYNC = ["/bin/uv", "sync"]
 MAJ_UV = ["/bin/uv", "self", "update"]
 
 
@@ -245,7 +245,7 @@ def test_avec_detail_donne_la_premiere_erreur_du_journal(
     """La cause (uv trop ancien), pas l'échec de sa mise à jour qui suit."""
     journal = tmp_path / "journal_lancement.log"
     journal.write_text(
-        "$ uv sync --quiet\n"
+        "$ uv sync\n"
         "error: Required uv version `>=0.13.0` does not match the running version\n"
         "$ uv self update\n"
         "error: uv was installed through an external package manager\n"
@@ -278,3 +278,30 @@ def test_avec_detail_sans_journal_garde_le_message(
 ) -> None:
     monkeypatch.setattr(lanceur, "CHEMIN_JOURNAL", tmp_path / "absent.log")
     assert lanceur.avec_detail("Message.") == "Message."
+
+
+def test_executer_affiche_et_journalise_les_sorties(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    journal = tmp_path / "journal_lancement.log"
+    monkeypatch.setattr(lanceur, "CHEMIN_JOURNAL", journal)
+    monkeypatch.setattr(lanceur, "_sortie", sys.stdout)
+    code = lanceur._executer(
+        [sys.executable, "-c", "import sys; print('Téléchargement…'); sys.exit(3)"]
+    )
+    assert code == 3
+    assert "Téléchargement…" in capsys.readouterr().out
+    assert "Téléchargement…" in journal.read_text(encoding="utf-8")
+
+
+def test_synchroniser_annonce_le_telechargement(
+    marqueur: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(lanceur, "_sortie", sys.stdout)
+    assert lanceur.synchroniser(Executeur({"sync": [0]}))
+    assert lanceur.TITRE_SYNCHRONISATION in capsys.readouterr().out
+
+
+def test_lanceur_sans_option_silencieuse() -> None:
+    source = Path(lanceur.__file__).read_text(encoding="utf-8")
+    assert '"--quiet"' not in source

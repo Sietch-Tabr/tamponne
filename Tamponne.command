@@ -71,7 +71,7 @@ if [ ! -d .venv ]; then
     echo "Premier lancement : téléchargement de Python et des composants (quelques minutes)…"
     uv sync
 else
-    uv sync --quiet
+    uv sync
 fi || {
     # Un uv trop ancien ne connaît pas la version de Python demandée
     # (required-version) ; installé par Homebrew, il refuse sans dommage.
@@ -89,7 +89,7 @@ Détail : « uv sync » a échoué ; son message exact est affiché dans le 
 
 [ -n "$premier_lancement" ] \
     && echo "Installation terminée. Tamponné s'ouvre dans quelques instants (jusqu'à une minute la première fois)…"
-uv run --quiet python -m src.lanceur \
+uv run python -m src.lanceur \
     || signaler "Tamponné s'est arrêté sur une erreur.
 
 Relancez-le ; si le problème persiste, signalez-le sur Codeberg en joignant le fichier « data/journal_lancement.log » du dossier de Tamponné."

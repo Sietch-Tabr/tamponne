@@ -31,7 +31,7 @@ if not exist .venv (
     echo Premier lancement : téléchargement de Python et des composants ^(quelques minutes^)…
     uv sync
 ) else (
-    uv sync --quiet
+    uv sync
 )
 rem Un uv trop ancien ne connaît pas la version de Python demandée
 rem (required-version) : mis à jour, par l'installeur si l'API GitHub refuse.
