@@ -63,6 +63,7 @@ def test_avis_sans_publication_annonce_version_a_jour(qapp: QApplication) -> Non
     reglages = ControleurReglages()
     assert reglages.property("avis") == {
         "disponible": False,
+        "a_jour": True,
         "objet": "version 2.0.0 installée, rien de plus récent.",
     }
     assert reglages.property("pastille") is False
@@ -169,10 +170,31 @@ def test_verifier_mise_a_jour_affiche_l_avis_trouve(
     monkeypatch.setattr(travailleurs, "verifier_derniere_publication", lambda: INFO)
     monkeypatch.setattr(travailleurs, "ecrire_maj_disponible", lambda _info: None)
     reglages = ControleurReglages()
-    with qtbot.waitSignal(reglages.etat_change, timeout=5000):
-        reglages.verifier_mise_a_jour()
+    reglages.verifier_mise_a_jour()
+    assert "recherche d'une mise à jour" in reglages.property("avis")["objet"]
+    assert reglages.property("avis")["a_jour"] is False
+    qtbot.waitUntil(lambda: reglages.property("avis")["disponible"], timeout=5000)
     reglages.arreter()
-    assert reglages.property("avis")["disponible"] is True
+
+
+def test_verifier_mise_a_jour_codeberg_injoignable_le_dit(
+    qapp: QApplication, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def injoignable() -> None:
+        raise maj.VerificationImpossible("<urlopen error timed out>")
+
+    monkeypatch.setattr(travailleurs, "verifier_derniere_publication", injoignable)
+    reglages = ControleurReglages()
+    reglages.verifier_mise_a_jour()
+    qtbot.waitUntil(
+        lambda: "Codeberg ne répond pas" in reglages.property("avis")["objet"],
+        timeout=5000,
+    )
+    reglages.arreter()
+    avis = reglages.property("avis")
+    assert avis["a_jour"] is False
+    assert "rien de plus récent" not in avis["objet"]
+    assert avis["objet"].endswith("Détail\u00a0: &lt;urlopen error timed out&gt;")
 
 
 def test_rafraichir_cache_transmet_les_organisations(

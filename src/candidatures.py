@@ -294,19 +294,18 @@ def statut_libelle(candidature: Candidature) -> str:
     return TYPES_EVENEMENT.get(dernier["type"], dernier["type"])
 
 
-def verifier_disponibilite(url: str) -> bool | None:
+def verifier_disponibilite(url: str) -> bool:
     """Vérifie si l'offre est toujours en ligne sur le site.
 
     Returns:
         ``True`` si l'offre semble toujours disponible, ``False`` si le
-        marqueur de dépublication est détecté, ``None`` si la
-        vérification a échoué (erreur réseau) — dans ce cas, le statut
-        stocké ne doit pas être modifié (on ne sait juste pas).
+        marqueur de dépublication est détecté.
+
+    Raises:
+        RuntimeError: Site injoignable (erreur réseau) : on ne sait pas, le
+            statut stocké ne doit pas être modifié.
     """
-    try:
-        page = obtenir_page_offres(url)
-    except RuntimeError:
-        return None
+    page = obtenir_page_offres(url)
     return MARQUEUR_OFFRE_DEPUBLIEE not in page["title"]
 
 

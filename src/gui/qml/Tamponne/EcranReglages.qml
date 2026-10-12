@@ -202,7 +202,8 @@ Item {
                         }
 
                         Tampon {
-                            visible: !racine.avis.disponible
+                            // Pas pendant la vérification ni si Codeberg n'a pas répondu.
+                            visible: racine.avis.a_jour === true
                             texte: "À jour"
                             encre: Theme.vert
                             taille: 15

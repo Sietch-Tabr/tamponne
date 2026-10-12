@@ -2,6 +2,7 @@
 
 from datetime import date, datetime
 
+from src.gui import presentation
 from src.gui.presentation import (
     contenu_detail,
     contenu_dossier,
@@ -308,3 +309,25 @@ def test_lignes_fiche_categories_en_libelle_court() -> None:
         {"categories": ["A+ (autres emplois fonctionnels)", "A+ (autres)", "A"]}
     )
     assert lignes[0].startswith("Cat. A+ (autres), A ·")
+
+
+def test_texte_offres_non_verifiees_accorde_et_donne_le_detail() -> None:
+    assert presentation.texte_offres_non_verifiees(0, "") == ""
+    assert presentation.texte_offres_non_verifiees(1, "délai dépassé").startswith(
+        "1 offre non vérifiée : le site de l'offre ne répond pas"
+    )
+    texte = presentation.texte_offres_non_verifiees(3, "délai dépassé")
+    assert texte.startswith("3 offres non vérifiées :")
+    assert texte.endswith("Détail : délai dépassé")
+
+
+def test_texte_avis_sans_publication_distingue_en_cours_echec_et_a_jour() -> None:
+    assert presentation.texte_avis_sans_publication("1.3.2", True, "") == (
+        "version 1.3.2 installée, recherche d'une mise à jour…"
+    )
+    assert presentation.texte_avis_sans_publication("1.3.2", False, "") == (
+        "version 1.3.2 installée, rien de plus récent."
+    )
+    echec = presentation.texte_avis_sans_publication("1.3.2", False, "timed out")
+    assert "Codeberg ne répond pas (connexion internet ou proxy)" in echec
+    assert echec.endswith("Détail : timed out")

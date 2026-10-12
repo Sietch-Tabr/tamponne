@@ -56,20 +56,27 @@ def version_plus_recente(distante: str, locale: str) -> bool:
     return _tuple(distante) > _tuple(locale)
 
 
+class VerificationImpossible(RuntimeError):
+    """Codeberg n'a pas pu être interrogé ; le message est le détail
+    technique (erreur réseau, réponse illisible)."""
+
+
 def verifier_derniere_publication() -> InfoMaj | None:
     """Interroge la dernière publication Codeberg — `None` si aucune
-    publication, si elle n'est pas plus récente, ou en cas d'échec réseau
-    (jamais bloquant : pas de mise à jour tant que rien n'est confirmé)."""
+    publication ou si elle n'est pas plus récente.
+
+    Raises:
+        VerificationImpossible: Codeberg injoignable ou réponse illisible :
+            on ne sait pas s'il existe une version plus récente.
+    """
     try:
         requete = urllib.request.Request(
             URL_API_RELEASES, headers={"Accept": "application/json"}
         )
         with urllib.request.urlopen(requete, timeout=_TIMEOUT) as reponse:
             donnees = json.loads(reponse.read().decode("utf-8"))
-    except urllib.error.URLError, urllib.error.HTTPError, TimeoutError, OSError:
-        return None
-    except json.JSONDecodeError:
-        return None
+    except (OSError, json.JSONDecodeError) as erreur:
+        raise VerificationImpossible(str(erreur)) from erreur
 
     tag = str(donnees.get("tag_name", ""))
     if not tag or not version_plus_recente(tag, version_locale()):

@@ -2,6 +2,7 @@
 d'affichage, avis de mise à jour, cache des organisations, raccourci et
 sauvegarde des données."""
 
+import html
 from collections.abc import Callable
 from datetime import date
 from pathlib import Path
@@ -15,6 +16,7 @@ from src.cache import obtenir_organisations
 from src.gui.presentation import (
     TEXTES_RACCOURCI,
     notes_en_html,
+    texte_avis_sans_publication,
     texte_confirmation_import,
 )
 from src.gui.travailleurs import TacheReseau, VerificateurMiseAJour
@@ -61,6 +63,8 @@ class ControleurReglages(QObject):
         self._sources = charger_sources_actives()
         self._reduire_animations = charger_reduire_animations()
         self._info_maj: InfoMaj | None = None
+        self._verification_en_cours = False
+        self._erreur_verification = ""
         self._date_avis = ""
         self._avis_lu = False
         self._redemarrage_demande = False
@@ -132,22 +136,41 @@ class ControleurReglages(QObject):
         self._thread_maj.started.connect(self._verificateur.executer)
         self._verificateur.resultat.connect(self.afficher_avis)
         self._verificateur.resultat.connect(self._thread_maj.quit)
+        self._verificateur.echec.connect(self.afficher_echec_verification)
+        self._verificateur.echec.connect(self._thread_maj.quit)
+        self._verification_en_cours = True
+        self.etat_change.emit()
         self._thread_maj.start()
 
     def afficher_avis(self, info: InfoMaj | None) -> None:
         """Résultat de la vérification : avis de la publication `info`,
         ou état « À jour » si `None`."""
         self._info_maj = info
+        self._verification_en_cours = False
+        self._erreur_verification = ""
         self._date_avis = date_avis().strftime("%d/%m/%Y")
+        self.etat_change.emit()
+
+    def afficher_echec_verification(self, detail: str) -> None:
+        """Codeberg injoignable : l'avis le dit au lieu d'annoncer « rien
+        de plus récent », avec le détail technique `detail`."""
+        self._verification_en_cours = False
+        self._erreur_verification = detail
         self.etat_change.emit()
 
     def _lire_avis(self) -> dict[str, object]:
         installee = version_locale()
         info = self._info_maj
         if info is None:
+            objet = texte_avis_sans_publication(
+                installee, self._verification_en_cours, self._erreur_verification
+            )
             return {
                 "disponible": False,
-                "objet": f"version {installee} installée, rien de plus récent.",
+                "a_jour": not (self._verification_en_cours or self._erreur_verification),
+                # Affiché en texte riche : un détail comme « <urlopen error …> »
+                # serait pris pour une balise.
+                "objet": html.escape(objet, quote=False),
             }
         objet = f"version {info['version']} disponible (installée\u00a0: {installee})."
         echec = lire_echec()
@@ -160,12 +183,14 @@ class ControleurReglages(QObject):
             "disponible": True,
             "numero": f"Avis n° {info['version']}",
             "date": self._date_avis,
-            "objet": objet,
+            "objet": html.escape(objet, quote=False),
             "notes": notes_en_html(info["notes"] or "Pas de notes de version."),
         }
 
     avis = Property(dict, _lire_avis, notify=etat_change)
-    """Contenu de l'avis de mise à jour (`disponible` faux : déjà à jour)."""
+    """Contenu de l'avis de mise à jour : `disponible` faux sans publication
+    proposée, `a_jour` vrai seulement si Codeberg a confirmé (tampon
+    « À jour ») ; `objet` échappé pour le texte riche."""
 
     def _lire_pastille(self) -> bool:
         return self._info_maj is not None and not self._avis_lu

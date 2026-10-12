@@ -426,6 +426,34 @@ TEXTES_RACCOURCI: dict[str, str] = {
 """État du raccourci (`src.raccourci.etat`) → phrase de la feuille Raccourci."""
 
 
+def texte_avis_sans_publication(installee: str, en_cours: bool, erreur: str) -> str:
+    """Objet de l'avis de mise à jour quand aucune publication n'est
+    proposée : vérification en cours, impossible (avec le détail technique
+    `erreur`), ou version déjà la plus récente."""
+    if en_cours:
+        return f"version {installee} installée, recherche d'une mise à jour…"
+    if erreur:
+        return (
+            f"version {installee} installée\u00a0; impossible de savoir s'il existe "
+            "plus récent, Codeberg ne répond pas (connexion internet ou proxy). "
+            f"Détail\u00a0: {erreur}"
+        )
+    return f"version {installee} installée, rien de plus récent."
+
+
+def texte_offres_non_verifiees(nombre: int, erreur: str) -> str:
+    """Avertissement de l'écran Suivi après une vérification où `nombre`
+    offres n'ont pas pu être consultées (vide si aucune), avec le détail
+    technique de la première erreur."""
+    if nombre == 0:
+        return ""
+    offres = "1 offre non vérifiée" if nombre == 1 else f"{nombre} offres non vérifiées"
+    return (
+        f"{offres}\u00a0: le site de l'offre ne répond pas (connexion internet "
+        f"ou proxy). Réessayez plus tard.\nDétail\u00a0: {erreur}"
+    )
+
+
 def texte_confirmation_import(nom_fichier: str) -> str:
     """Question posée avant de remplacer les données par une sauvegarde ;
     le nom du fichier ne se coupe pas (espaces et traits d'union insécables)."""

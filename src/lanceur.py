@@ -43,9 +43,6 @@ CODE_MAJ_INACHEVEE = 3
 
 JOURNAL_AFFICHE = str(Path("data") / "journal_lancement.log")
 """Journal du lancement (`CHEMIN_JOURNAL`), tel que nommé à l'utilisateur."""
-MESSAGE_MAJ_INDISPONIBLE = (
-    "Mise à jour indisponible, on continue avec la version actuelle."
-)
 MESSAGE_RELANCER = (
     "La mise à jour de Tamponné n'a pas pu se terminer\u00a0: uv n'a pas pu "
     "télécharger Python ou ses composants, même après sa propre mise à jour.\n\n"
@@ -67,6 +64,8 @@ TITRE_SYNCHRONISATION = (
 TITRE_MAJ_UV = "Mise à jour de uv, le gestionnaire de Python de Tamponné…"
 MOTIF_SYNCHRONISATION = "Python ou ses composants n'ont pas pu être téléchargés"
 MOTIF_DEMARRAGE = "la nouvelle version ne démarrait pas"
+MOTIF_TELECHARGEMENT = "elle n'a pas pu être téléchargée"
+MOTIF_INSTALLATION = "ses fichiers n'ont pas pu être installés"
 LONGUEUR_DETAIL = 300
 MOTIF_ERREUR = re.compile(r"(error:|[A-Za-z_.]*(Error|Exception)\b)")
 """Au-delà, la dernière erreur est tronquée dans la boîte de dialogue (le
@@ -97,6 +96,20 @@ def avec_detail(message: str) -> str:
     diagnostic."""
     erreur = premiere_erreur()
     return f"{message}\n\nDétail\u00a0: {erreur}" if erreur else message
+
+
+def message_maj_non_telechargee(version: str, actuelle: str) -> str:
+    """Message affiché quand l'archive de la mise à jour `version` n'a pas
+    pu être téléchargée : rien n'a changé, Tamponné reste en `actuelle`."""
+    mise_a_jour = f"La mise à jour {version}" if version else "La mise à jour"
+    return (
+        f"{mise_a_jour} de Tamponné n'a pas pu être téléchargée.\n\n"
+        f"Tamponné continue dans sa version actuelle ({actuelle})\u00a0; vos "
+        "données sont intactes. Vérifiez que l'ordinateur est connecté à "
+        "internet (et le proxy éventuel), puis réessayez depuis Réglages, "
+        "«\u00a0Avis de mise à jour\u00a0», bouton «\u00a0Installer et "
+        "redémarrer\u00a0»."
+    )
 
 
 def message_maj_annulee(version: str, motif: str, precedente: str) -> str:
@@ -333,8 +346,12 @@ def _appliquer_maj_en_attente(executer: Executer) -> bool:
     version = info.get("version", "") if info is not None else ""
     if executer([str(python_environnement()), "-m", "src.maj", "--appliquer"]) != 0:
         if maj.dossier_precedente().is_dir():
-            return _annuler_maj(executer, MOTIF_SYNCHRONISATION, version)
-        print(MESSAGE_MAJ_INDISPONIBLE, file=sys.stderr)
+            return _annuler_maj(executer, MOTIF_INSTALLATION, version)
+        # Rien d'installé : pas de nouvel essai silencieux à chaque lancement,
+        # l'avis de Réglages donne le motif et permet de réessayer.
+        maj.enregistrer_echec(version, MOTIF_TELECHARGEMENT)
+        maj.effacer_maj_disponible()
+        signaler(avec_detail(message_maj_non_telechargee(version, maj.version_locale())))
         return True
     if synchroniser(executer):
         return True

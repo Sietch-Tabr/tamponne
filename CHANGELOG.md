@@ -4,6 +4,14 @@ Toutes les évolutions notables de Tamponné, de la plus récente à la plus
 ancienne. Le détail de chaque version est aussi publié sur la page
 [Releases](https://codeberg.org/Kwaite/tamponne/releases) du dépôt.
 
+## [1.3.2] — 2026-10-12
+
+### Plus rien de caché
+
+- Réglages › Avis de mise à jour : quand Codeberg ne répond pas (connexion internet ou proxy), l'avis le dit, avec le détail de l'erreur, au lieu d'annoncer « rien de plus récent » ; le tampon « À jour » n'apparaît que si c'est confirmé, et « recherche d'une mise à jour… » s'affiche pendant la vérification
+- Une mise à jour qui n'a pas pu être téléchargée l'annonce au lancement (avec le détail) au lieu de redémarrer en silence dans l'ancienne version ; elle n'est plus retentée en silence à chaque lancement et Réglages permet de réessayer
+- Suivi : les offres que « Vérifier les offres » n'a pas pu consulter (site qui ne répond pas) sont signalées sous le titre, avec le détail de l'erreur
+
 ## [1.3.1] — 2026-10-12
 
 ### Mise à jour

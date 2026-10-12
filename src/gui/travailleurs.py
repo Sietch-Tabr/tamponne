@@ -13,6 +13,7 @@ from PySide6.QtCore import QObject, Signal
 
 from src.candidatures import verifier_disponibilite
 from src.maj import (
+    VerificationImpossible,
     ecrire_maj_disponible,
     maj_en_echec,
     verifier_derniere_publication,
@@ -75,9 +76,10 @@ class VerificateurDisponibilite(QObject):
     comme dépublié — même pattern QThread que `TravailleurRecherche`."""
 
     progression = Signal(int, int)
-    resultat = Signal(dict)
-    """dict[reference, bool | None] — None si la vérification a échoué
-    (erreur réseau), à ne pas interpréter comme une réponse."""
+    resultat = Signal(dict, dict)
+    """`dict[reference, bool]` des offres vérifiées, puis
+    `dict[reference, str]` des offres non vérifiées (site injoignable) avec
+    le détail de l'erreur : rien n'est conclu pour celles-ci."""
 
     def __init__(self, candidatures: dict[str, Candidature]) -> None:
         super().__init__()
@@ -90,13 +92,17 @@ class VerificateurDisponibilite(QObject):
             for ref, candidature in self._candidatures.items()
             if candidature.get("disponible", True)
         ]
-        resultats: dict[str, bool | None] = {}
+        resultats: dict[str, bool] = {}
+        echecs: dict[str, str] = {}
         total = len(a_verifier)
         for i, reference in enumerate(a_verifier, 1):
             url = self._candidatures[reference]["offre_url"]
-            resultats[reference] = verifier_disponibilite(url)
+            try:
+                resultats[reference] = verifier_disponibilite(url)
+            except RuntimeError as erreur:
+                echecs[reference] = str(erreur)
             self.progression.emit(i, total)
-        self.resultat.emit(resultats)
+        self.resultat.emit(resultats, echecs)
 
 
 class VerificateurMiseAJour(QObject):
@@ -105,7 +111,9 @@ class VerificateurMiseAJour(QObject):
 
     resultat = Signal(object)
     """`InfoMaj | None` — `None` si aucune mise à jour (rien de publié,
-    déjà à jour, ou échec réseau silencieux, voir `src.maj`)."""
+    déjà à jour)."""
+    echec = Signal(str)
+    """Codeberg injoignable : détail technique de l'erreur."""
 
     def executer(self) -> None:
         """Slot à connecter à `QThread.started`. Pose le marqueur de mise
@@ -114,7 +122,11 @@ class VerificateurMiseAJour(QObject):
         prochain lancement (`src.lanceur`), indépendamment
         d'un clic utilisateur. Pas pour une version déjà annulée par le
         lanceur : seul « Installer et redémarrer » la retente."""
-        info = verifier_derniere_publication()
+        try:
+            info = verifier_derniere_publication()
+        except VerificationImpossible as erreur:
+            self.echec.emit(str(erreur))
+            return
         if info is not None and not maj_en_echec(info["version"]):
             ecrire_maj_disponible(info)
         self.resultat.emit(info)
