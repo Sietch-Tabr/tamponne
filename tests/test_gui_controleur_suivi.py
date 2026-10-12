@@ -108,14 +108,32 @@ def test_verifier_offres_relaie_progression_et_marque_depubliee(
 
 
 @pytest.mark.usefixtures("deux_dossiers")
-def test_verifier_offres_ignore_echec_reseau(
+def test_verifier_offres_echec_reseau_signale_sans_rien_conclure(
     qapp: QApplication, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(travailleurs, "verifier_disponibilite", lambda _url: None)
+    def injoignable(_url: str) -> bool:
+        raise RuntimeError("Erreur réseau lors du chargement")
+
+    monkeypatch.setattr(travailleurs, "verifier_disponibilite", injoignable)
     controleur = ControleurSuivi(qapp)
     controleur.verifier_offres()
     qtbot.waitUntil(lambda: not controleur.property("verification_en_cours"), timeout=5000)
     assert all(c["disponible"] for c in candidatures.charger_candidatures().values())
+    assert controleur.property("avertissement").startswith("2 offres non vérifiées")
+    assert controleur.property("avertissement").endswith(
+        "Détail\u00a0: Erreur réseau lors du chargement"
+    )
+
+
+@pytest.mark.usefixtures("deux_dossiers")
+def test_verifier_offres_sans_echec_sans_avertissement(
+    qapp: QApplication, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(travailleurs, "verifier_disponibilite", lambda _url: True)
+    controleur = ControleurSuivi(qapp)
+    controleur.verifier_offres()
+    qtbot.waitUntil(lambda: not controleur.property("verification_en_cours"), timeout=5000)
+    assert controleur.property("avertissement") == ""
 
 
 @pytest.mark.usefixtures("deux_dossiers")

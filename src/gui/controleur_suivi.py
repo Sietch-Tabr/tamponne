@@ -37,6 +37,7 @@ from src.gui.presentation import (
     contenu_dossier,
     evenement_propose,
     reformater_date_iso,
+    texte_offres_non_verifiees,
 )
 from src.gui.travailleurs import VerificateurDisponibilite
 
@@ -133,6 +134,7 @@ class ControleurSuivi(QObject):
         self._modele = ModeleDossiers(self)
         self._nombre = 0
         self._texte_verification = LIBELLE_VERIFIER
+        self._avertissement = ""
         self._thread: QThread | None = None
         self._verificateur: VerificateurDisponibilite | None = None
         self.rafraichir()
@@ -155,6 +157,9 @@ class ControleurSuivi(QObject):
     def _lire_texte_verification(self) -> str:
         return self._texte_verification
 
+    def _lire_avertissement(self) -> str:
+        return self._avertissement
+
     def _lire_types_evenement(self) -> list[dict[str, str]]:
         return [
             {"cle": cle, "libelle": libelle} for cle, libelle in TYPES_EVENEMENT.items()
@@ -168,6 +173,8 @@ class ControleurSuivi(QObject):
         bool, _lire_verification_en_cours, notify=etat_change
     )
     texte_verification = Property(str, _lire_texte_verification, notify=etat_change)
+    avertissement = Property(str, _lire_avertissement, notify=etat_change)
+    """Offres que la dernière vérification n'a pas pu consulter (vide sinon)."""
     types_evenement = Property(list, _lire_types_evenement, constant=True)
     """Types d'événement proposés dans « Ajouter un événement »."""
 
@@ -208,6 +215,7 @@ class ControleurSuivi(QObject):
         self._verificateur.resultat.connect(self._thread.quit)
         self._thread.finished.connect(self._on_termine)
         self._texte_verification = "Vérification…"
+        self._avertissement = ""
         self.etat_change.emit()
         self._thread.start()
 
@@ -215,10 +223,11 @@ class ControleurSuivi(QObject):
         self._texte_verification = f"Vérification… {rang}/{total}"
         self.etat_change.emit()
 
-    def _on_resultat(self, resultats: dict[str, bool | None]) -> None:
+    def _on_resultat(self, resultats: dict[str, bool], echecs: dict[str, str]) -> None:
         for reference, disponible in resultats.items():
-            if disponible is not None:
-                marquer_disponibilite(reference, disponible)
+            marquer_disponibilite(reference, disponible)
+        premiere = next(iter(echecs.values()), "")
+        self._avertissement = texte_offres_non_verifiees(len(echecs), premiere)
         self.rafraichir()
 
     def _on_termine(self) -> None:

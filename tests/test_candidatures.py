@@ -345,14 +345,15 @@ def test_verifier_disponibilite_false_si_marqueur_depubliee(
     assert candidatures.verifier_disponibilite("https://example.org/1") is False
 
 
-def test_verifier_disponibilite_none_si_erreur_reseau(
+def test_verifier_disponibilite_erreur_reseau_propagee(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def _erreur(url: str) -> None:
         raise RuntimeError("Erreur réseau")
 
     monkeypatch.setattr(candidatures, "obtenir_page_offres", _erreur)
-    assert candidatures.verifier_disponibilite("https://example.org/1") is None
+    with pytest.raises(RuntimeError, match="Erreur réseau"):
+        candidatures.verifier_disponibilite("https://example.org/1")
 
 
 def test_marquer_disponibilite_persiste_le_resultat() -> None:

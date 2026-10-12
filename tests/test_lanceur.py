@@ -89,14 +89,19 @@ def test_lancer_mise_a_jour_appliquee_synchronisee_puis_validee(marqueur: Path) 
     assert maj.version_locale() == "1.1.0"
 
 
-def test_lancer_mise_a_jour_indisponible_lance_la_version_actuelle(
+def test_lancer_mise_a_jour_non_telechargee_le_dit_et_lance_la_version_actuelle(
     marqueur: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     marqueur.write_text('{"version": "1.1.0"}', encoding="utf-8")
     executer = Executeur({"maj": [1], "app": [0]})
     assert lancer(executer) == 0
     assert executer.commandes == [APPLIQUER, APPLICATION]
-    assert lanceur.MESSAGE_MAJ_INDISPONIBLE in capsys.readouterr().err
+    assert "La mise à jour 1.1.0 de Tamponné n'a pas pu être téléchargée" in (
+        capsys.readouterr().err
+    )
+    echec = maj.lire_echec()
+    assert echec is not None and echec["motif"] == lanceur.MOTIF_TELECHARGEMENT
+    assert not marqueur.exists()
 
 
 def test_lancer_synchronisation_en_echec_met_uv_a_jour_puis_reessaie(
@@ -178,7 +183,8 @@ def test_lancer_installation_interrompue_restaure_la_sauvegarde(
     assert lancer(executer) == 0
     assert executer.commandes == [APPLIQUER, SYNC, APPLICATION]
     assert maj.version_locale() == "1.0.0"
-    assert maj.maj_en_echec("1.1.0")
+    echec = maj.lire_echec()
+    assert echec is not None and echec["motif"] == lanceur.MOTIF_INSTALLATION
 
 
 def test_mettre_a_jour_uv_sous_windows_relance_l_installeur_en_secours(

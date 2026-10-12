@@ -122,21 +122,23 @@ def test_verifier_derniere_publication_deja_a_jour_retourne_none(
     assert maj.verifier_derniere_publication() is None
 
 
-def test_verifier_derniere_publication_erreur_reseau_retourne_none(
+def test_verifier_derniere_publication_erreur_reseau_leve_verification_impossible(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def _leve(*args: object, **kwargs: object) -> None:
         raise URLError("hors ligne")
 
     monkeypatch.setattr(urllib.request, "urlopen", _leve)
-    assert maj.verifier_derniere_publication() is None
+    with pytest.raises(maj.VerificationImpossible, match="hors ligne"):
+        maj.verifier_derniere_publication()
 
 
-def test_verifier_derniere_publication_json_invalide_retourne_none(
+def test_verifier_derniere_publication_json_invalide_leve_verification_impossible(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(urllib.request, "urlopen", _urlopen_factice(b"pas du json"))
-    assert maj.verifier_derniere_publication() is None
+    with pytest.raises(maj.VerificationImpossible):
+        maj.verifier_derniere_publication()
 
 
 def _urlopen_factice(contenu: bytes) -> Callable[..., object]:

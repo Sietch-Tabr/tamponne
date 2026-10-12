@@ -132,6 +132,17 @@ Item {
             }
         }
 
+        // Offres que la dernière vérification n'a pas pu consulter.
+        Texte {
+            Layout.fillWidth: true
+            visible: racine.suivi.avertissement !== ""
+            text: racine.suivi.avertissement
+            color: Theme.texteKraft
+            font.family: Theme.policeMono
+            font.pixelSize: 14
+            Accessible.role: Accessible.AlertMessage
+        }
+
         ListView {
             id: liste
             Layout.fillWidth: true
