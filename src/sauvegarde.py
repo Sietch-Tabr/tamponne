@@ -16,7 +16,7 @@ import os
 import re
 import shutil
 import tempfile
-import zipfile
+lazy import zipfile
 from datetime import datetime
 from pathlib import Path
 

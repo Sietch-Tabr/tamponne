@@ -1,6 +1,6 @@
 """Export des résultats en HTML cliquable."""
 
-import webbrowser
+lazy import webbrowser
 from datetime import datetime
 from pathlib import Path
 

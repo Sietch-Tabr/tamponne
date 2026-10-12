@@ -118,7 +118,7 @@ def test_windows_lnk_par_powershell_chemins_dans_l_environnement(
         appels.append((commande, options["env"]))
         Path(options["env"]["TAMPONNE_LNK"]).write_bytes(b"lnk")
 
-    monkeypatch.setattr(raccourci.subprocess, "run", faux_run)
+    monkeypatch.setattr(subprocess, "run", faux_run)
     raccourci.creer(racine)
 
     commande, environnement = appels[0]
@@ -140,7 +140,7 @@ def test_echec_de_creation_message_en_francais(
     def echec(commande: Sequence[str], **_options: Any) -> None:
         raise subprocess.CalledProcessError(1, commande)
 
-    monkeypatch.setattr(raccourci.subprocess, "run", echec)
+    monkeypatch.setattr(subprocess, "run", echec)
     with pytest.raises(ErreurRaccourci, match="Impossible de créer le raccourci"):
         raccourci.creer(racine)
     assert raccourci.etat(racine) == "absent"

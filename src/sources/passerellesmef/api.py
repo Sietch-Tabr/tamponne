@@ -5,9 +5,9 @@ User-Agent identifié classique suffit, comme choisirleservicepublic.
 """
 
 import re
-import urllib.error
+lazy import urllib.error
 import urllib.parse
-import urllib.request
+lazy import urllib.request
 
 from src.sources.base import USER_AGENT_IDENTIFIE
 from src.types import PageAPI

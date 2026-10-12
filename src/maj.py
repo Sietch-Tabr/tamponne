@@ -17,9 +17,9 @@ import shutil
 import sys
 import tempfile
 import tomllib
-import urllib.error
-import urllib.request
-import zipfile
+lazy import urllib.error
+lazy import urllib.request
+lazy import zipfile
 from pathlib import Path
 
 from src.types import InfoMaj

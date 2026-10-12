@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from bs4 import BeautifulSoup, Tag
+lazy from bs4 import BeautifulSoup, Tag
 
 from src.sources.choisirleservicepublic.api import telecharger_page_offres
 from src.types import Offre, OffreCache, Organisations

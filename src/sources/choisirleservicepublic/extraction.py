@@ -5,7 +5,7 @@ import re
 import sys
 from urllib.parse import urlparse
 
-from bs4 import BeautifulSoup, Tag
+lazy from bs4 import BeautifulSoup, Tag
 
 from src.filtres import RE_GRADE_SUPERIEUR
 from src.types import DetailOffre, Offre

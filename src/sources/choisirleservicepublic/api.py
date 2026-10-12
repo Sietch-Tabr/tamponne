@@ -1,9 +1,9 @@
 """Client API — requêtes GET filtrées (format WordPress rewrite URL)."""
 
 import re
-import urllib.error
+lazy import urllib.error
 import urllib.parse
-import urllib.request
+lazy import urllib.request
 
 from src.filtres import VALEUR_TOGGLE_ACTIF
 from src.sources.base import USER_AGENT_IDENTIFIE
@@ -13,8 +13,7 @@ URL_SITE = "https://choisirleservicepublic.gouv.fr"
 URL_OFFRES = f"{URL_SITE}/nos-offres/"
 
 _TIMEOUT = 30
-_OPENER = urllib.request.build_opener()
-_OPENER.addheaders = [("User-Agent", USER_AGENT_IDENTIFIE)]
+_HEADERS = {"User-Agent": USER_AGENT_IDENTIFIE}
 
 # Ordre et nommage des filtres dans l'URL WordPress (issu de url_keywords côté JS)
 _URL_KEYWORD_MAP = [
@@ -93,7 +92,8 @@ def obtenir_page_offres(url: str) -> PageAPI:
             connexion échoue pour une raison réseau.
     """
     try:
-        with _OPENER.open(url, timeout=_TIMEOUT) as reponse:
+        requete = urllib.request.Request(url, headers=_HEADERS)
+        with urllib.request.urlopen(requete, timeout=_TIMEOUT) as reponse:
             contenu = reponse.read().decode("utf-8", errors="replace")
     except urllib.error.HTTPError as e:
         raise RuntimeError(f"Erreur HTTP {e.code} lors du chargement de {url}") from e
@@ -111,7 +111,8 @@ def obtenir_page_offres(url: str) -> PageAPI:
 def telecharger_binaire(url: str) -> bytes:
     """Télécharge le contenu binaire d'une URL (ex. PDF officiel d'une offre)."""
     try:
-        with _OPENER.open(url, timeout=_TIMEOUT) as reponse:
+        requete = urllib.request.Request(url, headers=_HEADERS)
+        with urllib.request.urlopen(requete, timeout=_TIMEOUT) as reponse:
             return reponse.read()
     except urllib.error.HTTPError as e:
         raise RuntimeError(f"Erreur HTTP {e.code} lors du chargement de {url}") from e
@@ -124,7 +125,8 @@ def telecharger_binaire(url: str) -> bytes:
 def telecharger_page_offres() -> str:
     """Télécharge le HTML brut de /nos-offres/ (pour le cache organisations)."""
     try:
-        with _OPENER.open(URL_OFFRES, timeout=_TIMEOUT) as reponse:
+        requete = urllib.request.Request(URL_OFFRES, headers=_HEADERS)
+        with urllib.request.urlopen(requete, timeout=_TIMEOUT) as reponse:
             return reponse.read().decode("utf-8", errors="replace")
     except urllib.error.HTTPError as e:
         raise RuntimeError(

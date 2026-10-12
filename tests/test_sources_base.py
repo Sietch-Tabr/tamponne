@@ -60,6 +60,6 @@ def test_user_agent_identifie_designe_le_depot_codeberg() -> None:
 
 
 def test_sources_sans_waf_envoient_le_user_agent_identifie() -> None:
-    assert ("User-Agent", USER_AGENT_IDENTIFIE) in api_csp._OPENER.addheaders
+    assert api_csp._HEADERS["User-Agent"] == USER_AGENT_IDENTIFIE
     assert api_fhf._HEADERS["User-Agent"] == USER_AGENT_IDENTIFIE
     assert api_mef._HEADERS["User-Agent"] == USER_AGENT_IDENTIFIE
