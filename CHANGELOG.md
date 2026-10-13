@@ -4,6 +4,22 @@ Toutes les évolutions notables de Tamponné, de la plus récente à la plus
 ancienne. Le détail de chaque version est aussi publié sur la page
 [Releases](https://codeberg.org/Kwaite/tamponne/releases) du dépôt.
 
+## [1.3.3] — 2026-10-13
+
+### Corrections
+
+- Les offres d'emploi-territorial, de FHF et de Passerelles suivies ou ouvertes en détail ont enfin leur fiche complète (description, dates, contact…) : seule choisirleservicepublic était lue jusqu'ici, les autres restaient vides
+- « Vérifier les offres » reconnaît désormais une offre retirée sur toutes les sources (page introuvable, page « Offre dépubliée », retour à l'accueil de Passerelles), et plus seulement sur choisirleservicepublic
+- Une source qui répond trop lentement ou dans un format imprévu est signalée comme indisponible au lieu de faire échouer toute la recherche
+- L'export HTML porte un titre fidèle aux quatre sources
+
+### Sécurité
+
+- Le nom du PDF archivé ne peut plus sortir du dossier des archives, quelle que soit la référence donnée par un site
+- Les mises à jour ne sont téléchargées que depuis le dépôt Codeberg de Tamponné, avec un délai d'attente
+- Le message d'erreur du lancement Windows n'affiche plus l'identifiant ni le mot de passe éventuels du proxy, et le journal du lancement remplace le chemin du dossier personnel par `~`
+- README : nouvelles sections « En cas de problème » et « Sécurité et confidentialité »
+
 ## [1.3.2] — 2026-10-12
 
 ### Plus rien de caché
