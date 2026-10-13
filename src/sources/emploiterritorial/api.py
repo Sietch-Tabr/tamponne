@@ -48,9 +48,10 @@ def _requete(
             return reponse.read().decode("utf-8", errors="replace")
     except urllib.error.HTTPError as e:
         raise RuntimeError(f"Erreur HTTP {e.code} lors du chargement de {url}") from e
-    except urllib.error.URLError as e:
+    # Délai dépassé en pleine lecture : TimeoutError, pas URLError.
+    except OSError as e:
         raise RuntimeError(
-            f"Erreur réseau lors du chargement de {url}\u00a0: {e.reason}"
+            f"Erreur réseau lors du chargement de {url}\u00a0: {getattr(e, 'reason', e)}"
         ) from e
 
 
@@ -99,8 +100,8 @@ def construire_url_recherche(
 def obtenir_page_recherche(opener: urllib.request.OpenerDirector, url: str) -> PageAPI:
     """Requête initiale — pose la recherche côté session serveur."""
     html = _requete(opener, url)
-    title_m = re.search(r"<title>(.*?)</title>", html)
-    return {"html": html, "title": title_m.group(1) if title_m else ""}
+    title_m = re.search(r"<title>(.*?)</title>", html, re.S)
+    return {"html": html, "title": title_m.group(1).strip() if title_m else ""}
 
 
 def obtenir_page_suivante(opener: urllib.request.OpenerDirector, page: int) -> str:
