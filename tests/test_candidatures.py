@@ -372,3 +372,21 @@ def test_evenements_doublon_modification_et_suppression() -> None:
     ]
     with pytest.raises(IndexError):
         candidatures.supprimer_evenement("R", 5)
+
+
+@pytest.mark.parametrize(
+    "reference", ["MINT_2026-31544", "2026-30871", "FHF_48213", "o001261013000295"]
+)
+def test_chemin_archive_pdf_garde_les_references_reelles(reference: str) -> None:
+    assert candidatures.chemin_archive_pdf(reference) == (
+        candidatures.DOSSIER_ARCHIVES / f"{reference}.pdf"
+    )
+
+
+@pytest.mark.parametrize(
+    "reference", ["../../evil", "..\\..\\evil", "/etc/evil", "C:\\evil", ".", ""]
+)
+def test_chemin_archive_pdf_reste_dans_le_dossier_des_archives(reference: str) -> None:
+    chemin = candidatures.chemin_archive_pdf(reference)
+    assert chemin.parent == candidatures.DOSSIER_ARCHIVES
+    assert chemin.suffix == ".pdf" and not chemin.name.startswith(".")

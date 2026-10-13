@@ -27,6 +27,8 @@ from src.types import EchecMaj, InfoMaj
 from src.utils import ecriture_atomique
 
 URL_API_RELEASES = "https://codeberg.org/api/v1/repos/Kwaite/tamponne/releases/latest"
+PREFIXE_ARCHIVES = "https://codeberg.org/Kwaite/tamponne/"
+"""Seules les archives du dépôt sont téléchargées, quoi que dise l'API."""
 CHEMIN_RACINE = Path(__file__).parent.parent
 CHEMIN_PYPROJECT = CHEMIN_RACINE / "pyproject.toml"
 CHEMIN_MARQUEUR = CHEMIN_RACINE / "data" / "maj_disponible.json"
@@ -37,6 +39,8 @@ NOM_PRECEDENTE = ".maj-precedente"
 supprimée une fois la nouvelle version démarrée."""
 EXCLUS_SAUVEGARDE = {".git", ".venv", "data", NOM_PRECEDENTE}
 _TIMEOUT = 15
+_TIMEOUT_TELECHARGEMENT = 60
+"""Délai maximal sans données reçues pendant le téléchargement de l'archive."""
 
 
 def version_locale() -> str:
@@ -191,6 +195,16 @@ def valider_maj() -> None:
         CHEMIN_ECHEC.unlink(missing_ok=True)
 
 
+def _telecharger(url: str, destination: Path) -> None:
+    """Enregistre `url` dans `destination`, sans jamais attendre plus de
+    `_TIMEOUT_TELECHARGEMENT` secondes une réponse ou des données."""
+    with (
+        urllib.request.urlopen(url, timeout=_TIMEOUT_TELECHARGEMENT) as reponse,
+        destination.open("wb") as fichier,
+    ):
+        shutil.copyfileobj(reponse, fichier)
+
+
 def appliquer_maj(info: InfoMaj) -> None:
     """Télécharge et applique la publication `info`.
 
@@ -202,17 +216,21 @@ def appliquer_maj(info: InfoMaj) -> None:
     arrière du lanceur.
 
     Raises:
-        RuntimeError: Téléchargement, extraction ou sauvegarde impossible,
-            rien n'est installé — l'appelant décide de continuer avec la
+        RuntimeError: Archive hors du dépôt, téléchargement, extraction ou
+            sauvegarde impossible, rien n'est installé — l'appelant décide de continuer avec la
             version actuelle plutôt que bloquer.
     """
     if not info["url_zip"]:
         raise RuntimeError("URL de l'archive de mise à jour manquante.")
+    if not info["url_zip"].startswith(PREFIXE_ARCHIVES):
+        raise RuntimeError(
+            f"Archive de mise à jour hors du dépôt Tamponné refusée\u00a0: {info['url_zip']}"
+        )
 
     with tempfile.TemporaryDirectory(prefix="tamponne-maj-") as dossier_tmp:
         chemin_zip = Path(dossier_tmp) / "maj.zip"
         try:
-            urllib.request.urlretrieve(info["url_zip"], chemin_zip)
+            _telecharger(info["url_zip"], chemin_zip)
             with zipfile.ZipFile(chemin_zip) as archive:
                 archive.extractall(dossier_tmp)
                 # extractall() n'applique pas les bits Unix (rwx) codés dans

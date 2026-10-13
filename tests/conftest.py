@@ -1,6 +1,7 @@
 """Configuration pytest partagée."""
 
 import os
+import socket
 from pathlib import Path
 
 # Rendu Qt hors écran, identique avec ou sans affichage réel ; doit être
@@ -93,3 +94,16 @@ def _rediriger_maj_vers_tmp(
     monkeypatch.setattr(maj, "CHEMIN_RACINE", tmp_path_factory.mktemp("installation"))
     monkeypatch.setattr(maj, "CHEMIN_MARQUEUR", tmp_path / "maj_disponible.json")
     monkeypatch.setattr(maj, "CHEMIN_ECHEC", tmp_path / "maj_echouee.json")
+
+
+@pytest.fixture(autouse=True)
+def _reseau_interdit(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Aucun test ne joint un vrai site : un appel réseau oublié échoue
+    au lieu de passer (ou d'échouer) selon la connexion du moment."""
+
+    def connexion_refusee(*_args: object, **_kwargs: object) -> None:
+        raise OSError("Connexion réseau interdite pendant les tests.")
+
+    monkeypatch.setattr(socket.socket, "connect", connexion_refusee)
+    monkeypatch.setattr(socket.socket, "connect_ex", connexion_refusee)
+    monkeypatch.setattr(socket, "create_connection", connexion_refusee)

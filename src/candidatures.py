@@ -6,6 +6,7 @@ utilisateurs).
 """
 
 import json
+import re
 import sys
 from datetime import date
 from pathlib import Path
@@ -29,9 +30,20 @@ CHEMIN_CANDIDATURES = Path(__file__).parent.parent / "data" / "candidatures.json
 DOSSIER_ARCHIVES = Path(__file__).parent.parent / "data" / "archives"
 
 
+_CARACTERES_INTERDITS = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
+"""Séparateurs de chemin et caractères refusés par Windows dans un nom."""
+
+
 def chemin_archive_pdf(reference: str) -> Path:
-    """Chemin du PDF archivé pour une candidature, qu'il existe ou non."""
-    return DOSSIER_ARCHIVES / f"{reference}.pdf"
+    """Chemin du PDF archivé pour une candidature, qu'il existe ou non.
+
+    La référence vient des sites : séparateurs et caractères interdits
+    deviennent `_`, points de tête retirés, pour qu'elle ne désigne jamais
+    un fichier hors de `DOSSIER_ARCHIVES` (`../`). Les références réelles
+    (lettres, chiffres, `_`, `-`) gardent leur nom.
+    """
+    nom = _CARACTERES_INTERDITS.sub("_", reference).lstrip(". ") or "sans-reference"
+    return DOSSIER_ARCHIVES / f"{nom}.pdf"
 
 
 def _extraire_url_pdf(page_html: str) -> str:
