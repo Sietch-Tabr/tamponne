@@ -132,6 +132,29 @@ def test_rechercher_avertissement_sur_echec_partiel_sans_bloquer(
     assert resultats[0][0][0]["reference"] == "O1"
 
 
+def test_rechercher_source_au_format_imprevu_n_arrete_pas_les_autres(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        ChoisirLeServicePublic,
+        "rechercher",
+        lambda self, filtres, on_page=None: ([_offre("O1")], 1, False),
+    )
+
+    def _format_imprevu(
+        self: object,
+        filtres: FiltresRecherche,
+        on_page: Callable[[int, int], None] | None = None,
+    ) -> None:
+        raise AttributeError("'NoneType' object has no attribute 'find'")
+
+    monkeypatch.setattr(EmploiTerritorial, "rechercher", _format_imprevu)
+    resultats, avertissements, erreurs = _executer({})
+    assert erreurs == []
+    assert resultats[0][0][0]["reference"] == "O1"
+    assert "réponse inattendue du site (AttributeError" in avertissements[0]
+
+
 def test_rechercher_erreur_si_toutes_les_sources_echouent(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

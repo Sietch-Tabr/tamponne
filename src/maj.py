@@ -17,7 +17,6 @@ import shutil
 import sys
 import tempfile
 import tomllib
-lazy import urllib.error
 lazy import urllib.request
 lazy import zipfile
 from datetime import date
@@ -239,7 +238,7 @@ def appliquer_maj(info: InfoMaj) -> None:
                     permissions = (membre.external_attr >> 16) & 0o777
                     if permissions:
                         (Path(dossier_tmp) / membre.filename).chmod(permissions)
-        except (urllib.error.URLError, OSError, zipfile.BadZipFile) as e:
+        except (OSError, zipfile.BadZipFile) as e:
             raise RuntimeError(
                 f"Impossible de télécharger ou d'extraire la mise à jour\u00a0: {e}"
             ) from e

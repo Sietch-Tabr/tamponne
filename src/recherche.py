@@ -153,6 +153,15 @@ def rechercher_toutes_sources(
                 nb_echecs += 1
                 on_avertissement(f"{nom_affiche} indisponible\u00a0: {erreur}")
                 continue
+            # Page au format imprévu (site modifié) : cette source seule est
+            # perdue, les autres restent affichées.
+            except Exception as erreur:  # noqa: BLE001
+                nb_echecs += 1
+                on_avertissement(
+                    f"{nom_affiche} indisponible\u00a0: réponse inattendue du site "
+                    f"({type(erreur).__name__}\u00a0: {erreur})"
+                )
+                continue
             if cle == "fhf":
                 offres = filtrer_doublons_fhf(offres, toutes_offres)
             toutes_offres.extend(offres)
