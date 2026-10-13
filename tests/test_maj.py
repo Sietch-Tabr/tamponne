@@ -1,5 +1,6 @@
 """Tests pour src/maj.py — vérification et application des mises à jour."""
 
+import io
 import json
 import shutil
 import urllib.request
@@ -31,7 +32,7 @@ def _info(version: str = "1.1.0") -> InfoMaj:
     return {
         "version": version,
         "notes": "notes de version",
-        "url_zip": "https://codeberg.org/x.zip",
+        "url_zip": "https://codeberg.org/Kwaite/tamponne/archive/v1.1.0.zip",
         "url_publication": "https://codeberg.org/x",
     }
 
@@ -98,7 +99,7 @@ def test_verifier_derniere_publication_version_plus_recente(
         {
             "tag_name": "v1.1.0",
             "body": "notes",
-            "zipball_url": "https://codeberg.org/x.zip",
+            "zipball_url": "https://codeberg.org/Kwaite/tamponne/archive/v1.1.0.zip",
             "html_url": "https://codeberg.org/x",
         }
     ).encode("utf-8")
@@ -107,7 +108,7 @@ def test_verifier_derniere_publication_version_plus_recente(
     assert info == {
         "version": "1.1.0",
         "notes": "notes",
-        "url_zip": "https://codeberg.org/x.zip",
+        "url_zip": "https://codeberg.org/Kwaite/tamponne/archive/v1.1.0.zip",
         "url_publication": "https://codeberg.org/x",
     }
 
@@ -175,8 +176,8 @@ def test_appliquer_maj_copie_les_fichiers_de_larchive(
 ) -> None:
     chemin_zip = _construire_zip_test(tmp_path)
     monkeypatch.setattr(
-        urllib.request,
-        "urlretrieve",
+        maj,
+        "_telecharger",
         lambda url, filename: shutil.copy(chemin_zip, filename),
     )
 
@@ -206,8 +207,8 @@ def test_appliquer_maj_fichier_executable_dans_larchive_reste_executable(
     restauration manuelle, Tamponne.command perdrait son +x à chaque mise à jour."""
     chemin_zip = _construire_zip_test_avec_executable(tmp_path)
     monkeypatch.setattr(
-        urllib.request,
-        "urlretrieve",
+        maj,
+        "_telecharger",
         lambda url, filename: shutil.copy(chemin_zip, filename),
     )
 
@@ -227,8 +228,8 @@ def test_appliquer_maj_ne_touche_pas_data(
 
     chemin_zip = _construire_zip_test(tmp_path)
     monkeypatch.setattr(
-        urllib.request,
-        "urlretrieve",
+        maj,
+        "_telecharger",
         lambda url, filename: shutil.copy(chemin_zip, filename),
     )
 
@@ -238,8 +239,10 @@ def test_appliquer_maj_ne_touche_pas_data(
 
 
 def test_appliquer_maj_url_manquante_leve_erreur_explicite() -> None:
-    with pytest.raises(RuntimeError):
-        maj.appliquer_maj(_info(""))
+    info = _info()
+    info["url_zip"] = ""
+    with pytest.raises(RuntimeError, match="manquante"):
+        maj.appliquer_maj(info)
 
 
 def test_appliquer_maj_echec_telechargement_leve_runtime_error(
@@ -248,7 +251,7 @@ def test_appliquer_maj_echec_telechargement_leve_runtime_error(
     def _leve(url: str, filename: str) -> None:
         raise URLError("hors ligne")
 
-    monkeypatch.setattr(urllib.request, "urlretrieve", _leve)
+    monkeypatch.setattr(maj, "_telecharger", _leve)
     with pytest.raises(RuntimeError):
         maj.appliquer_maj(_info())
 
@@ -311,7 +314,9 @@ def test_installer_archive_remplace_sans_reecrire_le_fichier_ouvert(
     racine = tmp_path / "installation"
     _installation(racine, {"Tamponne.command": "ancien contenu\n"})
     with (racine / "Tamponne.command").open(encoding="utf-8") as ouvert:
-        maj.installer_archive(_publication(tmp_path, {"Tamponne.command": "nouveau\n"}), racine)
+        maj.installer_archive(
+            _publication(tmp_path, {"Tamponne.command": "nouveau\n"}), racine
+        )
         assert ouvert.read() == "ancien contenu\n"
     assert (racine / "Tamponne.command").read_text(encoding="utf-8") == "nouveau\n"
     assert not list(racine.glob("*.maj"))
@@ -336,8 +341,8 @@ def test_appliquer_maj_sauvegarde_la_version_actuelle_hors_donnees_et_venv(
     _installation_1_0(maj.CHEMIN_RACINE)
     chemin_zip = _construire_zip_test(tmp_path)
     monkeypatch.setattr(
-        urllib.request,
-        "urlretrieve",
+        maj,
+        "_telecharger",
         lambda url, filename: shutil.copy(chemin_zip, filename),
     )
 
@@ -358,8 +363,8 @@ def test_restaurer_version_precedente_remet_l_ancienne_version(
     _installation_1_0(maj.CHEMIN_RACINE)
     chemin_zip = _construire_zip_test(tmp_path)
     monkeypatch.setattr(
-        urllib.request,
-        "urlretrieve",
+        maj,
+        "_telecharger",
         lambda url, filename: shutil.copy(chemin_zip, filename),
     )
     maj.appliquer_maj(_info())
@@ -402,3 +407,26 @@ def test_maj_en_echec_seulement_pour_la_version_annulee() -> None:
 
     assert maj.maj_en_echec("1.1.0")
     assert not maj.maj_en_echec("1.1.1")
+
+
+def test_appliquer_maj_refuse_une_archive_hors_du_depot() -> None:
+    info = _info()
+    info["url_zip"] = "https://evil.example/tamponne.zip"
+    with pytest.raises(RuntimeError, match="hors du dépôt"):
+        maj.appliquer_maj(info)
+
+
+def test_telecharger_enregistre_la_reponse_avec_un_delai(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    delais: list[float] = []
+
+    def urlopen(url: str, timeout: float) -> io.BytesIO:
+        delais.append(timeout)
+        return io.BytesIO(b"archive")
+
+    monkeypatch.setattr(urllib.request, "urlopen", urlopen)
+    destination = tmp_path / "maj.zip"
+    maj._telecharger("https://codeberg.org/Kwaite/tamponne/archive/v1.zip", destination)
+    assert destination.read_bytes() == b"archive"
+    assert delais == [maj._TIMEOUT_TELECHARGEMENT]

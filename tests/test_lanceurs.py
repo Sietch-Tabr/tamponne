@@ -101,7 +101,9 @@ def test_lanceurs_mettent_uv_a_jour_avant_d_abandonner() -> None:
     assert "irm https://astral.sh/uv/install.ps1 | iex" in lignes[mise_a_jour]
     assert lignes[mise_a_jour + 1].strip() == "uv sync"
     assert mise_a_jour < next(
-        i for i, ligne in enumerate(lignes) if "même après la mise à jour de uv" in ligne
+        i
+        for i, ligne in enumerate(lignes)
+        if "même après la mise à jour de uv" in ligne
     )
     assert mise_a_jour > next(
         i for i, ligne in enumerate(lignes) if "GetSystemWebProxy()" in ligne
@@ -115,3 +117,14 @@ def test_lanceurs_montrent_la_progression_de_uv() -> None:
     bat = (RACINE / "Tamponne.bat").read_bytes().decode("utf-8")
     for contenu in (commande, bat):
         assert "--quiet" not in contenu and " -q " not in contenu
+
+
+def test_tamponne_bat_n_affiche_jamais_les_identifiants_du_proxy() -> None:
+    """`HTTPS_PROXY` peut contenir `utilisateur:mot de passe@` : le message
+    d'erreur, souvent capturé pour un signalement, n'en montre que l'hôte."""
+    bat = (RACINE / "Tamponne.bat").read_bytes().decode("utf-8")
+    messages = [ligne for ligne in bat.splitlines() if "Proxy utilisé" in ligne]
+    assert len(messages) == 2
+    for ligne in messages:
+        assert "{ $env:HTTPS_PROXY }" not in ligne
+        assert "$p.Host + ':' + $p.Port" in ligne

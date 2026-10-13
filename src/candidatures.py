@@ -6,23 +6,25 @@ utilisateurs).
 """
 
 import json
+import re
 import sys
+from collections.abc import Mapping
 from datetime import date
 from pathlib import Path
+from typing import Final
 
 lazy from bs4 import BeautifulSoup, Tag
 
-from src.sources.choisirleservicepublic import recuperer_detail_offre
-from src.sources.choisirleservicepublic.api import (
-    obtenir_page_offres,
-    telecharger_binaire,
-)
 from src.formatage import SOURCE_PAR_DEFAUT
+from src.sources.base import valider_url
+from src.sources.choisirleservicepublic.api import telecharger_binaire
 from src.sources.choisirleservicepublic.extraction import (
     DETAIL_VIDE,
-    _valider_url,
+    DOMAINE,
+    URL_BASE,
     deriver_source,
 )
+from src.sources.detail import recuperer_detail_offre
 from src.types import Candidature, DetailOffre, EvenementCandidature, Offre
 from src.utils import ecriture_atomique
 
@@ -30,9 +32,20 @@ CHEMIN_CANDIDATURES = Path(__file__).parent.parent / "data" / "candidatures.json
 DOSSIER_ARCHIVES = Path(__file__).parent.parent / "data" / "archives"
 
 
+_CARACTERES_INTERDITS = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
+"""Séparateurs de chemin et caractères refusés par Windows dans un nom."""
+
+
 def chemin_archive_pdf(reference: str) -> Path:
-    """Chemin du PDF archivé pour une candidature, qu'il existe ou non."""
-    return DOSSIER_ARCHIVES / f"{reference}.pdf"
+    """Chemin du PDF archivé pour une candidature, qu'il existe ou non.
+
+    La référence vient des sites : séparateurs et caractères interdits
+    deviennent `_`, points de tête retirés, pour qu'elle ne désigne jamais
+    un fichier hors de `DOSSIER_ARCHIVES` (`../`). Les références réelles
+    (lettres, chiffres, `_`, `-`) gardent leur nom.
+    """
+    nom = _CARACTERES_INTERDITS.sub("_", reference).lstrip(". ") or "sans-reference"
+    return DOSSIER_ARCHIVES / f"{nom}.pdf"
 
 
 def _extraire_url_pdf(page_html: str) -> str:
@@ -41,7 +54,7 @@ def _extraire_url_pdf(page_html: str) -> str:
     lien = soup.find("a", class_="fr-link--download")
     if not isinstance(lien, Tag):
         return ""
-    return _valider_url(str(lien.get("href", "")))
+    return valider_url(str(lien.get("href", "")), URL_BASE, DOMAINE)
 
 
 def generer_archive_pdf(reference: str, page_html: str) -> bool:
@@ -82,7 +95,7 @@ def generer_archive_pdf(reference: str, page_html: str) -> bool:
 # Jours sans événement au-delà desquels une relance est suggérée (badge visuel seul).
 SEUIL_RELANCE_JOURS = 21
 
-TYPES_EVENEMENT: dict[str, str] = {
+TYPES_EVENEMENT: Final[Mapping[str, str]] = {
     "candidature_envoyee": "Candidature envoyée",
     "accuse_reception": "Accusé de réception",
     "entretien_planifie": "Entretien planifié",
@@ -95,10 +108,7 @@ TYPES_EVENEMENT: dict[str, str] = {
 
 # Types d'événement au-delà desquels une relance n'a plus de sens
 # (issue déjà connue : la candidature est close, positivement ou non).
-_TYPES_CLOTURANTS = {"reponse_positive", "refus"}
-
-# Le site répond HTTP 200 (pas 404) pour une offre retirée, avec ce titre distinct.
-MARQUEUR_OFFRE_DEPUBLIEE = "Offre dépubliée"
+_TYPES_CLOTURANTS = frozenset({"reponse_positive", "refus"})
 
 
 def charger_candidatures() -> dict[str, Candidature]:
@@ -193,6 +203,7 @@ def suivre_offre(offre: Offre) -> None:
         offre_source=offre.get("source") or SOURCE_PAR_DEFAUT,
         detail=detail,
     )
+
 
 def ajouter_evenement(
     reference: str,
@@ -292,21 +303,6 @@ def statut_libelle(candidature: Candidature) -> str:
     if dernier is None:
         return "Aucun événement"
     return TYPES_EVENEMENT.get(dernier["type"], dernier["type"])
-
-
-def verifier_disponibilite(url: str) -> bool:
-    """Vérifie si l'offre est toujours en ligne sur le site.
-
-    Returns:
-        ``True`` si l'offre semble toujours disponible, ``False`` si le
-        marqueur de dépublication est détecté.
-
-    Raises:
-        RuntimeError: Site injoignable (erreur réseau) : on ne sait pas, le
-            statut stocké ne doit pas être modifié.
-    """
-    page = obtenir_page_offres(url)
-    return MARQUEUR_OFFRE_DEPUBLIEE not in page["title"]
 
 
 def marquer_disponibilite(reference: str, disponible: bool) -> None:

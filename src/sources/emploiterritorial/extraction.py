@@ -2,14 +2,14 @@
 
 import re
 import sys
-from urllib.parse import urlparse
 
 lazy from bs4 import BeautifulSoup, Tag
 
+from src.sources.base import valider_url
 from src.types import DetailOffre, Offre
 
-_DOMAINE_AUTORISE = "emploi-territorial.fr"
-_URL_BASE = "https://www.emploi-territorial.fr"
+DOMAINE = "emploi-territorial.fr"
+URL_BASE = "https://www.emploi-territorial.fr"
 SOURCE_LABEL = "Fonction publique territoriale"
 
 _RE_DATE_TOOLTIP = re.compile(r"le (\d{2}/\d{2}/\d{4})")
@@ -23,24 +23,21 @@ def _texte_normalise(tag: Tag) -> str:
 
 # Libellés déjà mappés vers un champ dédié de DetailOffre — exclus de
 # sections_complementaires pour ne pas les dupliquer.
-_LIBELLES_DEDIES = {
-    "rémunération indicative",
-    "experience souhaitée",
-    "expérience souhaitée",
-    "famille de métiers",
-    "lien de candidature",
-    "date limite de candidature",
-}
+_LIBELLES_DEDIES = frozenset(
+    {
+        "rémunération indicative",
+        "experience souhaitée",
+        "expérience souhaitée",
+        "famille de métiers",
+        "lien de candidature",
+        "date limite de candidature",
+    }
+)
 
 
 def _valider_url(url: str) -> str:
-    if url.startswith("/"):
-        return f"{_URL_BASE}{url}"
-    if url.startswith(("https://", "http://")):
-        domaine = urlparse(url).netloc
-        if domaine == _DOMAINE_AUTORISE or domaine.endswith(f".{_DOMAINE_AUTORISE}"):
-            return url
-    return ""
+    """URL normalisée si elle appartient au domaine du site, chaîne vide sinon."""
+    return valider_url(url, URL_BASE, DOMAINE)
 
 
 def extraire_totaux(html: str) -> tuple[int, int]:

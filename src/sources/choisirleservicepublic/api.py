@@ -97,9 +97,10 @@ def obtenir_page_offres(url: str) -> PageAPI:
             contenu = reponse.read().decode("utf-8", errors="replace")
     except urllib.error.HTTPError as e:
         raise RuntimeError(f"Erreur HTTP {e.code} lors du chargement de {url}") from e
-    except urllib.error.URLError as e:
+    # Délai dépassé en pleine lecture : TimeoutError, pas URLError.
+    except OSError as e:
         raise RuntimeError(
-            f"Erreur réseau lors du chargement de {url}\u00a0: {e.reason}"
+            f"Erreur réseau lors du chargement de {url}\u00a0: {getattr(e, 'reason', e)}"
         ) from e
     title_m = re.search(r"<title>(.*?)</title>", contenu)
     return {
@@ -116,9 +117,10 @@ def telecharger_binaire(url: str) -> bytes:
             return reponse.read()
     except urllib.error.HTTPError as e:
         raise RuntimeError(f"Erreur HTTP {e.code} lors du chargement de {url}") from e
-    except urllib.error.URLError as e:
+    # Délai dépassé en pleine lecture : TimeoutError, pas URLError.
+    except OSError as e:
         raise RuntimeError(
-            f"Erreur réseau lors du chargement de {url}\u00a0: {e.reason}"
+            f"Erreur réseau lors du chargement de {url}\u00a0: {getattr(e, 'reason', e)}"
         ) from e
 
 
@@ -132,7 +134,8 @@ def telecharger_page_offres() -> str:
         raise RuntimeError(
             f"Erreur HTTP {e.code} lors du chargement de {URL_OFFRES}"
         ) from e
-    except urllib.error.URLError as e:
+    # Délai dépassé en pleine lecture : TimeoutError, pas URLError.
+    except OSError as e:
         raise RuntimeError(
-            f"Erreur réseau lors du chargement de {URL_OFFRES}\u00a0: {e.reason}"
+            f"Erreur réseau lors du chargement de {URL_OFFRES}\u00a0: {getattr(e, 'reason', e)}"
         ) from e

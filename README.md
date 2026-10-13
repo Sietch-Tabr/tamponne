@@ -76,8 +76,23 @@ Au lancement, l'app vérifie en arrière-plan s'il existe une publication ([Rele
 - Par défaut, elle s'applique automatiquement **au prochain lancement**, sans action requise (« Au prochain lancement » efface simplement le point rouge).
 - « Installer et redémarrer » l'applique **immédiatement** : l'app se ferme et relance toute seule.
 - Les fichiers retirés d'une version à l'autre sont supprimés à l'installation ; vos données (`data/`) ne sont jamais touchées.
+- Si la nouvelle version ne s'installe pas (Python ou composants impossibles à télécharger) ou ne démarre pas, Tamponné revient tout seul à la version précédente et l'explique. La version en échec n'est plus retentée d'elle-même : l'avis de mise à jour en donne la raison, et « Installer et redémarrer » la retente quand le problème est réglé.
+- uv se met à jour de lui-même s'il est trop ancien pour la version de Python demandée.
 
 Ce mécanisme repose sur les lanceurs (`Tamponne.command`, `Tamponne.bat`, ou le raccourci) — un lancement via `uv run python -m src.gui.application` en direct affiche l'avis mais n'applique rien.
+
+## En cas de problème
+
+Les messages d'erreur disent quoi faire, suivis d'une ligne « Détail » qui reprend l'erreur technique. Tout ce que le dernier lancement a affiché est enregistré dans `data/journal_lancement.log` (le chemin de votre dossier personnel y est remplacé par `~`) : joignez-le à un signalement sur [Codeberg](https://codeberg.org/Kwaite/tamponne/issues), après l'avoir relu.
+
+## Sécurité et confidentialité
+
+- **Vos données restent sur votre ordinateur**, dans le dossier `data/` de Tamponné : fiches, dossiers suivis, notes. Rien n'est envoyé ailleurs.
+- **Connexions** : uniquement les quatre sites d'offres (pour les recherches, fiches et vérifications), Codeberg (mises à jour) et, à l'installation, les serveurs de uv et de Python. Toutes en HTTPS, avec un User-Agent qui désigne Tamponné.
+- **Liens ouverts** : seuls les liens `https://` (offres, notes de version) s'ouvrent dans le navigateur, jamais un autre type d'adresse.
+- **Mises à jour** : téléchargées uniquement depuis le dépôt Codeberg de Tamponné, en HTTPS. Elles ne sont pas signées : leur sûreté repose sur la protection du compte qui publie.
+- **Installation de uv** : le script officiel (`astral.sh`) est exécuté tel quel, comme le recommande uv ; c'est aussi lui qui sert de secours pour mettre uv à jour sous Windows.
+- **Sauvegardes importées** : seuls les fichiers attendus sont acceptés (pas de chemin vers l'extérieur du dossier `data/`), avec une taille plafonnée et une copie des données d'avant l'import.
 
 ## Avancé : lancement manuel
 

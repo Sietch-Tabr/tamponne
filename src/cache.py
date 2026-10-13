@@ -2,7 +2,7 @@
 
 import json
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -47,7 +47,7 @@ def _organisations_expirees(cache: dict[str, Any]) -> bool:
         return True
     try:
         cached_at = datetime.fromisoformat(entree["cached_at"])
-        age = (datetime.now(timezone.utc) - cached_at).total_seconds()
+        age = (datetime.now(UTC) - cached_at).total_seconds()
         return age > TTL_ORGANISATIONS
     except KeyError, ValueError, TypeError:
         return True
@@ -117,7 +117,7 @@ def obtenir_organisations(forcer: bool = False) -> Organisations:
     if forcer or _organisations_expirees(cache):
         data = _scraper_organisations()
         cache["organisations"] = {
-            "cached_at": datetime.now(timezone.utc).isoformat(),
+            "cached_at": datetime.now(UTC).isoformat(),
             "data": data,
         }
         _sauvegarder_cache(cache)
@@ -167,7 +167,7 @@ def maj_cache_offres(nom_profil: str, offres_fraiches: list[Offre]) -> set[str]:
     Returns:
         Références des offres jamais vues pour ce profil avant cet appel.
     """
-    maintenant = datetime.now(timezone.utc)
+    maintenant = datetime.now(UTC)
     maintenant_iso = maintenant.isoformat()
     toutes = _charger_offres()
     cache_profil = toutes.get(nom_profil, {})
@@ -226,7 +226,7 @@ def age_cache_organisations() -> str | None:
         return None
     try:
         cached_at = datetime.fromisoformat(entree["cached_at"])
-        age_s = (datetime.now(timezone.utc) - cached_at).total_seconds()
+        age_s = (datetime.now(UTC) - cached_at).total_seconds()
         if age_s < 3600:
             return f"il y a {int(age_s // 60)} min"
         if age_s < 86400:

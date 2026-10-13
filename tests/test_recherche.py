@@ -132,6 +132,29 @@ def test_rechercher_avertissement_sur_echec_partiel_sans_bloquer(
     assert resultats[0][0][0]["reference"] == "O1"
 
 
+def test_rechercher_source_au_format_imprevu_n_arrete_pas_les_autres(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        ChoisirLeServicePublic,
+        "rechercher",
+        lambda self, filtres, on_page=None: ([_offre("O1")], 1, False),
+    )
+
+    def _format_imprevu(
+        self: object,
+        filtres: FiltresRecherche,
+        on_page: Callable[[int, int], None] | None = None,
+    ) -> None:
+        raise AttributeError("'NoneType' object has no attribute 'find'")
+
+    monkeypatch.setattr(EmploiTerritorial, "rechercher", _format_imprevu)
+    resultats, avertissements, erreurs = _executer({})
+    assert erreurs == []
+    assert resultats[0][0][0]["reference"] == "O1"
+    assert "réponse inattendue du site (AttributeError" in avertissements[0]
+
+
 def test_rechercher_erreur_si_toutes_les_sources_echouent(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -462,9 +485,7 @@ def test_rechercher_remonte_progression_et_sources_terminees(
     offres, nb_pages, _ = rechercher_toutes_sources(
         {},
         {},
-        on_progression=lambda nom, page, total: progressions.append(
-            (nom, page, total)
-        ),
+        on_progression=lambda nom, page, total: progressions.append((nom, page, total)),
         on_source_terminee=terminees.append,
         on_offres_source=lambda nom, nombre: comptes.append((nom, nombre)),
     )
@@ -521,7 +542,10 @@ def test_post_traiter_avec_profil_marque_les_nouvelles_et_la_date() -> None:
     profils.ajouter_profil("p", {"label": "p"})
     premiere = post_traiter_resultats([_offre("O1")], [], False, "p")
     assert premiere["nouvelles"] == {"O1"}
-    assert profils.charger_profils()["p"].get("dernier_lancement") == date.today().isoformat()
+    assert (
+        profils.charger_profils()["p"].get("dernier_lancement")
+        == date.today().isoformat()
+    )
 
     seconde = post_traiter_resultats([_offre("O1"), _offre("O2")], [], False, "p")
     assert seconde["nouvelles"] == {"O2"}

@@ -83,9 +83,7 @@ def test_choisirleservicepublic_envoie_le_user_agent_identifie(
 ) -> None:
     requetes: list[urllib.request.Request] = []
 
-    def urlopen_factice(
-        requete: urllib.request.Request, timeout: float
-    ) -> io.BytesIO:
+    def urlopen_factice(requete: urllib.request.Request, timeout: float) -> io.BytesIO:
         requetes.append(requete)
         return io.BytesIO(b"<title>t</title>")
 
@@ -93,3 +91,9 @@ def test_choisirleservicepublic_envoie_le_user_agent_identifie(
     telecharger()
 
     assert requetes[0].get_header("User-agent") == USER_AGENT_IDENTIFIE
+
+
+def test_reseau_interdit_pendant_les_tests() -> None:
+    """Garde-fou de conftest : un vrai appel réseau échoue tout de suite."""
+    with pytest.raises(OSError, match="interdite"):
+        urllib.request.urlopen("https://codeberg.org", timeout=5)

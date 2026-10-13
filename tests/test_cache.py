@@ -1,6 +1,6 @@
 """Tests pour src/cache.py — logique TTL et purge des caches."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, cast
 
@@ -18,7 +18,7 @@ def _rediriger_cache_vers_tmp(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
 
 
 def _iso_il_y_a(secondes: float) -> str:
-    return (datetime.now(timezone.utc) - timedelta(seconds=secondes)).isoformat()
+    return (datetime.now(UTC) - timedelta(seconds=secondes)).isoformat()
 
 
 def _offre(reference: str) -> Offre:

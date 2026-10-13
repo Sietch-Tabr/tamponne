@@ -125,7 +125,9 @@ def test_dupliquer_cree_la_copie_et_refuse_un_doublon(
     assert dialogue.property("opened") is True
     dialogue.duplique.emit("attache-paris", "attache-paris-copie", "Copie de test")  # type: ignore[attr-defined]
     qapp.processEvents()
-    assert profils.charger_profils()["attache-paris-copie"].get("label") == "Copie de test"
+    assert (
+        profils.charger_profils()["attache-paris-copie"].get("label") == "Copie de test"
+    )
     assert racine is not None
 
 

@@ -1,14 +1,14 @@
 """Extraction des offres et fiches détail — HTML de emploi.fhf.fr."""
 
 import re
-from urllib.parse import urlparse
 
 lazy from bs4 import BeautifulSoup, Tag
 
+from src.sources.base import valider_url
 from src.types import DetailOffre, Offre
 
-_DOMAINE_AUTORISE = "emploi.fhf.fr"
-_URL_BASE = "https://emploi.fhf.fr"
+DOMAINE = "emploi.fhf.fr"
+URL_BASE = "https://emploi.fhf.fr"
 SOURCE_LABEL = "FHF"
 
 _RE_ESPACES = re.compile(r"\s+")
@@ -22,13 +22,8 @@ def _texte_normalise(tag: Tag) -> str:
 
 
 def _valider_url(url: str) -> str:
-    if url.startswith("/"):
-        return f"{_URL_BASE}{url}"
-    if url.startswith(("https://", "http://")):
-        domaine = urlparse(url).netloc
-        if domaine == _DOMAINE_AUTORISE or domaine.endswith(f".{_DOMAINE_AUTORISE}"):
-            return url
-    return ""
+    """URL normalisée si elle appartient au domaine du site, chaîne vide sinon."""
+    return valider_url(url, URL_BASE, DOMAINE)
 
 
 def extraire_offres(html: str) -> list[Offre]:

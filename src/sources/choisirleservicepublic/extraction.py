@@ -3,15 +3,17 @@
 import json
 import re
 import sys
-from urllib.parse import urlparse
+from collections.abc import Mapping
+from typing import Final
 
 lazy from bs4 import BeautifulSoup, Tag
 
 from src.filtres import RE_GRADE_SUPERIEUR
+from src.sources.base import valider_url
 from src.types import DetailOffre, Offre
 
-_DOMAINE_AUTORISE = "choisirleservicepublic.gouv.fr"
-_URL_BASE = "https://choisirleservicepublic.gouv.fr"
+DOMAINE = "choisirleservicepublic.gouv.fr"
+URL_BASE = "https://choisirleservicepublic.gouv.fr"
 
 _RE_REFERENCE = re.compile(r"reference-(.+?)/?$")
 _RE_FR_TAG = re.compile(r"\bfr-tag\b")
@@ -24,14 +26,8 @@ _RE_JSON_LD = re.compile(
 
 
 def _valider_url(url: str) -> str:
-    """Retourne l'URL normalisée si elle appartient au domaine attendu, chaîne vide sinon."""
-    if url.startswith("/"):
-        return f"{_URL_BASE}{url}"
-    if url.startswith(("https://", "http://")):
-        domaine = urlparse(url).netloc
-        if domaine == _DOMAINE_AUTORISE or domaine.endswith(f".{_DOMAINE_AUTORISE}"):
-            return url
-    return ""
+    """URL normalisée si elle appartient au domaine du site, chaîne vide sinon."""
+    return valider_url(url, URL_BASE, DOMAINE)
 
 
 def est_grade_superieur(titre: str) -> bool:
@@ -41,7 +37,7 @@ def est_grade_superieur(titre: str) -> bool:
 
 # Préfixes de référence vérifiés (via lien_postuler pointant vers le
 # portail d'origine réel) — ex. MEF_2026-30262 vient de Bercy/Passerelles.
-_SOURCES_CONNUES = {
+_SOURCES_CONNUES: Final[Mapping[str, str]] = {
     "MEF": "Ministère de l'Économie et des Finances",
     "MINT": "Ministère de l'Intérieur",
     "APHP": "AP-HP",

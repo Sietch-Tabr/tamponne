@@ -1,8 +1,9 @@
 """Écran Suivi côté Python : dossiers de candidature exposés au QML,
 vérification des offres en arrière-plan et actions sur un dossier."""
 
+from collections.abc import Mapping
 from datetime import date
-from typing import Any
+from typing import Any, Final
 
 from PySide6.QtCore import (
     Property,
@@ -43,7 +44,7 @@ from src.gui.travailleurs import VerificateurDisponibilite
 
 type _Index = QModelIndex | QPersistentModelIndex
 
-_ROLES: dict[int, bytes] = {
+_ROLES: Final[Mapping[int, bytes]] = {
     Qt.ItemDataRole.UserRole + 1: b"reference",
     Qt.ItemDataRole.UserRole + 2: b"titre",
     Qt.ItemDataRole.UserRole + 3: b"employeurLieu",
@@ -376,7 +377,9 @@ class ControleurSuivi(QObject):
         if erreur:
             return erreur
         try:
-            modifier_evenement(reference, indice, type_evenement, date_iso, note.strip())
+            modifier_evenement(
+                reference, indice, type_evenement, date_iso, note.strip()
+            )
         except IndexError:
             return "Cet événement n'existe plus."
         self.rafraichir()

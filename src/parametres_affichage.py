@@ -2,8 +2,9 @@
 
 import json
 import sys
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Literal, cast
+from typing import Final, Literal, cast
 
 from src.utils import ecriture_atomique
 
@@ -11,7 +12,7 @@ CHEMIN_AFFICHAGE = Path(__file__).parent.parent / "data" / "affichage.json"
 
 type ModeTheme = Literal["auto", "sombre", "clair"]
 
-MODES_THEME: dict[ModeTheme, str] = {
+MODES_THEME: Final[Mapping[ModeTheme, str]] = {
     "auto": "Automatique (suit le système)",
     "sombre": "Sombre",
     "clair": "Clair",

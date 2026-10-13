@@ -3,8 +3,10 @@ sans rendu : l'interface QML ne fait que les afficher."""
 
 import html
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import date, datetime
+from typing import Final
 
 from src.candidatures import (
     TYPES_EVENEMENT,
@@ -14,7 +16,7 @@ from src.candidatures import (
 from src.filtres import LIBELLES_CATEGORIES, categorie_normalisee
 from src.types import Candidature, DetailOffre, Profil
 
-LIBELLES_TAMPON: dict[str, str] = {
+LIBELLES_TAMPON: Final[Mapping[str, str]] = {
     "candidature_envoyee": "Envoyée",
     "accuse_reception": "Accusé de réception",
     "entretien_planifie": "Entretien",
@@ -109,7 +111,8 @@ def contenu_dossier(
     """
     # Tri stable par date, en gardant la position d'origine de chaque événement.
     historique = sorted(
-        enumerate(candidature.get("historique") or []), key=lambda paire: paire[1]["date"]
+        enumerate(candidature.get("historique") or []),
+        key=lambda paire: paire[1]["date"],
     )
     tampons = tuple(
         TamponHistorique(
@@ -214,7 +217,7 @@ def contenu_detail(
     )
 
 
-_VERSANTS_FICHE: dict[str, str] = {
+_VERSANTS_FICHE: Final[Mapping[str, str]] = {
     "etat": "État",
     "hospitalier": "Hospitalier",
     "territorial": "Territorial",
@@ -240,7 +243,9 @@ def lignes_fiche(profil: Profil) -> list[str]:
     """
     categories = [
         LIBELLES_CATEGORIES.get(c, c)
-        for c in dict.fromkeys(map(categorie_normalisee, profil.get("categories") or []))
+        for c in dict.fromkeys(
+            map(categorie_normalisee, profil.get("categories") or [])
+        )
     ]
     versants = [_VERSANTS_FICHE.get(v, v) for v in profil.get("versants") or []]
     ligne_statut = " · ".join(
@@ -283,7 +288,9 @@ def lignes_fiche(profil: Profil) -> list[str]:
 
 def texte_nombre_fiches(nombre: int) -> str:
     """Compteur sous le titre « Mes fiches de recherche »."""
-    return f"{nombre} fiche{'s' if nombre > 1 else ''} classée{'s' if nombre > 1 else ''}"
+    return (
+        f"{nombre} fiche{'s' if nombre > 1 else ''} classée{'s' if nombre > 1 else ''}"
+    )
 
 
 def libelle_selection(selection: list[str]) -> str:
@@ -418,7 +425,7 @@ def notes_en_html(markdown: str) -> str:
     return "".join(blocs)
 
 
-TEXTES_RACCOURCI: dict[str, str] = {
+TEXTES_RACCOURCI: Final[Mapping[str, str]] = {
     "absent": "Tamponné n'est pas encore dans le menu des applications.",
     "a_jour": "Tamponné figure dans le menu des applications.",
     "deplace": "Le dossier a été déplacé\u00a0: le raccourci ne trouve plus Tamponné.",

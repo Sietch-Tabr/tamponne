@@ -35,9 +35,10 @@ def _requete(opener: urllib.request.OpenerDirector, url: str) -> str:
             return reponse.read().decode("utf-8", errors="replace")
     except urllib.error.HTTPError as e:
         raise RuntimeError(f"Erreur HTTP {e.code} lors du chargement de {url}") from e
-    except urllib.error.URLError as e:
+    # Délai dépassé en pleine lecture : TimeoutError, pas URLError.
+    except OSError as e:
         raise RuntimeError(
-            f"Erreur réseau lors du chargement de {url}\u00a0: {e.reason}"
+            f"Erreur réseau lors du chargement de {url}\u00a0: {getattr(e, 'reason', e)}"
         ) from e
 
 

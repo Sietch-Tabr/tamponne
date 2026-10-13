@@ -131,7 +131,7 @@ VARIABLE_DETACHE = "TAMPONNE_SANS_CONSOLE"
 FLUX_MARQUE_DU_WEB = ":Zone.Identifier"
 """Flux NTFS posé par Windows sur un fichier téléchargé (ou extrait d'un zip
 téléchargé) : il fait afficher un avertissement à chaque ouverture."""
-DOSSIERS_SANS_MARQUE = {".git", ".venv", "data", maj.NOM_PRECEDENTE}
+DOSSIERS_SANS_MARQUE = frozenset({".git", ".venv", "data", maj.NOM_PRECEDENTE})
 CHEMIN_JOURNAL = CHEMIN_RACINE / "data" / "journal_lancement.log"
 """Sorties des commandes du dernier lancement (uv, interface), pour le
 diagnostic : sous Windows, elles n'ont pas de console où s'afficher."""
@@ -158,29 +158,39 @@ def retirer_marque_du_web(racine: Path = CHEMIN_RACINE) -> int:
     Returns:
         Nombre de fichiers débloqués.
     """
-    if not os.path.exists(str(racine / "Tamponne.bat") + FLUX_MARQUE_DU_WEB):
+    if not Path(f"{racine / 'Tamponne.bat'}{FLUX_MARQUE_DU_WEB}").exists():
         return 0
     debloques = 0
-    for dossier, sous_dossiers, fichiers in os.walk(racine):
+    for dossier, sous_dossiers, fichiers in racine.walk():
         sous_dossiers[:] = [d for d in sous_dossiers if d not in DOSSIERS_SANS_MARQUE]
         for nom in fichiers:
             if ":" in nom:
                 continue
             try:
-                os.remove(os.path.join(dossier, nom) + FLUX_MARQUE_DU_WEB)
+                Path(f"{dossier / nom}{FLUX_MARQUE_DU_WEB}").unlink()
             except OSError:
                 continue
             debloques += 1
     return debloques
 
 
+def anonymiser(texte: str) -> str:
+    """`texte` sans le chemin du dossier personnel, remplacé par `~` : le
+    journal est joint aux signalements publics, le nom de la session n'a
+    pas à y figurer."""
+    personnel = Path.home()
+    for forme in {str(personnel), personnel.as_posix()}:
+        texte = texte.replace(forme, "~")
+    return texte
+
+
 def _executer(commande: Sequence[str]) -> int:
     """Lance `commande` depuis la racine de l'installation et attend sa fin.
     Ses sorties s'affichent au fil de l'eau (`_afficher`) et sont ajoutées à
-    `CHEMIN_JOURNAL` ; sous Windows, sans fenêtre propre."""
+    `CHEMIN_JOURNAL`, anonymisées ; sous Windows, sans fenêtre propre."""
     CHEMIN_JOURNAL.parent.mkdir(parents=True, exist_ok=True)
     with CHEMIN_JOURNAL.open("a", encoding="utf-8") as journal:
-        journal.write(f"$ {' '.join(commande)}\n")
+        journal.write(anonymiser(f"$ {' '.join(commande)}\n"))
         journal.flush()
         drapeaux = 0
         if sys.platform == "win32":
@@ -196,7 +206,7 @@ def _executer(commande: Sequence[str]) -> int:
         )
         assert processus.stdout is not None
         for ligne in processus.stdout:
-            journal.write(ligne)
+            journal.write(anonymiser(ligne))
             journal.flush()
             _afficher(ligne)
         return processus.wait()
@@ -351,7 +361,9 @@ def _appliquer_maj_en_attente(executer: Executer) -> bool:
         # l'avis de Réglages donne le motif et permet de réessayer.
         maj.enregistrer_echec(version, MOTIF_TELECHARGEMENT)
         maj.effacer_maj_disponible()
-        signaler(avec_detail(message_maj_non_telechargee(version, maj.version_locale())))
+        signaler(
+            avec_detail(message_maj_non_telechargee(version, maj.version_locale()))
+        )
         return True
     if synchroniser(executer):
         return True
