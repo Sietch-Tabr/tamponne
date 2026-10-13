@@ -284,7 +284,10 @@ def test_categorie_a_plus_autres_envoie_la_cle_connue_des_sources(
 ) -> None:
     controleur = ControleurRecherche({}, qapp)
     choix = controleur.property("choix")["categories"]
-    assert {"cle": "A+ (autres emplois fonctionnels)", "libelle": "A+ (autres)"} in choix
+    assert {
+        "cle": "A+ (autres emplois fonctionnels)",
+        "libelle": "A+ (autres)",
+    } in choix
     assert all(c["cle"] in CATEGORIES for c in choix)
     controleur.basculer("categories", "A+ (autres emplois fonctionnels)", True)
     assert controleur.construire_filtres().get("categories") == [
@@ -292,7 +295,9 @@ def test_categorie_a_plus_autres_envoie_la_cle_connue_des_sources(
     ]
 
 
-def test_fiche_classee_avec_le_libelle_court_relue_avec_la_cle(qapp: QApplication) -> None:
+def test_fiche_classee_avec_le_libelle_court_relue_avec_la_cle(
+    qapp: QApplication,
+) -> None:
     profils.sauvegarder_profils({"f": {"categories": ["A+ (autres)", "A"]}})
     controleur = ControleurRecherche({}, qapp)
     controleur.modifier_profil("f")
@@ -315,7 +320,9 @@ def test_enregistrer_une_fiche_modifiee_garde_son_intitule(qapp: QApplication) -
     assert fiche.get("categories") == ["A", "B"]
 
 
-def test_grades_superieurs_enregistres_avec_la_fiche_et_relus(qapp: QApplication) -> None:
+def test_grades_superieurs_enregistres_avec_la_fiche_et_relus(
+    qapp: QApplication,
+) -> None:
     controleur = ControleurRecherche({}, qapp)
     controleur.definir("grades_superieurs", True)
     assert controleur.classer("f", "Fiche") == ""
@@ -331,7 +338,10 @@ def test_fiche_lancee_telle_quelle_note_son_lancement(
     profils.sauvegarder_profils({"f": {"label": "F", "versants": ["etat"]}})
     controleur.lancer_profil("f")
     _attendre(controleur, qtbot)
-    assert profils.charger_profils()["f"].get("dernier_lancement") == date.today().isoformat()
+    assert (
+        profils.charger_profils()["f"].get("dernier_lancement")
+        == date.today().isoformat()
+    )
     assert cache.obtenir_offres_cachetees("f")
 
 
@@ -370,7 +380,9 @@ def test_export_resume_les_criteres_de_la_recherche_affichee(
     _attendre(controleur, qtbot)
     controleur.basculer("categories", "C", True)
     controleur.exporter()
-    assert recus[0] == resumer_filtres({**controleur.construire_filtres(), "categories": ["A"]})
+    assert recus[0] == resumer_filtres(
+        {**controleur.construire_filtres(), "categories": ["A"]}
+    )
 
 
 def test_nouvelles_seulement_et_export_des_offres_visibles(
@@ -378,12 +390,16 @@ def test_nouvelles_seulement_et_export_des_offres_visibles(
 ) -> None:
     exportees: list[list[Offre]] = []
 
-    def exporter(offres: list[Offre], resume: str, nb_pages: int, profil: object) -> Path:
+    def exporter(
+        offres: list[Offre], resume: str, nb_pages: int, profil: object
+    ) -> Path:
         exportees.append(offres)
         return Path("export.html")
 
     monkeypatch.setattr(controleur_recherche, "exporter_html", exporter)
-    profils.sauvegarder_profils({"f": {"label": "F", "versants": ["etat", "territorial"]}})
+    profils.sauvegarder_profils(
+        {"f": {"label": "F", "versants": ["etat", "territorial"]}}
+    )
     controleur.lancer_profil("f")
     _attendre(controleur, qtbot)
     controleur.filtrer("finances")

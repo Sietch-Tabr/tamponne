@@ -176,7 +176,6 @@ def test_generer_archive_pdf_echec_reseau_echoue_sans_lever(
     assert "échec de téléchargement" in capsys.readouterr().err
 
 
-
 def test_suivre_offre_enregistre_detail_et_archive_pdf(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -210,9 +209,7 @@ def test_suivre_offre_sans_detail_ni_archive_suit_quand_meme(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Fiche injoignable : le suivi basique reste utile (titre/url)."""
-    monkeypatch.setattr(
-        candidatures, "recuperer_detail_offre", lambda url: DETAIL_VIDE
-    )
+    monkeypatch.setattr(candidatures, "recuperer_detail_offre", lambda url: DETAIL_VIDE)
     offre: Offre = {
         "titre": "Attaché",
         "url": "https://example.org/1",
@@ -229,6 +226,7 @@ def test_suivre_offre_sans_detail_ni_archive_suit_quand_meme(
 
     assert "ref-1" in candidatures.charger_candidatures()
     assert not candidatures.chemin_archive_pdf("ref-1").exists()
+
 
 def test_dernier_evenement_retourne_le_plus_recent_par_date() -> None:
     # Candidature partielle : seuls les champs lus par dernier_evenement.
@@ -383,9 +381,10 @@ def test_source_candidature_memorisee_puis_deduite_du_prefixe() -> None:
     candidatures.ajouter_candidature(
         "2026-1", "Titre", "Employeur", "https://example.org", offre_source="FHF"
     )
-    assert candidatures.source_candidature(
-        candidatures.charger_candidatures()["2026-1"]
-    ) == "FHF"
+    assert (
+        candidatures.source_candidature(candidatures.charger_candidatures()["2026-1"])
+        == "FHF"
+    )
     ancienne = candidatures.charger_candidatures()["2026-1"]
     del ancienne["offre_source"]
     ancienne["offre_reference"] = "MINT_2026-31544"
@@ -400,7 +399,9 @@ def test_evenements_doublon_modification_et_suppression() -> None:
     candidatures.ajouter_evenement("R", "entretien_planifie", "2026-10-03", "visio")
     dossier = candidatures.charger_candidatures()["R"]
     assert candidatures.evenement_en_double(dossier, "relance", "2026-10-01")
-    assert not candidatures.evenement_en_double(dossier, "relance", "2026-10-01", sauf_indice=0)
+    assert not candidatures.evenement_en_double(
+        dossier, "relance", "2026-10-01", sauf_indice=0
+    )
     assert not candidatures.evenement_en_double(dossier, "relance", "2026-10-02")
 
     candidatures.modifier_evenement("R", 1, "entretien_passe", "2026-10-03", "fait")

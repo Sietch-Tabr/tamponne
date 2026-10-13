@@ -83,9 +83,7 @@ def test_choisirleservicepublic_envoie_le_user_agent_identifie(
 ) -> None:
     requetes: list[urllib.request.Request] = []
 
-    def urlopen_factice(
-        requete: urllib.request.Request, timeout: float
-    ) -> io.BytesIO:
+    def urlopen_factice(requete: urllib.request.Request, timeout: float) -> io.BytesIO:
         requetes.append(requete)
         return io.BytesIO(b"<title>t</title>")
 

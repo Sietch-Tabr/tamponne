@@ -136,7 +136,9 @@ def installer(dossier: Path) -> None:
     )
 
 
-def _offre(reference: str, titre: str, employeur: str, lieu: str, date: str, source: str) -> Offre:
+def _offre(
+    reference: str, titre: str, employeur: str, lieu: str, date: str, source: str
+) -> Offre:
     return {
         "titre": titre,
         "url": f"https://example.org/{reference}",
@@ -160,16 +162,60 @@ def remplir_registre(recherche: QObject) -> None:
     controleur.definir("localisations", ["Île-de-France"])
     controleur.definir("teletravail", True)
     offres = [
-        _offre("AGRI_1", "Chargé(e) de mission politiques agricoles", "DRAAF Île-de-France", "Paris 75", "02/10/2026", "Ministère de l'Agriculture"),
-        _offre("MINT_2", "Attaché(e) d'administration RH", "Préfecture de région", "Paris 75", "01/10/2026", "Ministère de l'Intérieur"),
-        _offre("T3", "Responsable du service finances", "Commune [exemple]", "Versailles 78", "30/09/2026", "Fonction publique territoriale"),
-        _offre("FHF_4", "Acheteur(se) public(que)", "Centre hospitalier [exemple]", "Créteil 94", "29/09/2026", "FHF"),
-        _offre("MEF_5", "Chef(fe) de bureau budget", "Direction ministérielle [exemple]", "Paris 75", "28/09/2026", "MEF"),
-        _offre("2026-6", "Chargé(e) d'études statistiques", "Service statistique [exemple]", "Montrouge 92", "27/09/2026", ""),
+        _offre(
+            "AGRI_1",
+            "Chargé(e) de mission politiques agricoles",
+            "DRAAF Île-de-France",
+            "Paris 75",
+            "02/10/2026",
+            "Ministère de l'Agriculture",
+        ),
+        _offre(
+            "MINT_2",
+            "Attaché(e) d'administration RH",
+            "Préfecture de région",
+            "Paris 75",
+            "01/10/2026",
+            "Ministère de l'Intérieur",
+        ),
+        _offre(
+            "T3",
+            "Responsable du service finances",
+            "Commune [exemple]",
+            "Versailles 78",
+            "30/09/2026",
+            "Fonction publique territoriale",
+        ),
+        _offre(
+            "FHF_4",
+            "Acheteur(se) public(que)",
+            "Centre hospitalier [exemple]",
+            "Créteil 94",
+            "29/09/2026",
+            "FHF",
+        ),
+        _offre(
+            "MEF_5",
+            "Chef(fe) de bureau budget",
+            "Direction ministérielle [exemple]",
+            "Paris 75",
+            "28/09/2026",
+            "MEF",
+        ),
+        _offre(
+            "2026-6",
+            "Chargé(e) d'études statistiques",
+            "Service statistique [exemple]",
+            "Montrouge 92",
+            "27/09/2026",
+            "",
+        ),
     ]
     controleur._modele.definir_offres(offres, {"AGRI_1", "MINT_2"})
     controleur._nb_nouvelles = 2
-    controleur._resume = "6 inscrites · 2 nouvelles · 1 écartée (grades supérieurs) · 04/10/2026 10:12"
+    controleur._resume = (
+        "6 inscrites · 2 nouvelles · 1 écartée (grades supérieurs) · 04/10/2026 10:12"
+    )
     controleur._phase = "resultats"
     controleur.selectionner(1)
 

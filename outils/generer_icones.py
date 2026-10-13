@@ -55,7 +55,8 @@ def generer(dossier_tmp: Path) -> None:
 
     if shutil.which("iconutil") is None:
         print(
-            "iconutil absent (macOS uniquement)\u00a0: .icns non régénéré.", file=sys.stderr
+            "iconutil absent (macOS uniquement)\u00a0: .icns non régénéré.",
+            file=sys.stderr,
         )
         return
     iconset = dossier_tmp / "tamponne.iconset"

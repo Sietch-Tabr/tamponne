@@ -93,11 +93,15 @@ def test_verifier_offres_relaie_progression_et_marque_depubliee(
     textes: list[str] = []
     monkeypatch.setattr(travailleurs, "verifier_disponibilite", lambda _url: False)
     controleur = ControleurSuivi(qapp)
-    controleur.etat_change.connect(lambda: textes.append(controleur.property("texte_verification")))
+    controleur.etat_change.connect(
+        lambda: textes.append(controleur.property("texte_verification"))
+    )
 
     controleur.verifier_offres()
     assert controleur.property("verification_en_cours") is True
-    qtbot.waitUntil(lambda: not controleur.property("verification_en_cours"), timeout=5000)
+    qtbot.waitUntil(
+        lambda: not controleur.property("verification_en_cours"), timeout=5000
+    )
 
     assert "Vérification… 2/2" in textes
     assert controleur.property("texte_verification") == LIBELLE_VERIFIER
@@ -117,7 +121,9 @@ def test_verifier_offres_echec_reseau_signale_sans_rien_conclure(
     monkeypatch.setattr(travailleurs, "verifier_disponibilite", injoignable)
     controleur = ControleurSuivi(qapp)
     controleur.verifier_offres()
-    qtbot.waitUntil(lambda: not controleur.property("verification_en_cours"), timeout=5000)
+    qtbot.waitUntil(
+        lambda: not controleur.property("verification_en_cours"), timeout=5000
+    )
     assert all(c["disponible"] for c in candidatures.charger_candidatures().values())
     assert controleur.property("avertissement").startswith("2 offres non vérifiées")
     assert controleur.property("avertissement").endswith(
@@ -132,7 +138,9 @@ def test_verifier_offres_sans_echec_sans_avertissement(
     monkeypatch.setattr(travailleurs, "verifier_disponibilite", lambda _url: True)
     controleur = ControleurSuivi(qapp)
     controleur.verifier_offres()
-    qtbot.waitUntil(lambda: not controleur.property("verification_en_cours"), timeout=5000)
+    qtbot.waitUntil(
+        lambda: not controleur.property("verification_en_cours"), timeout=5000
+    )
     assert controleur.property("avertissement") == ""
 
 
@@ -194,7 +202,9 @@ def test_titre_au_pluriel_seulement_s_il_y_a_plusieurs_dossiers() -> None:
 @pytest.mark.usefixtures("deux_dossiers")
 def test_ajout_d_un_evenement_en_double_est_refuse(qapp: QApplication) -> None:
     controleur = ControleurSuivi(qapp)
-    erreur = controleur.ajouter_evenement("REF-B", "candidature_envoyee", "2026-09-11", "")
+    erreur = controleur.ajouter_evenement(
+        "REF-B", "candidature_envoyee", "2026-09-11", ""
+    )
     assert erreur == (
         "Déjà tamponné\u00a0: un événement «\u00a0Candidature envoyée\u00a0» existe à cette date."
     )
@@ -206,11 +216,21 @@ def test_modifier_puis_supprimer_un_evenement(qapp: QApplication) -> None:
     controleur = ControleurSuivi(qapp)
     assert controleur.ajouter_evenement("REF-B", "relance", "2026-09-30", "") == ""
     assert controleur.evenement("REF-B", 1)["libelle"] == "Relance"
-    assert controleur.modifier_evenement("REF-B", 1, "candidature_envoyee", "2026-09-11", "") == (
+    assert controleur.modifier_evenement(
+        "REF-B", 1, "candidature_envoyee", "2026-09-11", ""
+    ) == (
         "Déjà tamponné\u00a0: un événement «\u00a0Candidature envoyée\u00a0» existe à cette date."
     )
-    assert controleur.modifier_evenement("REF-B", 1, "accuse_reception", "2026-09-30", "ok") == ""
-    assert candidatures.charger_candidatures()["REF-B"]["historique"][1]["type"] == "accuse_reception"
+    assert (
+        controleur.modifier_evenement(
+            "REF-B", 1, "accuse_reception", "2026-09-30", "ok"
+        )
+        == ""
+    )
+    assert (
+        candidatures.charger_candidatures()["REF-B"]["historique"][1]["type"]
+        == "accuse_reception"
+    )
     controleur.supprimer_evenement("REF-B", 1)
     assert len(candidatures.charger_candidatures()["REF-B"]["historique"]) == 1
     assert controleur.evenement("REF-B", 7) == {}
@@ -219,5 +239,8 @@ def test_modifier_puis_supprimer_un_evenement(qapp: QApplication) -> None:
 @pytest.mark.usefixtures("deux_dossiers")
 def test_proposition_suit_le_dernier_evenement(qapp: QApplication) -> None:
     controleur = ControleurSuivi(qapp)
-    assert controleur.proposition("REF-B") == {"type": "accuse_reception", "date": "2026-09-11"}
+    assert controleur.proposition("REF-B") == {
+        "type": "accuse_reception",
+        "date": "2026-09-11",
+    }
     assert controleur.proposition("REF-ABSENTE") == {}

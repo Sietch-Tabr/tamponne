@@ -586,7 +586,8 @@ class ControleurRecherche(QObject):
         croissant = Qt.SortOrder.AscendingOrder
         ordre = (
             Qt.SortOrder.DescendingOrder
-            if self._proxy.sortColumn() == colonne and self._proxy.sortOrder() == croissant
+            if self._proxy.sortColumn() == colonne
+            and self._proxy.sortOrder() == croissant
             else croissant
         )
         self._proxy.sort(colonne, ordre)

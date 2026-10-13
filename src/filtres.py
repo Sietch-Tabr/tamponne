@@ -30,6 +30,7 @@ def categorie_normalisee(valeur: str) -> str:
             return cle
     return valeur
 
+
 VERSANTS: dict[str, int] = {
     "etat": 2456,
     "hospitalier": 2457,

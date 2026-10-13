@@ -167,7 +167,9 @@ class ControleurReglages(QObject):
             )
             return {
                 "disponible": False,
-                "a_jour": not (self._verification_en_cours or self._erreur_verification),
+                "a_jour": not (
+                    self._verification_en_cours or self._erreur_verification
+                ),
                 # Affiché en texte riche : un détail comme « <urlopen error …> »
                 # serait pris pour une balise.
                 "objet": html.escape(objet, quote=False),

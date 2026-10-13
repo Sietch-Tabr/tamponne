@@ -222,7 +222,10 @@ def test_texte_nombre_de_fiches_accorde() -> None:
 def test_libelle_selection_tous_unique_ou_nombre() -> None:
     assert libelle_selection([]) == "tous"
     assert libelle_selection(["Île-de-France"]) == "Île-de-France"
-    assert libelle_selection(["Ministère - Direction des achats"]) == "Direction des achats"
+    assert (
+        libelle_selection(["Ministère - Direction des achats"])
+        == "Direction des achats"
+    )
     assert libelle_selection(["A", "B"]) == "2 cochés"
 
 
@@ -243,7 +246,10 @@ def test_tampons_gardent_la_position_d_origine_dans_l_historique() -> None:
     contenu = contenu_dossier(
         "R",
         _candidature(
-            [_evt("2026-09-24", "accuse_reception"), _evt("2026-09-20", "candidature_envoyee")]
+            [
+                _evt("2026-09-24", "accuse_reception"),
+                _evt("2026-09-20", "candidature_envoyee"),
+            ]
         ),
         aujourd_hui=date(2026, 10, 4),
         archive_presente=False,
@@ -261,7 +267,10 @@ def test_evenement_propose_suit_le_dernier_evenement() -> None:
     )
     assert evenement_propose(
         _candidature(
-            [_evt("2026-10-01", "entretien_planifie"), _evt("2026-09-20", "candidature_envoyee")]
+            [
+                _evt("2026-10-01", "entretien_planifie"),
+                _evt("2026-09-20", "candidature_envoyee"),
+            ]
         ),
         date(2026, 10, 4),
     ) == ("entretien_passe", "2026-10-01")

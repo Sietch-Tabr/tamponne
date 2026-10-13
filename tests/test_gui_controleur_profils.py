@@ -60,7 +60,8 @@ def test_dupliquer_refuse_nom_vide_ou_existant(qapp: QApplication) -> None:
         "Une fiche porte déjà ce nom."
     )
     assert (
-        controleur.dupliquer("absente", "copie", "") == "La fiche d'origine n'existe plus."
+        controleur.dupliquer("absente", "copie", "")
+        == "La fiche d'origine n'existe plus."
     )
     assert controleur.dupliquer("attache-paris", " attache-copie ", "") == ""
     assert "attache-copie" in profils.charger_profils()

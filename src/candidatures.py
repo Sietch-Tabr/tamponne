@@ -194,6 +194,7 @@ def suivre_offre(offre: Offre) -> None:
         detail=detail,
     )
 
+
 def ajouter_evenement(
     reference: str,
     type_evenement: str,

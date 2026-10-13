@@ -311,7 +311,9 @@ def test_installer_archive_remplace_sans_reecrire_le_fichier_ouvert(
     racine = tmp_path / "installation"
     _installation(racine, {"Tamponne.command": "ancien contenu\n"})
     with (racine / "Tamponne.command").open(encoding="utf-8") as ouvert:
-        maj.installer_archive(_publication(tmp_path, {"Tamponne.command": "nouveau\n"}), racine)
+        maj.installer_archive(
+            _publication(tmp_path, {"Tamponne.command": "nouveau\n"}), racine
+        )
         assert ouvert.read() == "ancien contenu\n"
     assert (racine / "Tamponne.command").read_text(encoding="utf-8") == "nouveau\n"
     assert not list(racine.glob("*.maj"))

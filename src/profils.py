@@ -99,7 +99,9 @@ def noter_lancement(nom: str) -> None:
 def categories_compatibles(profil: FiltresRecherche) -> list[str]:
     """Catégories d'un profil en clés de `src.filtres.CATEGORIES`, y compris
     celles enregistrées sous leur libellé court, sans doublon."""
-    return list(dict.fromkeys(categorie_normalisee(c) for c in profil.get("categories") or []))
+    return list(
+        dict.fromkeys(categorie_normalisee(c) for c in profil.get("categories") or [])
+    )
 
 
 def versants_compatibles(profil: FiltresRecherche) -> list[str]:

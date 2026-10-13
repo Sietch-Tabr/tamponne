@@ -134,7 +134,10 @@ def test_lancer_synchronisation_impossible_revient_a_la_version_precedente(
         "motif": lanceur.MOTIF_SYNCHRONISATION,
         "date": maj.lire_echec()["date"],  # type: ignore[index]
     }
-    assert "Tamponné redémarre dans sa version précédente (1.0.0)" in capsys.readouterr().err
+    assert (
+        "Tamponné redémarre dans sa version précédente (1.0.0)"
+        in capsys.readouterr().err
+    )
 
 
 def test_lancer_version_precedente_non_synchronisable_demande_de_relancer(
@@ -163,7 +166,10 @@ def test_lancer_interface_arretee_avant_validation_revient_en_arriere(
     assert maj.version_locale() == "1.0.0"
     echec = maj.lire_echec()
     assert echec is not None and echec["motif"] == lanceur.MOTIF_DEMARRAGE
-    assert "Tamponné redémarre dans sa version précédente (1.0.0)" in capsys.readouterr().err
+    assert (
+        "Tamponné redémarre dans sa version précédente (1.0.0)"
+        in capsys.readouterr().err
+    )
 
 
 def test_lancer_installation_interrompue_restaure_la_sauvegarde(
@@ -205,7 +211,9 @@ def test_mettre_a_jour_uv_hors_windows_sans_installeur(
     assert executer.commandes == [MAJ_UV]
 
 
-def test_python_de_base_hors_de_l_environnement(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_python_de_base_hors_de_l_environnement(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(lanceur.sys, "base_prefix", "/base")
     assert lanceur.python_de_base() == Path("/base") / "python.exe"
     assert ".venv" not in lanceur.python_de_base().parts

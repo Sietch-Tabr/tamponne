@@ -376,7 +376,9 @@ class ControleurSuivi(QObject):
         if erreur:
             return erreur
         try:
-            modifier_evenement(reference, indice, type_evenement, date_iso, note.strip())
+            modifier_evenement(
+                reference, indice, type_evenement, date_iso, note.strip()
+            )
         except IndexError:
             return "Cet événement n'existe plus."
         self.rafraichir()

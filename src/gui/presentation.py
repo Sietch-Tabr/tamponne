@@ -109,7 +109,8 @@ def contenu_dossier(
     """
     # Tri stable par date, en gardant la position d'origine de chaque événement.
     historique = sorted(
-        enumerate(candidature.get("historique") or []), key=lambda paire: paire[1]["date"]
+        enumerate(candidature.get("historique") or []),
+        key=lambda paire: paire[1]["date"],
     )
     tampons = tuple(
         TamponHistorique(
@@ -240,7 +241,9 @@ def lignes_fiche(profil: Profil) -> list[str]:
     """
     categories = [
         LIBELLES_CATEGORIES.get(c, c)
-        for c in dict.fromkeys(map(categorie_normalisee, profil.get("categories") or []))
+        for c in dict.fromkeys(
+            map(categorie_normalisee, profil.get("categories") or [])
+        )
     ]
     versants = [_VERSANTS_FICHE.get(v, v) for v in profil.get("versants") or []]
     ligne_statut = " · ".join(
@@ -283,7 +286,9 @@ def lignes_fiche(profil: Profil) -> list[str]:
 
 def texte_nombre_fiches(nombre: int) -> str:
     """Compteur sous le titre « Mes fiches de recherche »."""
-    return f"{nombre} fiche{'s' if nombre > 1 else ''} classée{'s' if nombre > 1 else ''}"
+    return (
+        f"{nombre} fiche{'s' if nombre > 1 else ''} classée{'s' if nombre > 1 else ''}"
+    )
 
 
 def libelle_selection(selection: list[str]) -> str:

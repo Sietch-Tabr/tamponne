@@ -101,7 +101,9 @@ def test_lanceurs_mettent_uv_a_jour_avant_d_abandonner() -> None:
     assert "irm https://astral.sh/uv/install.ps1 | iex" in lignes[mise_a_jour]
     assert lignes[mise_a_jour + 1].strip() == "uv sync"
     assert mise_a_jour < next(
-        i for i, ligne in enumerate(lignes) if "même après la mise à jour de uv" in ligne
+        i
+        for i, ligne in enumerate(lignes)
+        if "même après la mise à jour de uv" in ligne
     )
     assert mise_a_jour > next(
         i for i, ligne in enumerate(lignes) if "GetSystemWebProxy()" in ligne

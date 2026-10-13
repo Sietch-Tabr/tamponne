@@ -351,7 +351,9 @@ def _appliquer_maj_en_attente(executer: Executer) -> bool:
         # l'avis de Réglages donne le motif et permet de réessayer.
         maj.enregistrer_echec(version, MOTIF_TELECHARGEMENT)
         maj.effacer_maj_disponible()
-        signaler(avec_detail(message_maj_non_telechargee(version, maj.version_locale())))
+        signaler(
+            avec_detail(message_maj_non_telechargee(version, maj.version_locale()))
+        )
         return True
     if synchroniser(executer):
         return True

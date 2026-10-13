@@ -47,7 +47,12 @@ ECRANS: dict[str, tuple[str, int, int, str]] = {
     "suivi": ("Dossier-Suivi.dc.html", 2, 900, ""),
     "aide": ("Dossier-Aide.dc.html", 3, 1400, ""),
     "reglages": ("Dossier-Parametres.dc.html", 4, 900, "avis"),
-    "detail": ("Dossier-Detail.dc.html", 2, 1100, "ecranSuivi:ouvrirDetail:MINT_2026-31544"),
+    "detail": (
+        "Dossier-Detail.dc.html",
+        2,
+        1100,
+        "ecranSuivi:ouvrirDetail:MINT_2026-31544",
+    ),
     "evenement": (
         "Dossier-Dialogues.dc.html",
         2,
@@ -213,7 +218,8 @@ def main() -> int:
     arguments = parseur.parse_args()
     if not FIREFOX.exists():
         print(
-            "Firefox introuvable\u00a0: capture de la maquette impossible.", file=sys.stderr
+            "Firefox introuvable\u00a0: capture de la maquette impossible.",
+            file=sys.stderr,
         )
         return 1
 
