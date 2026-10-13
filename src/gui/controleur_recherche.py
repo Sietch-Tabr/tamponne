@@ -41,7 +41,8 @@ from src.profils import (
     versants_compatibles,
 )
 from src.recherche import post_traiter_resultats
-from src.sources.choisirleservicepublic import MAX_PAGES, recuperer_detail_offre
+from src.sources.choisirleservicepublic import MAX_PAGES
+from src.sources.detail import recuperer_detail_offre
 from src.types import FiltresRecherche, Offre, Organisations, Profil
 
 INDIFFERENTE = "Indifférente"

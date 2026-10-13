@@ -12,17 +12,16 @@ from pathlib import Path
 
 lazy from bs4 import BeautifulSoup, Tag
 
-from src.sources.choisirleservicepublic import recuperer_detail_offre
-from src.sources.choisirleservicepublic.api import (
-    obtenir_page_offres,
-    telecharger_binaire,
-)
 from src.formatage import SOURCE_PAR_DEFAUT
+from src.sources.base import valider_url
+from src.sources.choisirleservicepublic.api import telecharger_binaire
 from src.sources.choisirleservicepublic.extraction import (
     DETAIL_VIDE,
-    _valider_url,
+    DOMAINE,
+    URL_BASE,
     deriver_source,
 )
+from src.sources.detail import recuperer_detail_offre
 from src.types import Candidature, DetailOffre, EvenementCandidature, Offre
 from src.utils import ecriture_atomique
 
@@ -41,7 +40,7 @@ def _extraire_url_pdf(page_html: str) -> str:
     lien = soup.find("a", class_="fr-link--download")
     if not isinstance(lien, Tag):
         return ""
-    return _valider_url(str(lien.get("href", "")))
+    return valider_url(str(lien.get("href", "")), URL_BASE, DOMAINE)
 
 
 def generer_archive_pdf(reference: str, page_html: str) -> bool:
@@ -96,9 +95,6 @@ TYPES_EVENEMENT: dict[str, str] = {
 # Types d'événement au-delà desquels une relance n'a plus de sens
 # (issue déjà connue : la candidature est close, positivement ou non).
 _TYPES_CLOTURANTS = {"reponse_positive", "refus"}
-
-# Le site répond HTTP 200 (pas 404) pour une offre retirée, avec ce titre distinct.
-MARQUEUR_OFFRE_DEPUBLIEE = "Offre dépubliée"
 
 
 def charger_candidatures() -> dict[str, Candidature]:
@@ -293,21 +289,6 @@ def statut_libelle(candidature: Candidature) -> str:
     if dernier is None:
         return "Aucun événement"
     return TYPES_EVENEMENT.get(dernier["type"], dernier["type"])
-
-
-def verifier_disponibilite(url: str) -> bool:
-    """Vérifie si l'offre est toujours en ligne sur le site.
-
-    Returns:
-        ``True`` si l'offre semble toujours disponible, ``False`` si le
-        marqueur de dépublication est détecté.
-
-    Raises:
-        RuntimeError: Site injoignable (erreur réseau) : on ne sait pas, le
-            statut stocké ne doit pas être modifié.
-    """
-    page = obtenir_page_offres(url)
-    return MARQUEUR_OFFRE_DEPUBLIEE not in page["title"]
 
 
 def marquer_disponibilite(reference: str, disponible: bool) -> None:

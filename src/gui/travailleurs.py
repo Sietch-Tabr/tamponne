@@ -11,7 +11,6 @@ from collections.abc import Callable
 
 from PySide6.QtCore import QObject, Signal
 
-from src.candidatures import verifier_disponibilite
 from src.maj import (
     VerificationImpossible,
     ecrire_maj_disponible,
@@ -19,6 +18,7 @@ from src.maj import (
     verifier_derniere_publication,
 )
 from src.recherche import RechercheImpossible, rechercher_toutes_sources
+from src.sources.detail import verifier_disponibilite
 from src.types import Candidature, FiltresRecherche, Organisations
 
 

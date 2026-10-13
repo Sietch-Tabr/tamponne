@@ -203,7 +203,7 @@ class Candidature(TypedDict):
         date_candidature: Date de l'envoi de la candidature, ``YYYY-MM-DD``.
         historique: Liste des événements, dans l'ordre d'ajout.
         disponible: ``False`` si l'offre a été dépubliée du site
-            (détecté via :func:`~src.candidatures.verifier_disponibilite`).
+            (détecté via :func:`~src.sources.detail.verifier_disponibilite`).
             ``True`` par défaut tant que non vérifiée — ne préjuge pas.
         derniere_verification: Date ISO 8601 de la dernière vérification
             de disponibilité, chaîne vide si jamais vérifiée.

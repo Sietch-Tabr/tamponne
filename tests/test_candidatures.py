@@ -315,45 +315,6 @@ def test_relance_suggeree_false_si_candidature_close() -> None:
     assert candidatures.relance_suggeree(toutes["ref-1"]) is False
 
 
-def test_verifier_disponibilite_true_si_pas_de_marqueur(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(
-        candidatures,
-        "obtenir_page_offres",
-        lambda url: {
-            "html": "",
-            "title": "Attaché principal | Choisir le service public",
-        },
-    )
-    assert candidatures.verifier_disponibilite("https://example.org/1") is True
-
-
-def test_verifier_disponibilite_false_si_marqueur_depubliee(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(
-        candidatures,
-        "obtenir_page_offres",
-        lambda url: {
-            "html": "",
-            "title": "Offre dépubliée | Choisir le service public",
-        },
-    )
-    assert candidatures.verifier_disponibilite("https://example.org/1") is False
-
-
-def test_verifier_disponibilite_erreur_reseau_propagee(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    def _erreur(url: str) -> None:
-        raise RuntimeError("Erreur réseau")
-
-    monkeypatch.setattr(candidatures, "obtenir_page_offres", _erreur)
-    with pytest.raises(RuntimeError, match="Erreur réseau"):
-        candidatures.verifier_disponibilite("https://example.org/1")
-
-
 def test_marquer_disponibilite_persiste_le_resultat() -> None:
     candidatures.ajouter_candidature(
         "ref-1", "Attaché", "DGFiP", "https://example.org/1"

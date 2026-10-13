@@ -1,12 +1,68 @@
 """Interface commune à toutes les sources d'offres."""
 
+import re
+lazy import urllib.error
+lazy import urllib.request
 from collections.abc import Callable
 from typing import Protocol
+from urllib.parse import urlparse
 
 from src.types import FiltresRecherche, Offre
 
 # Sites sans WAF : User-Agent identifiant l'application et son dépôt.
 USER_AGENT_IDENTIFIE = "tamponne (+https://codeberg.org/Kwaite/tamponne)"
+_TIMEOUT = 30
+_RE_TITRE = re.compile(r"<title[^>]*>(.*?)</title>", re.S | re.I)
+
+
+def sur_domaine(url: str, domaine: str) -> bool:
+    """Vrai si l'hôte de `url` est `domaine` ou l'un de ses sous-domaines."""
+    hote = urlparse(url).hostname or ""
+    return hote == domaine or hote.endswith(f".{domaine}")
+
+
+def valider_url(url: str, url_base: str, domaine: str) -> str:
+    """URL d'un lien extrait d'une page : un chemin relatif est rattaché à
+    `url_base`, une URL http(s) n'est gardée que sur `domaine` ; chaîne
+    vide sinon (lien externe, `javascript:`, vide)."""
+    if url.startswith("/"):
+        return f"{url_base}{url}"
+    if url.startswith(("https://", "http://")) and sur_domaine(url, domaine):
+        return url
+    return ""
+
+
+class PageIntrouvable(RuntimeError):
+    """Le site répond que la page n'existe pas (HTTP 404 ou 410)."""
+
+
+def consulter_page(url: str) -> tuple[str, str]:
+    """Charge `url` en suivant les redirections.
+
+    Returns:
+        URL finale et titre (`<title>`) de la page.
+
+    Raises:
+        PageIntrouvable: HTTP 404 ou 410.
+        RuntimeError: Autre code d'erreur HTTP, ou échec réseau.
+    """
+    requete = urllib.request.Request(url, headers={"User-Agent": USER_AGENT_IDENTIFIE})
+    try:
+        with urllib.request.urlopen(requete, timeout=_TIMEOUT) as reponse:
+            url_finale = reponse.geturl()
+            html = reponse.read().decode("utf-8", errors="replace")
+    except urllib.error.HTTPError as erreur:
+        if erreur.code in (404, 410):
+            raise PageIntrouvable(f"Page introuvable (HTTP {erreur.code})") from erreur
+        raise RuntimeError(
+            f"Erreur HTTP {erreur.code} lors du chargement de {url}"
+        ) from erreur
+    except OSError as erreur:
+        raise RuntimeError(
+            f"Erreur réseau lors du chargement de {url}\u00a0: {erreur}"
+        ) from erreur
+    titre = _RE_TITRE.search(html)
+    return url_finale, titre.group(1).strip() if titre else ""
 
 
 def deduplique_offres(offres: list[Offre]) -> list[Offre]:
