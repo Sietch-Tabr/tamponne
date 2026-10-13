@@ -7,12 +7,56 @@ from collections.abc import Callable
 from typing import Protocol
 from urllib.parse import urlparse
 
+lazy from bs4 import Tag
+
 from src.types import FiltresRecherche, Offre
 
 # Sites sans WAF : User-Agent identifiant l'application et son dépôt.
 USER_AGENT_IDENTIFIE = "tamponne (+https://codeberg.org/Kwaite/tamponne)"
 _TIMEOUT = 30
 _RE_TITRE = re.compile(r"<title[^>]*>(.*?)</title>", re.S | re.I)
+_RE_ESPACES = re.compile(r"\s+")
+_RE_LIGNES_VIDES = re.compile(r"\n{3,}")
+_SAUT = "\x00"
+"""Marque provisoire d'un saut de ligne, que la réduction des espaces épargne."""
+
+
+def adresse_cloudflare(code: str) -> str:
+    """Adresse e-mail masquée par Cloudflare (`data-cfemail`) : octets en
+    hexadécimal, le premier sert de clé (XOR) aux suivants ; vide si le
+    code est illisible."""
+    try:
+        octets = bytes.fromhex(code)
+    except ValueError:
+        return ""
+    if len(octets) < 2:
+        return ""
+    return bytes(octet ^ octets[0] for octet in octets[1:]).decode(
+        "utf-8", errors="replace"
+    )
+
+
+def texte_lisible(bloc: Tag) -> str:
+    """Texte d'un bloc HTML d'une fiche, mis en lignes comme sur le site :
+    `<br>` et fin d'élément de liste passent à la ligne, un paragraphe est
+    suivi d'une ligne vide, un élément de liste commence par « • ». Les
+    sauts du code HTML ne comptent pas, et les adresses e-mail masquées par
+    Cloudflare sont rendues lisibles, comme dans un navigateur. Modifie
+    `bloc`."""
+    for masque in bloc.find_all(True, attrs={"data-cfemail": True}):
+        adresse = adresse_cloudflare(str(masque.get("data-cfemail", "")))
+        if adresse:
+            masque.replace_with(adresse)
+    for saut in bloc.find_all("br"):
+        saut.replace_with(_SAUT)
+    for element in bloc.find_all("li"):
+        element.insert(0, "• ")
+        element.append(_SAUT)
+    for paragraphe in bloc.find_all("p"):
+        paragraphe.append(_SAUT * 2)
+    texte = _RE_ESPACES.sub(" ", bloc.get_text())
+    lignes = [ligne.strip() for ligne in texte.split(_SAUT)]
+    return _RE_LIGNES_VIDES.sub("\n\n", "\n".join(lignes).strip())
 
 
 def sur_domaine(url: str, domaine: str) -> bool:

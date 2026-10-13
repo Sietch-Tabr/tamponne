@@ -145,3 +145,36 @@ def test_filtrer_doublons_fhf_titre_different_conserve() -> None:
 def test_filtrer_doublons_fhf_liste_existante_vide_conserve_tout() -> None:
     fhf = [_offre("Infirmier de nuit", "Centre Hospitalier X")]
     assert filtrer_doublons_fhf(fhf, []) == fhf
+
+
+_FICHE_ACTUELLE = """
+<div class="publication-info">
+  <div>Publié le 08 oct. 2026</div>
+  <div>Date de limite de candidatures 20 oct. 2026</div>
+</div>
+<article class="offer">
+  <div class="section"><div class="section-title">Descriptif</div>
+    PRESENTATION DU POSTE<br/>
+    <br/>
+    Famille de métier :   SOIGNANT<br/>
+    <br/><br/><br/>
+    Intitulé du poste :<br/>
+    Infirmière puéricultrice	<br/>
+  </div>
+</article>
+"""
+
+
+def test_extraire_detail_offre_dates_separees() -> None:
+    """Fiche actuelle : publication et date limite dans deux blocs."""
+    detail = extraire_detail_offre(_FICHE_ACTUELLE)
+    assert detail["date_publication"] == "08 oct. 2026"
+    assert detail["date_limite"] == "20 oct. 2026"
+
+
+def test_extraire_detail_offre_description_garde_les_retours_a_la_ligne() -> None:
+    detail = extraire_detail_offre(_FICHE_ACTUELLE)
+    assert detail["description"] == (
+        "PRESENTATION DU POSTE\n\nFamille de métier : SOIGNANT\n\n"
+        "Intitulé du poste :\nInfirmière puéricultrice"
+    )

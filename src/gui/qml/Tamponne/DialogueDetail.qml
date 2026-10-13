@@ -90,12 +90,13 @@ Dialogue {
                 }
                 BoutonEtiquette {
                     text: "Consulter en ligne"
-                    enabled: racine.fiche.enLigne === true
+                    // Sans style désactivé, un bouton inopérant paraîtrait cliquable.
+                    visible: racine.fiche.enLigne === true
                     onClicked: racine.consulterEnLigne(racine.fiche.reference)
                 }
                 BoutonEtiquette {
                     text: "Voir la copie archivée"
-                    enabled: racine.fiche.archivePresente === true
+                    visible: racine.fiche.archivePresente === true
                     ToolTip.visible: hovered
                     ToolTip.text: "PDF autonome de la fiche telle qu'elle était au moment du suivi, consultable hors ligne ou après dépublication"
                     onClicked: racine.voirArchive(racine.fiche.reference)

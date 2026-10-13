@@ -4,7 +4,7 @@ import re
 
 lazy from bs4 import BeautifulSoup, Tag
 
-from src.sources.base import valider_url
+from src.sources.base import texte_lisible, valider_url
 from src.types import DetailOffre, Offre
 
 DOMAINE = "passerelles.economie.gouv.fr"
@@ -97,11 +97,12 @@ def _extraire_champs(soup: BeautifulSoup) -> dict[str, str]:
         ):
             texte_parent = _texte_normalise(parent.get_text(" ", strip=True))
             if texte_parent.startswith(label) and texte_parent != label:
-                champs[label] = _texte_normalise(texte_parent[len(label) :])
+                h3.extract()
+                champs[label] = texte_lisible(parent)
                 continue
         suivant = h3.find_next_sibling(["p", "div"])
         if isinstance(suivant, Tag):
-            champs[label] = _texte_normalise(suivant.get_text(" ", strip=True))
+            champs[label] = texte_lisible(suivant)
     return champs
 
 
