@@ -131,7 +131,7 @@ VARIABLE_DETACHE = "TAMPONNE_SANS_CONSOLE"
 FLUX_MARQUE_DU_WEB = ":Zone.Identifier"
 """Flux NTFS posé par Windows sur un fichier téléchargé (ou extrait d'un zip
 téléchargé) : il fait afficher un avertissement à chaque ouverture."""
-DOSSIERS_SANS_MARQUE = {".git", ".venv", "data", maj.NOM_PRECEDENTE}
+DOSSIERS_SANS_MARQUE = frozenset({".git", ".venv", "data", maj.NOM_PRECEDENTE})
 CHEMIN_JOURNAL = CHEMIN_RACINE / "data" / "journal_lancement.log"
 """Sorties des commandes du dernier lancement (uv, interface), pour le
 diagnostic : sous Windows, elles n'ont pas de console où s'afficher."""
@@ -158,16 +158,16 @@ def retirer_marque_du_web(racine: Path = CHEMIN_RACINE) -> int:
     Returns:
         Nombre de fichiers débloqués.
     """
-    if not os.path.exists(str(racine / "Tamponne.bat") + FLUX_MARQUE_DU_WEB):
+    if not Path(f"{racine / 'Tamponne.bat'}{FLUX_MARQUE_DU_WEB}").exists():
         return 0
     debloques = 0
-    for dossier, sous_dossiers, fichiers in os.walk(racine):
+    for dossier, sous_dossiers, fichiers in racine.walk():
         sous_dossiers[:] = [d for d in sous_dossiers if d not in DOSSIERS_SANS_MARQUE]
         for nom in fichiers:
             if ":" in nom:
                 continue
             try:
-                os.remove(os.path.join(dossier, nom) + FLUX_MARQUE_DU_WEB)
+                Path(f"{dossier / nom}{FLUX_MARQUE_DU_WEB}").unlink()
             except OSError:
                 continue
             debloques += 1

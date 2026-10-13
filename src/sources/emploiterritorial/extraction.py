@@ -23,14 +23,16 @@ def _texte_normalise(tag: Tag) -> str:
 
 # Libellés déjà mappés vers un champ dédié de DetailOffre — exclus de
 # sections_complementaires pour ne pas les dupliquer.
-_LIBELLES_DEDIES = {
-    "rémunération indicative",
-    "experience souhaitée",
-    "expérience souhaitée",
-    "famille de métiers",
-    "lien de candidature",
-    "date limite de candidature",
-}
+_LIBELLES_DEDIES = frozenset(
+    {
+        "rémunération indicative",
+        "experience souhaitée",
+        "expérience souhaitée",
+        "famille de métiers",
+        "lien de candidature",
+        "date limite de candidature",
+    }
+)
 
 
 def _valider_url(url: str) -> str:

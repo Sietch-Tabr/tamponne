@@ -37,7 +37,7 @@ CHEMIN_ECHEC = CHEMIN_RACINE / "data" / "maj_echouee.json"
 NOM_PRECEDENTE = ".maj-precedente"
 """Copie de la version remplacée, à la racine (hors de l'export de `data/`),
 supprimée une fois la nouvelle version démarrée."""
-EXCLUS_SAUVEGARDE = {".git", ".venv", "data", NOM_PRECEDENTE}
+EXCLUS_SAUVEGARDE = frozenset({".git", ".venv", "data", NOM_PRECEDENTE})
 _TIMEOUT = 15
 _TIMEOUT_TELECHARGEMENT = 60
 """Délai maximal sans données reçues pendant le téléchargement de l'archive."""

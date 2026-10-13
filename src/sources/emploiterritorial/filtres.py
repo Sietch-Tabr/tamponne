@@ -5,7 +5,10 @@ Valeurs vérifiées empiriquement contre le formulaire réel du site (segments
 qui sert choisirleservicepublic.gouv.fr.
 """
 
-DEPARTEMENTS: dict[str, str] = {
+from collections.abc import Mapping
+from typing import Final
+
+DEPARTEMENTS: Final[Mapping[str, str]] = {
     "Ain": "001",
     "Aisne": "002",
     "Allier": "003",

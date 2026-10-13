@@ -1,10 +1,12 @@
 """Constantes statiques des filtres de recherche."""
 
 import re
+from collections.abc import Mapping
+from typing import Final
 
 from src.types import FiltresRecherche, Offre
 
-CATEGORIES: dict[str, int] = {
+CATEGORIES: Final[Mapping[str, int]] = {
     "A+ (direction)": 4327,
     "A+ (autres emplois fonctionnels)": 4328,
     "A": 1805,
@@ -12,7 +14,7 @@ CATEGORIES: dict[str, int] = {
     "C": 1807,
 }
 
-LIBELLES_CATEGORIES: dict[str, str] = {
+LIBELLES_CATEGORIES: Final[Mapping[str, str]] = {
     "A+ (direction)": "A+ (direction)",
     "A+ (autres emplois fonctionnels)": "A+ (autres)",
     "A": "A",
@@ -31,25 +33,25 @@ def categorie_normalisee(valeur: str) -> str:
     return valeur
 
 
-VERSANTS: dict[str, int] = {
+VERSANTS: Final[Mapping[str, int]] = {
     "etat": 2456,
     "hospitalier": 2457,
     "territorial": 2458,
 }
 
-LABELS_VERSANTS: dict[str, str] = {
+LABELS_VERSANTS: Final[Mapping[str, str]] = {
     "etat": "Fonction publique de l'État",
     "hospitalier": "Fonction publique Hospitalière",
     "territorial": "Fonction publique Territoriale",
 }
 
-LABELS_VERSANTS_ABREGES: dict[str, str] = {
+LABELS_VERSANTS_ABREGES: Final[Mapping[str, str]] = {
     "etat": "FPE",
     "hospitalier": "FPH",
     "territorial": "FPT",
 }
 
-TYPES_POSTE: dict[str, int] = {
+TYPES_POSTE: Final[Mapping[str, int]] = {
     "titulaire-contractuel": 2349,
     "titulaire": 4534,
     "contractuel": 2267,
@@ -61,7 +63,7 @@ TYPES_POSTE_DEFAUT: list[int] = [
     TYPES_POSTE["titulaire-contractuel"],
 ]
 
-DOMAINES: dict[str, int] = {
+DOMAINES: Final[Mapping[str, int]] = {
     "Achat": 3503,
     "Affaires juridiques": 3504,
     "Agriculture": 3505,
@@ -93,7 +95,7 @@ DOMAINES: dict[str, int] = {
     "Transports": 3531,
 }
 
-LOCALISATIONS: dict[str, int] = {
+LOCALISATIONS: Final[Mapping[str, int]] = {
     "Ain": 330,
     "Aisne": 317,
     "Allier": 243,
@@ -213,7 +215,7 @@ LOCALISATIONS: dict[str, int] = {
 # Regex de détection des grades supérieurs (IDiv, IP*, AFIPA)
 RE_GRADE_SUPERIEUR = re.compile(r"^(IDIV|AFIPA?|IP[A-Z\s\-\(])", re.IGNORECASE)
 
-CORPS_GRADES: dict[str, dict[str, re.Pattern[str]]] = {
+CORPS_GRADES: Final[Mapping[str, Mapping[str, re.Pattern[str]]]] = {
     # Décret n°2011-1317 du 17 octobre 2011, article 4.
     "Attaché": {
         "Attaché": re.compile(
@@ -255,7 +257,7 @@ n'apparaissent quasiment jamais tels quels dans les titres et ne sont pas
 couverts. Chaque corps cite son décret en commentaire.
 """
 
-GRADES: dict[str, re.Pattern[str]] = {
+GRADES: Final[Mapping[str, re.Pattern[str]]] = {
     grade: motif
     for grades_du_corps in CORPS_GRADES.values()
     for grade, motif in grades_du_corps.items()
@@ -271,13 +273,13 @@ def filtrer_par_grades(offres: list[Offre], grades: list[str]) -> list[Offre]:
     return [o for o in offres if any(m.search(o["titre"]) for m in motifs)]
 
 
-EXPERIENCES: dict[str, int] = {
+EXPERIENCES: Final[Mapping[str, int]] = {
     "Débutant": 1835,
     "Confirmé": 1834,
     "Expert": 1833,
 }
 
-DATES_PUBLICATION: dict[str, str] = {
+DATES_PUBLICATION: Final[Mapping[str, str]] = {
     "Dernières 48 heures": "dernieres_48_heures",
     "7 derniers jours": "7_derniers_jours",
     "14 derniers jours": "14_derniers_jours",

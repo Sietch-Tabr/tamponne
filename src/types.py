@@ -34,7 +34,7 @@ class Offre(TypedDict):
     source: str
 
 
-class OffreCache(Offre):
+class OffreCache(Offre, closed=True):
     """Offre enrichie lors de sa mise en cache.
 
     Étend :class:`Offre` avec les horodatages de suivi permettant de
@@ -99,7 +99,7 @@ class FiltresRecherche(TypedDict, total=False):
     grades_superieurs: bool
 
 
-class Profil(FiltresRecherche, total=False):
+class Profil(FiltresRecherche, total=False, closed=True):
     """Profil de recherche sauvegardé.
 
     Étend :class:`FiltresRecherche` avec des métadonnées persistées dans
@@ -116,7 +116,7 @@ class Profil(FiltresRecherche, total=False):
     dernier_lancement: str
 
 
-class DetailOffre(TypedDict):
+class DetailOffre(TypedDict, closed=True):
     """Détail structuré d'une fiche de poste, extrait du bloc JSON-LD
     (schema.org JobPosting) intégré dans la page au moment où le suivi
     de candidature démarre — l'offre peut être dépubliée ensuite, ces
@@ -170,7 +170,7 @@ class DetailOffre(TypedDict):
     date_limite: str
 
 
-class EvenementCandidature(TypedDict):
+class EvenementCandidature(TypedDict, closed=True):
     """Un événement horodaté dans l'historique d'une candidature.
 
     Attributes:
@@ -184,7 +184,7 @@ class EvenementCandidature(TypedDict):
     note: str
 
 
-class Candidature(TypedDict):
+class Candidature(TypedDict, closed=True):
     """Candidature suivie pour une offre, stockée dans
     ``data/candidatures.json`` sous forme de ``dict[str, Candidature]``
     indexé par la référence de l'offre (clé naturelle, unique — même
@@ -233,7 +233,7 @@ class Candidature(TypedDict):
     offre_source: NotRequired[str]
 
 
-class PageAPI(TypedDict):
+class PageAPI(TypedDict, closed=True):
     """Réponse brute d'une page téléchargée depuis l'API WordPress.
 
     Attributes:
@@ -245,7 +245,7 @@ class PageAPI(TypedDict):
     title: str
 
 
-class InfoMaj(TypedDict):
+class InfoMaj(TypedDict, closed=True):
     """Publication Codeberg plus récente que la version locale.
 
     Attributes:
@@ -261,7 +261,7 @@ class InfoMaj(TypedDict):
     url_publication: str
 
 
-class EchecMaj(TypedDict):
+class EchecMaj(TypedDict, closed=True):
     """Mise à jour annulée par le lanceur (retour à la version précédente).
 
     Attributes:
@@ -275,7 +275,7 @@ class EchecMaj(TypedDict):
     date: str
 
 
-class ResultatTraite(TypedDict):
+class ResultatTraite(TypedDict, closed=True):
     """Résultat d'une recherche après post-traitement
     (`src.recherche.post_traiter_resultats`).
 

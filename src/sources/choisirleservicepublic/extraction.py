@@ -3,6 +3,8 @@
 import json
 import re
 import sys
+from collections.abc import Mapping
+from typing import Final
 
 lazy from bs4 import BeautifulSoup, Tag
 
@@ -35,7 +37,7 @@ def est_grade_superieur(titre: str) -> bool:
 
 # Préfixes de référence vérifiés (via lien_postuler pointant vers le
 # portail d'origine réel) — ex. MEF_2026-30262 vient de Bercy/Passerelles.
-_SOURCES_CONNUES = {
+_SOURCES_CONNUES: Final[Mapping[str, str]] = {
     "MEF": "Ministère de l'Économie et des Finances",
     "MINT": "Ministère de l'Intérieur",
     "APHP": "AP-HP",

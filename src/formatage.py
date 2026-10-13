@@ -4,13 +4,15 @@ Ne dépend d'aucune bibliothèque d'UI.
 """
 
 import re
+from collections.abc import Mapping
+from typing import Final
 
 from src.types import Offre
 
 SOURCE_PAR_DEFAUT = "Choisir le service public"
 """Source affichée pour une offre de choisirleservicepublic sans préfixe connu."""
 
-_MOIS_FR = {
+_MOIS_FR: Final[Mapping[str, int]] = {
     "janvier": 1,
     "février": 2,
     "mars": 3,

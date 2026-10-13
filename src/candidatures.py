@@ -8,8 +8,10 @@ utilisateurs).
 import json
 import re
 import sys
+from collections.abc import Mapping
 from datetime import date
 from pathlib import Path
+from typing import Final
 
 lazy from bs4 import BeautifulSoup, Tag
 
@@ -93,7 +95,7 @@ def generer_archive_pdf(reference: str, page_html: str) -> bool:
 # Jours sans événement au-delà desquels une relance est suggérée (badge visuel seul).
 SEUIL_RELANCE_JOURS = 21
 
-TYPES_EVENEMENT: dict[str, str] = {
+TYPES_EVENEMENT: Final[Mapping[str, str]] = {
     "candidature_envoyee": "Candidature envoyée",
     "accuse_reception": "Accusé de réception",
     "entretien_planifie": "Entretien planifié",
@@ -106,7 +108,7 @@ TYPES_EVENEMENT: dict[str, str] = {
 
 # Types d'événement au-delà desquels une relance n'a plus de sens
 # (issue déjà connue : la candidature est close, positivement ou non).
-_TYPES_CLOTURANTS = {"reponse_positive", "refus"}
+_TYPES_CLOTURANTS = frozenset({"reponse_positive", "refus"})
 
 
 def charger_candidatures() -> dict[str, Candidature]:

@@ -2,20 +2,22 @@
 
 import json
 import sys
+from collections.abc import Mapping
 from pathlib import Path
+from typing import Final
 
 from src.utils import ecriture_atomique
 
 CHEMIN_SOURCES = Path(__file__).parent.parent / "data" / "sources.json"
 
-SOURCES_DISPONIBLES: dict[str, str] = {
+SOURCES_DISPONIBLES: Final[Mapping[str, str]] = {
     "choisirleservicepublic": "Choisir le service public",
     "emploiterritorial": "Fonction publique territoriale (emploi-territorial.fr)",
     "passerellesmef": "Passerelles - Bercy (passerelles.economie.gouv.fr)",
     "fhf": "Fonction publique hospitalière (emploi.fhf.fr)",
 }
 
-VERSANT_SOURCE: dict[str, str] = {
+VERSANT_SOURCE: Final[Mapping[str, str]] = {
     "emploiterritorial": "territorial",
     "passerellesmef": "etat",
     "fhf": "hospitalier",

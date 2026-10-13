@@ -1,7 +1,8 @@
 """Écran Profils côté Python : fiches de recherche exposées au QML,
 suppression, duplication et demande de lancement."""
 
-from typing import Any
+from collections.abc import Mapping
+from typing import Any, Final
 
 from PySide6.QtCore import (
     Property,
@@ -21,7 +22,7 @@ from src.types import Profil
 
 type _Index = QModelIndex | QPersistentModelIndex
 
-_ROLES: dict[int, bytes] = {
+_ROLES: Final[Mapping[int, bytes]] = {
     Qt.ItemDataRole.UserRole + 1: b"nom",
     Qt.ItemDataRole.UserRole + 2: b"intitule",
     Qt.ItemDataRole.UserRole + 3: b"lignes",
