@@ -117,3 +117,14 @@ def test_lanceurs_montrent_la_progression_de_uv() -> None:
     bat = (RACINE / "Tamponne.bat").read_bytes().decode("utf-8")
     for contenu in (commande, bat):
         assert "--quiet" not in contenu and " -q " not in contenu
+
+
+def test_tamponne_bat_n_affiche_jamais_les_identifiants_du_proxy() -> None:
+    """`HTTPS_PROXY` peut contenir `utilisateur:mot de passe@` : le message
+    d'erreur, souvent capturé pour un signalement, n'en montre que l'hôte."""
+    bat = (RACINE / "Tamponne.bat").read_bytes().decode("utf-8")
+    messages = [ligne for ligne in bat.splitlines() if "Proxy utilisé" in ligne]
+    assert len(messages) == 2
+    for ligne in messages:
+        assert "{ $env:HTTPS_PROXY }" not in ligne
+        assert "$p.Host + ':' + $p.Port" in ligne

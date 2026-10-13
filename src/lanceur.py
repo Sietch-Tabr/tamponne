@@ -174,13 +174,23 @@ def retirer_marque_du_web(racine: Path = CHEMIN_RACINE) -> int:
     return debloques
 
 
+def anonymiser(texte: str) -> str:
+    """`texte` sans le chemin du dossier personnel, remplacé par `~` : le
+    journal est joint aux signalements publics, le nom de la session n'a
+    pas à y figurer."""
+    personnel = Path.home()
+    for forme in {str(personnel), personnel.as_posix()}:
+        texte = texte.replace(forme, "~")
+    return texte
+
+
 def _executer(commande: Sequence[str]) -> int:
     """Lance `commande` depuis la racine de l'installation et attend sa fin.
     Ses sorties s'affichent au fil de l'eau (`_afficher`) et sont ajoutées à
-    `CHEMIN_JOURNAL` ; sous Windows, sans fenêtre propre."""
+    `CHEMIN_JOURNAL`, anonymisées ; sous Windows, sans fenêtre propre."""
     CHEMIN_JOURNAL.parent.mkdir(parents=True, exist_ok=True)
     with CHEMIN_JOURNAL.open("a", encoding="utf-8") as journal:
-        journal.write(f"$ {' '.join(commande)}\n")
+        journal.write(anonymiser(f"$ {' '.join(commande)}\n"))
         journal.flush()
         drapeaux = 0
         if sys.platform == "win32":
@@ -196,7 +206,7 @@ def _executer(commande: Sequence[str]) -> int:
         )
         assert processus.stdout is not None
         for ligne in processus.stdout:
-            journal.write(ligne)
+            journal.write(anonymiser(ligne))
             journal.flush()
             _afficher(ligne)
         return processus.wait()

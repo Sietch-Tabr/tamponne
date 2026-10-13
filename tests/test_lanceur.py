@@ -319,3 +319,16 @@ def test_synchroniser_annonce_le_telechargement(
 def test_lanceur_sans_option_silencieuse() -> None:
     source = Path(lanceur.__file__).read_text(encoding="utf-8")
     assert '"--quiet"' not in source
+
+
+def test_executer_anonymise_le_dossier_personnel_dans_le_journal(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    journal = tmp_path / "journal_lancement.log"
+    monkeypatch.setattr(lanceur, "CHEMIN_JOURNAL", journal)
+    monkeypatch.setattr(lanceur, "_sortie", None)
+    personnel = str(Path.home())
+    lanceur._executer([sys.executable, "-c", f"print({personnel!r} + '/data')"])
+    contenu = journal.read_text(encoding="utf-8")
+    assert personnel not in contenu
+    assert "~/data" in contenu
