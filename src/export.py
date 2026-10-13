@@ -1,6 +1,6 @@
 """Export des résultats en HTML cliquable."""
 
-lazy import webbrowser
+import html
 from datetime import datetime
 from pathlib import Path
 
@@ -29,12 +29,8 @@ a:hover { text-decoration: underline; }
 
 
 def _echapper_html(texte: str) -> str:
-    return (
-        texte.replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-        .replace('"', "&quot;")
-    )
+    """Texte des sites sûr dans le HTML, attributs compris (`"` et `'`)."""
+    return html.escape(texte, quote=True)
 
 
 def exporter_html(
@@ -78,7 +74,7 @@ def exporter_html(
     nb_total_approx = nb_pages * NB_PAR_PAGE
     date_generation = datetime.now().strftime("%d/%m/%Y à %H:%M")
 
-    html = f"""<!DOCTYPE html>
+    page = f"""<!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
@@ -87,7 +83,7 @@ def exporter_html(
 <style>{_CSS}</style>
 </head>
 <body>
-<h1>Offres d'emploi — Choisir le Service Public</h1>
+<h1>Offres d'emploi de la fonction publique — Tamponné</h1>
 <div class="meta">
   <strong>Filtres\u00a0:</strong> {_echapper_html(resume_filtres)}<br>
   <strong>Résultats\u00a0:</strong> {len(offres)} offres affichées
@@ -111,10 +107,5 @@ def exporter_html(
 </body>
 </html>"""
 
-    chemin.write_text(html, encoding="utf-8")
+    chemin.write_text(page, encoding="utf-8")
     return chemin
-
-
-def ouvrir_dans_navigateur(chemin: Path) -> None:
-    """Ouvre le fichier HTML dans le navigateur par défaut."""
-    webbrowser.open(chemin.as_uri())
