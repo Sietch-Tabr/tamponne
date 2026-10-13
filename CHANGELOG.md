@@ -4,6 +4,15 @@ Toutes les évolutions notables de Tamponné, de la plus récente à la plus
 ancienne. Le détail de chaque version est aussi publié sur la page
 [Releases](https://codeberg.org/Kwaite/tamponne/releases) du dépôt.
 
+## [1.3.4] — 2026-10-13
+
+### Fiches détaillées (emploi-territorial, FHF, Passerelles)
+
+- Les fiches gardent la mise en forme du site : retours à la ligne, paragraphes, listes à puces (compétences, grades recherchés…) au lieu d'un seul bloc de texte
+- FHF : la date limite de candidature apparaît, et la date de publication n'est plus collée à son libellé
+- FHF : les adresses e-mail de contact s'affichent en clair au lieu de « [email protected] »
+- « Voir la copie archivée » et « Consulter en ligne » n'apparaissent plus quand ils ne mènent à rien
+
 ## [1.3.3] — 2026-10-13
 
 ### Corrections

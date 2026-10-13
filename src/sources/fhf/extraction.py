@@ -4,7 +4,7 @@ import re
 
 lazy from bs4 import BeautifulSoup, Tag
 
-from src.sources.base import valider_url
+from src.sources.base import texte_lisible, valider_url
 from src.types import DetailOffre, Offre
 
 DOMAINE = "emploi.fhf.fr"
@@ -15,6 +15,9 @@ _RE_ESPACES = re.compile(r"\s+")
 _RE_VILLE = re.compile(r"\(([^)]+)\)\s*$")
 _RE_DATE_PUBLICATION_CARTE = re.compile(r"Publié le (\d{2})\.(\d{2})\.(\d{4})")
 _RE_URL = re.compile(r"https?://\S+")
+_LIBELLE_PUBLICATION = "Publié le"
+_LIBELLE_DATE_LIMITE = "Date de limite de candidatures"
+"""Libellé exact du site (« de limite »), constaté le 2026-10-13."""
 
 
 def _texte_normalise(tag: Tag) -> str:
@@ -96,17 +99,29 @@ def _extraire_champs(soup: BeautifulSoup) -> dict[str, str]:
             continue
         label = titre.get_text(strip=True)
         titre.extract()
-        valeur = _texte_normalise(bloc)
+        valeur = texte_lisible(bloc)
         if label and valeur:
             champs[label] = valeur
     return champs
 
 
-def _extraire_date_publication(soup: BeautifulSoup) -> str:
+def _extraire_dates(soup: BeautifulSoup) -> tuple[str, str]:
+    """Dates de publication et limite de `div.publication-info`, chacune
+    dans son propre `div` (un seul texte « Publié le … » sur les anciennes
+    fiches)."""
     bloc = soup.find("div", class_="publication-info")
     if not isinstance(bloc, Tag):
-        return ""
-    return bloc.get_text(strip=True).replace("Publié le", "").strip()
+        return "", ""
+    lignes = [div.get_text(" ", strip=True) for div in bloc.find_all("div")]
+    if not lignes:
+        lignes = [bloc.get_text(" ", strip=True)]
+    publication = limite = ""
+    for ligne in lignes:
+        if ligne.startswith(_LIBELLE_PUBLICATION):
+            publication = ligne.removeprefix(_LIBELLE_PUBLICATION).strip()
+        elif ligne.startswith(_LIBELLE_DATE_LIMITE):
+            limite = ligne.removeprefix(_LIBELLE_DATE_LIMITE).strip()
+    return publication, limite
 
 
 def _extraire_lien_postuler(contact: str) -> str:
@@ -119,6 +134,7 @@ def extraire_detail_offre(html: str) -> DetailOffre:
     champ manquant reste vide."""
     soup = BeautifulSoup(html, "html.parser")
     champs = _extraire_champs(soup)
+    date_publication, date_limite = _extraire_dates(soup)
 
     _DEDIES = {"poste proposé", "descriptif"}
     sections_complementaires = {
@@ -133,12 +149,12 @@ def extraire_detail_offre(html: str) -> DetailOffre:
         "experience_requise": "",
         "formation_requise": "",
         "secteur": "",
-        "date_publication": _extraire_date_publication(soup),
+        "date_publication": date_publication,
         "a_propos_employeur": "",
         "sections_complementaires": sections_complementaires,
         "page_html": html,
         "lien_postuler": _extraire_lien_postuler(
             champs.get("Personne à contacter", "")
         ),
-        "date_limite": champs.get("Date limite", ""),
+        "date_limite": date_limite or champs.get("Date limite", ""),
     }

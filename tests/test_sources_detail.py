@@ -217,3 +217,48 @@ def test_consulter_page_autres_echecs_runtime_error(
     with pytest.raises(RuntimeError) as capture:
         base.consulter_page("https://emploi.fhf.fr/emploi/1")
     assert not isinstance(capture.value, PageIntrouvable)
+
+
+# --- texte_lisible ---
+
+
+def _bloc(html: str) -> object:
+    from bs4 import BeautifulSoup
+
+    return BeautifulSoup(f"<div>{html}</div>", "html.parser").div
+
+
+def test_texte_lisible_garde_les_sauts_de_ligne_du_site() -> None:
+    bloc = _bloc("Gardien brigadier\n      <br/>\n   Brigadier-chef principal<br/>")
+    assert base.texte_lisible(bloc) == "Gardien brigadier\nBrigadier-chef principal"  # type: ignore[arg-type]
+
+
+def test_texte_lisible_met_les_listes_en_puces() -> None:
+    bloc = _bloc(
+        "<ul><li>SAVOIR-FAIRE - Analyser </li><li>SAVOIR-ÊTRE - Réactivité</li></ul>"
+    )
+    assert base.texte_lisible(bloc) == (  # type: ignore[arg-type]
+        "• SAVOIR-FAIRE - Analyser\n• SAVOIR-ÊTRE - Réactivité"
+    )
+
+
+def test_texte_lisible_separe_les_paragraphes_d_une_ligne_vide() -> None:
+    bloc = _bloc("<p>Premier   paragraphe.</p>\n<p>Second.</p><br/><br/><br/>Fin")
+    assert base.texte_lisible(bloc) == "Premier paragraphe.\n\nSecond.\n\nFin"  # type: ignore[arg-type]
+
+
+def test_adresse_cloudflare_decode_l_adresse_masquee() -> None:
+    """Code réel d'une fiche FHF (2026-10-13)."""
+    assert base.adresse_cloudflare("89edfbe1c9eae1a4ede6fce8e0a7effb") == (
+        "drh@ch-douai.fr"
+    )
+    assert base.adresse_cloudflare("pas-hexa") == ""
+    assert base.adresse_cloudflare("89") == ""
+
+
+def test_texte_lisible_rend_les_adresses_masquees() -> None:
+    bloc = _bloc(
+        'ou par mail:<br/><a href="/cdn-cgi/l/email-protection" class="__cf_email__"'
+        ' data-cfemail="89edfbe1c9eae1a4ede6fce8e0a7effb">[email&#160;protected]</a>'
+    )
+    assert base.texte_lisible(bloc) == "ou par mail:\ndrh@ch-douai.fr"  # type: ignore[arg-type]

@@ -5,7 +5,7 @@ import sys
 
 lazy from bs4 import BeautifulSoup, Tag
 
-from src.sources.base import valider_url
+from src.sources.base import texte_lisible, valider_url
 from src.types import DetailOffre, Offre
 
 DOMAINE = "emploi-territorial.fr"
@@ -128,7 +128,7 @@ def _extraire_champs_labels(soup: BeautifulSoup) -> dict[str, str]:
         label = bloc.find("div", class_="offre-item-label")
         valeur = bloc.find("div", class_="offre-item-value")
         if isinstance(label, Tag) and isinstance(valeur, Tag):
-            champs[label.get_text(strip=True)] = _texte_normalise(valeur)
+            champs[label.get_text(strip=True)] = texte_lisible(valeur)
     return champs
 
 
@@ -161,7 +161,7 @@ def _extraire_description(soup: BeautifulSoup) -> str:
             continue
         texte_bloc = bloc.find_next_sibling("div", class_="offre-item-text")
         if isinstance(texte_bloc, Tag):
-            morceaux.append(_texte_normalise(texte_bloc))
+            morceaux.append(texte_lisible(texte_bloc))
     return "\n\n".join(m for m in morceaux if m)
 
 
