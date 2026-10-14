@@ -1,6 +1,6 @@
 """Tests de src/gui/presentation.py : textes des dossiers de suivi."""
 
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 
 from src.gui import presentation
 from src.gui.presentation import (
@@ -13,6 +13,7 @@ from src.gui.presentation import (
     notes_en_html,
     reformater_date_iso,
     resume_registre,
+    texte_date_cache,
     texte_nombre_fiches,
 )
 from src.types import Candidature, EvenementCandidature, Profil
@@ -340,3 +341,19 @@ def test_texte_avis_sans_publication_distingue_en_cours_echec_et_a_jour() -> Non
     echec = presentation.texte_avis_sans_publication("1.3.2", False, "timed out")
     assert "Codeberg ne répond pas (connexion internet ou proxy)" in echec
     assert echec.endswith("Détail : timed out")
+
+
+def test_texte_date_cache_absent_est_vide() -> None:
+    assert texte_date_cache(None) == ""
+
+
+def test_texte_date_cache_en_heure_locale() -> None:
+    moment = datetime(2026, 10, 12, 14, 5).astimezone()
+    assert texte_date_cache(moment.astimezone(UTC)) == (
+        "En cache depuis le 12\u00a0octobre\u00a02026 à\u00a014\u00a0h\u00a005"
+    )
+
+
+def test_texte_date_cache_premier_du_mois() -> None:
+    moment = datetime(2026, 3, 1, 9, 30).astimezone()
+    assert texte_date_cache(moment).startswith("En cache depuis le 1er\u00a0mars")
