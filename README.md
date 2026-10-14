@@ -88,7 +88,7 @@ Les messages d'erreur disent quoi faire, suivis d'une ligne « Détail » qui re
 ## Sécurité et confidentialité
 
 - **Vos données restent sur votre ordinateur**, dans le dossier `data/` de Tamponné : fiches, dossiers suivis, notes. Rien n'est envoyé ailleurs.
-- **Connexions** : uniquement les quatre sites d'offres (pour les recherches, fiches et vérifications), Codeberg (mises à jour) et, à l'installation, les serveurs de uv et de Python. Toutes en HTTPS, avec un User-Agent qui désigne Tamponné.
+- **Connexions** : uniquement les quatre sites d'offres (pour les recherches, fiches et vérifications), Codeberg (mises à jour) et, à l'installation, les serveurs de uv et de Python. Toutes en HTTPS, certificats vérifiés par le système (comme le navigateur, via `truststore`), avec un User-Agent qui désigne Tamponné.
 - **Liens ouverts** : seuls les liens `https://` (offres, notes de version) s'ouvrent dans le navigateur, jamais un autre type d'adresse.
 - **Mises à jour** : téléchargées uniquement depuis le dépôt Codeberg de Tamponné, en HTTPS. Elles ne sont pas signées : leur sûreté repose sur la protection du compte qui publie.
 - **Installation de uv** : le script officiel (`astral.sh`) est exécuté tel quel, comme le recommande uv ; c'est aussi lui qui sert de secours pour mettre uv à jour sous Windows.
