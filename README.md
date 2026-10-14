@@ -46,7 +46,10 @@ Réglages › **Sauvegarde** :
 
 - **Exporter…** réunit vos fiches de recherche, dossiers suivis (avec les fiches de poste archivées), offres déjà vues et réglages dans un fichier `Tamponne-donnees-AAAA-MM-JJ.zip`, à garder ou à copier sur un autre ordinateur.
 - **Importer…** remplace toutes les données par celles d'une sauvegarde, après confirmation, puis redémarre Tamponné. Une copie des données d'avant l'import est conservée dans `data/sauvegarde-avant-import.zip`.
-- **Exports de recherche** indique le nombre et la taille des exports HTML du registre (dossier `exports/`), permet d'ouvrir ce dossier et de les supprimer tous, après confirmation.
+
+## Maintenance
+
+Réglages › **Maintenance** › Exports de recherche : nombre et taille des exports HTML du registre (dossier `exports/`), avec **Ouvrir le dossier** et **Supprimer…** (tous, après confirmation).
 
 ## Désinstaller
 
