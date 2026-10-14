@@ -16,10 +16,10 @@ Rien à installer au préalable : au premier lancement, Tamponné installe lui-m
 2. **Dézipper** le fichier où vous voulez (Documents, Bureau…). Tamponné est portable : il reste dans ce dossier, avec vos données (`data/`). Pour le déplacer, déplacez tout le dossier.
 3. **Double-cliquer** sur le lanceur :
 
-| Système | Lanceur                                                                                          |
-| ------- | ------------------------------------------------------------------------------------------------ |
-| Windows | `Tamponne.bat`                                                                                   |
-| macOS   | `Tamponne.command`                                                                               |
+| Système | Lanceur                                                                                               |
+| ------- | ----------------------------------------------------------------------------------------------------- |
+| Windows | `Tamponne.bat`                                                                                        |
+| macOS   | `Tamponne.command`                                                                                    |
 | Linux   | `Tamponne.command`, ou `./Tamponne.command` dans un terminal si le double-clic l'ouvre comme un texte |
 
 Au premier lancement, une fenêtre de terminal montre l'installation, puis Tamponné propose de s'ajouter au menu des applications (voir [Raccourci](#raccourci)) : il se lance ensuite comme n'importe quelle application.
@@ -32,11 +32,11 @@ Au premier lancement, une fenêtre de terminal montre l'installation, puis Tampo
 
 Réglages › **Raccourci** ajoute ou retire Tamponné du menu des applications :
 
-| Système | Raccourci créé                                              | Où le trouver                       |
-| ------- | ----------------------------------------------------------- | ----------------------------------- |
-| Windows | `Tamponné.lnk` dans le menu Démarrer                        | menu Démarrer, épinglable           |
-| macOS   | `Tamponné.app` dans `~/Applications`                        | Spotlight, Launchpad, Dock          |
-| Linux   | `tamponne.desktop` dans `~/.local/share/applications`       | menu des applications               |
+| Système | Raccourci créé                                        | Où le trouver              |
+| ------- | ----------------------------------------------------- | -------------------------- |
+| Windows | `Tamponné.lnk` dans le menu Démarrer                  | menu Démarrer, épinglable  |
+| macOS   | `Tamponné.app` dans `~/Applications`                  | Spotlight, Launchpad, Dock |
+| Linux   | `tamponne.desktop` dans `~/.local/share/applications` | menu des applications      |
 
 Si vous déplacez le dossier de Tamponné, relancez-le une fois depuis son lanceur : il propose de mettre le raccourci à jour (ou de le retirer).
 
@@ -46,6 +46,7 @@ Réglages › **Sauvegarde** :
 
 - **Exporter…** réunit vos fiches de recherche, dossiers suivis (avec les fiches de poste archivées), offres déjà vues et réglages dans un fichier `Tamponne-donnees-AAAA-MM-JJ.zip`, à garder ou à copier sur un autre ordinateur.
 - **Importer…** remplace toutes les données par celles d'une sauvegarde, après confirmation, puis redémarre Tamponné. Une copie des données d'avant l'import est conservée dans `data/sauvegarde-avant-import.zip`.
+- **Exports de recherche** indique le nombre et la taille des exports HTML du registre (dossier `exports/`), permet d'ouvrir ce dossier et de les supprimer tous, après confirmation.
 
 ## Désinstaller
 
@@ -174,19 +175,19 @@ Le mapping paramètres → segments URL est documenté dans `RECHERCHES.md` (sp�
 
 ## Filtres disponibles
 
-| Filtre                   | Valeurs                                                          |
-| ------------------------ | ---------------------------------------------------------------- |
-| Catégorie                | A+ (direction), A+ (autres emplois fonctionnels), A, B, C        |
+| Filtre                   | Valeurs                                                                                 |
+| ------------------------ | --------------------------------------------------------------------------------------- |
+| Catégorie                | A+ (direction), A+ (autres emplois fonctionnels), A, B, C                               |
 | Corps / grade            | Attaché (principal, hors classe), Adjoint administratif (principal de 2e et 1re classe) |
-| Versant                  | État (défaut), Hospitalier, Territorial — cumulables, aucun = tous |
-| Type de poste            | Titulaire-éligible (défaut), Titulaire, Contractuel, Tous        |
-| Domaine                  | 29 domaines métier (Numérique, Finances Publiques, etc.)         |
-| Localisation             | 114 départements/régions                                         |
-| Organisation             | scrapées automatiquement (ministères et sous-organisations)      |
-| Expérience               | Débutant, Confirmé, Expert                                       |
-| Date de publication      | Dernières 48 heures, 7 derniers jours, 14 derniers jours         |
-| Management / Télétravail | Basculables indépendamment                                       |
-| Grades supérieurs        | Écartés par défaut (IDIV, IP, AFIPA), réintégrables              |
+| Versant                  | État (défaut), Hospitalier, Territorial — cumulables, aucun = tous                      |
+| Type de poste            | Titulaire-éligible (défaut), Titulaire, Contractuel, Tous                               |
+| Domaine                  | 29 domaines métier (Numérique, Finances Publiques, etc.)                                |
+| Localisation             | 114 départements/régions                                                                |
+| Organisation             | scrapées automatiquement (ministères et sous-organisations)                             |
+| Expérience               | Débutant, Confirmé, Expert                                                              |
+| Date de publication      | Dernières 48 heures, 7 derniers jours, 14 derniers jours                                |
+| Management / Télétravail | Basculables indépendamment                                                              |
+| Grades supérieurs        | Écartés par défaut (IDIV, IP, AFIPA), réintégrables                                     |
 
 Filtre Corps / grade : reconnaissance par mots-clés dans le titre, appliquée côté client après agrégation — aucune source n'expose ce niveau de granularité côté serveur. Catégorie/Localisation/Expérience/Management/Télétravail sont eux câblés côté serveur sur emploi-territorial.fr (voir `src/sources/emploiterritorial/filtres.py`), en plus de choisirleservicepublic.gouv.fr.
 

@@ -218,19 +218,13 @@ def obtenir_offres_cachetees(nom_profil: str) -> dict[str, OffreCache]:
 # --- Cache des organisations ---
 
 
-def age_cache_organisations() -> str | None:
-    """Retourne une chaîne lisible décrivant l'âge du cache, ou None si absent."""
-    cache = _charger_cache()
-    entree = cache.get("organisations")
+def date_cache_organisations() -> datetime | None:
+    """Moment (UTC) où les organisations ont été mises en cache, ou None si
+    le cache est absent ou illisible."""
+    entree = _charger_cache().get("organisations")
     if not entree:
         return None
     try:
-        cached_at = datetime.fromisoformat(entree["cached_at"])
-        age_s = (datetime.now(UTC) - cached_at).total_seconds()
-        if age_s < 3600:
-            return f"il y a {int(age_s // 60)} min"
-        if age_s < 86400:
-            return f"il y a {int(age_s // 3600)} h"
-        return f"il y a {int(age_s // 86400)} j"
+        return datetime.fromisoformat(entree["cached_at"])
     except KeyError, ValueError, TypeError:
         return None

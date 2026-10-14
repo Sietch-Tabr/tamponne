@@ -109,3 +109,26 @@ def exporter_html(
 
     chemin.write_text(page, encoding="utf-8")
     return chemin
+
+
+def etat_exports() -> tuple[int, int]:
+    """Nombre et taille totale (octets) des exports HTML du dossier."""
+    fichiers = [f for f in DOSSIER_EXPORTS.glob("*.html") if f.is_file()]
+    return len(fichiers), sum(f.stat().st_size for f in fichiers)
+
+
+def supprimer_exports() -> None:
+    """Supprime tous les exports HTML du dossier.
+
+    Raises:
+        OSError: un fichier n'a pas pu être supprimé (ouvert ailleurs sous
+            Windows, droits) ; les autres le sont quand même.
+    """
+    echec: OSError | None = None
+    for fichier in DOSSIER_EXPORTS.glob("*.html"):
+        try:
+            fichier.unlink(missing_ok=True)
+        except OSError as erreur:
+            echec = erreur
+    if echec is not None:
+        raise echec

@@ -470,3 +470,60 @@ def texte_confirmation_import(nom_fichier: str) -> str:
         f"«\u00a0{insecable}\u00a0»\u00a0? Une copie des données actuelles "
         "est conservée. Tamponné redémarrera ensuite."
     )
+
+
+_NOMS_MOIS: Final = (
+    "janvier",
+    "février",
+    "mars",
+    "avril",
+    "mai",
+    "juin",
+    "juillet",
+    "août",
+    "septembre",
+    "octobre",
+    "novembre",
+    "décembre",
+)
+
+
+def texte_date_cache(moment: datetime | None) -> str:
+    """Date de mise en cache des organisations, en heure locale
+    (« En cache depuis le 12 octobre 2026 à 14 h 05 ») ; vide sans cache."""
+    if moment is None:
+        return ""
+    local = moment.astimezone()
+    jour = "1er" if local.day == 1 else str(local.day)
+    return (
+        f"En cache depuis le {jour}\u00a0{_NOMS_MOIS[local.month - 1]}\u00a0"
+        f"{local.year} à\u00a0{local.hour}\u00a0h\u00a0{local.minute:02d}"
+    )
+
+
+def _taille_lisible(octets: int) -> str:
+    """Taille en Ko ou Mo, virgule décimale française."""
+    if octets < 1_000_000:
+        return f"{max(1, round(octets / 1000))}\u00a0Ko"
+    return f"{octets / 1_000_000:.1f}".replace(".", ",") + "\u00a0Mo"
+
+
+def texte_exports(nombre: int, octets: int) -> str:
+    """État du dossier des exports de recherche (feuille Sauvegarde)."""
+    if nombre == 0:
+        return "Aucun export de recherche."
+    fichiers = "1\u00a0fichier" if nombre == 1 else f"{nombre}\u00a0fichiers"
+    return f"{fichiers}, {_taille_lisible(octets)}"
+
+
+def texte_confirmation_exports(nombre: int) -> str:
+    """Question posée avant de supprimer les exports de recherche."""
+    cible = (
+        "l'export de recherche"
+        if nombre == 1
+        else f"les {nombre}\u00a0exports de recherche"
+    )
+    return (
+        f"Supprimer définitivement {cible}\u00a0? "
+        "Les fiches et le suivi ne sont pas touchés."
+    )

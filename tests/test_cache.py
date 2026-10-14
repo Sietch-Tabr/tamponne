@@ -68,30 +68,24 @@ def test_organisations_expirees_cle_manquante() -> None:
     assert cache._organisations_expirees(entree) is True
 
 
-# --- age_cache_organisations ---
+# --- date_cache_organisations ---
 
 
-def test_age_cache_organisations_absent() -> None:
-    assert cache.age_cache_organisations() is None
+def test_date_cache_organisations_absent() -> None:
+    assert cache.date_cache_organisations() is None
 
 
-def test_age_cache_organisations_minutes() -> None:
+def test_date_cache_organisations_lue_dans_le_cache() -> None:
+    moment = datetime(2026, 10, 12, 12, 5, tzinfo=UTC)
     cache._sauvegarder_cache(
-        {"organisations": {"cached_at": _iso_il_y_a(120), "data": {}}}
+        {"organisations": {"cached_at": moment.isoformat(), "data": {}}}
     )
-    assert cache.age_cache_organisations() == "il y a 2 min"
+    assert cache.date_cache_organisations() == moment
 
 
-def test_age_cache_organisations_heures() -> None:
-    cache._sauvegarder_cache(
-        {"organisations": {"cached_at": _iso_il_y_a(3 * 3600), "data": {}}}
-    )
-    assert cache.age_cache_organisations() == "il y a 3 h"
-
-
-def test_age_cache_organisations_type_invalide_retourne_none() -> None:
+def test_date_cache_organisations_type_invalide_retourne_none() -> None:
     cache._sauvegarder_cache({"organisations": {"cached_at": None, "data": {}}})
-    assert cache.age_cache_organisations() is None
+    assert cache.date_cache_organisations() is None
 
 
 # --- _charger_cache / _charger_offres : JSON corrompu ---
