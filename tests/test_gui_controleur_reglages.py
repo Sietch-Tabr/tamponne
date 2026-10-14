@@ -209,9 +209,7 @@ def test_rafraichir_cache_transmet_les_organisations(
     monkeypatch.setattr(controleur_reglages, "date_cache_organisations", lambda: None)
     reglages = ControleurReglages()
     assert reglages.property("date_cache") == ""
-    monkeypatch.setattr(
-        controleur_reglages, "date_cache_organisations", lambda: moment
-    )
+    monkeypatch.setattr(controleur_reglages, "date_cache_organisations", lambda: moment)
     with qtbot.waitSignal(reglages.organisations_rafraichies, timeout=5000) as signal:
         reglages.rafraichir_cache()
         assert reglages.property("cache_en_cours") is True
