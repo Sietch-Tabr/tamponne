@@ -1,12 +1,14 @@
 """Préférences d'affichage — thème choisi (automatique, sombre ou clair)."""
 
 import json
-import sys
+import logging
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Final, Literal, cast
 
 from src.utils import ecriture_atomique
+
+journal = logging.getLogger(__name__)
 
 CHEMIN_AFFICHAGE = Path(__file__).parent.parent / "data" / "affichage.json"
 
@@ -30,10 +32,9 @@ def charger_mode_theme() -> ModeTheme:
     try:
         donnees = json.loads(CHEMIN_AFFICHAGE.read_text(encoding="utf-8"))
     except json.JSONDecodeError, OSError:
-        print(
-            f"Avertissement\u00a0: {CHEMIN_AFFICHAGE.name} illisible ou corrompu, "
-            "thème automatique utilisé.",
-            file=sys.stderr,
+        journal.warning(
+            "%s illisible ou corrompu, thème automatique utilisé.",
+            CHEMIN_AFFICHAGE.name,
         )
         return MODE_THEME_DEFAUT
     mode = donnees.get("theme") if isinstance(donnees, dict) else None

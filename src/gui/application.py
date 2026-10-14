@@ -1,14 +1,23 @@
 """Point d'entrée de l'interface QML (thème « dossier administratif »)."""
 
 import ctypes
+import logging
 import sys
 from pathlib import Path
 
 import truststore
-from PySide6.QtCore import QObject, Qt, QUrl
+from PySide6.QtCore import (
+    QMessageLogContext,
+    QObject,
+    Qt,
+    QtMsgType,
+    QUrl,
+    qInstallMessageHandler,
+)
 from PySide6.QtGui import QGuiApplication, QIcon, QWindow
 from PySide6.QtQml import QQmlApplicationEngine
 
+from src import journal
 from src.cache import organisations_en_cache
 from src.gui.pont import Pont
 from src.lanceur import CODE_REDEMARRAGE
@@ -21,6 +30,25 @@ ICONE = Path(__file__).parent / "icones" / "tamponne.png"
 IDENTIFIANT_WINDOWS = "Kwaite.Tamponne"
 """Identifiant d'application Windows (AppUserModelID) : regroupement et
 icône dans la barre des tâches."""
+
+
+NIVEAUX_QT = {
+    QtMsgType.QtDebugMsg: logging.DEBUG,
+    QtMsgType.QtInfoMsg: logging.INFO,
+    QtMsgType.QtWarningMsg: logging.WARNING,
+    QtMsgType.QtCriticalMsg: logging.ERROR,
+    QtMsgType.QtFatalMsg: logging.CRITICAL,
+}
+"""Type de message Qt → niveau du journal."""
+
+
+def journaliser_message_qt(
+    type_: QtMsgType, contexte: QMessageLogContext, message: str
+) -> None:
+    """Message de Qt (avertissement QML, police manquante…) écrit dans le
+    journal, sous la catégorie Qt d'origine (`qml`, `qt.qpa.fonts`…)."""
+    categorie = contexte.category or "qt"
+    logging.getLogger(categorie).log(NIVEAUX_QT.get(type_, logging.WARNING), message)
 
 
 def creer_moteur(pont: Pont) -> QQmlApplicationEngine:
@@ -62,7 +90,8 @@ def adapter_a_l_ecran(fenetre: QWindow) -> None:
 
 
 def main() -> int:
-    """Lance l'application QML, après avoir retiré les fichiers obsolètes
+    """Lance l'application QML, après avoir configuré le journal
+    (`src.journal`, messages de Qt compris), retiré les fichiers obsolètes
     laissés par les mises à jour (`src.nettoyage`) et confié la
     vérification des certificats HTTPS au système (`truststore`). Les
     organisations absentes ou périmées sont rechargées en arrière-plan,
@@ -76,6 +105,8 @@ def main() -> int:
         la mise à jour en attente et relance), sinon le code de sortie de
         la boucle Qt.
     """
+    journal.configurer()
+    qInstallMessageHandler(journaliser_message_qt)
     nettoyer_fichiers_obsoletes()
     # Certificats vérifiés par le système, comme le navigateur : seul, Python
     # ignore les racines que Windows ne télécharge qu'à la demande.

@@ -1,8 +1,8 @@
 """Extraction des offres depuis le HTML retourné par l'API."""
 
 import json
+import logging
 import re
-import sys
 from collections.abc import Mapping
 from typing import Final
 
@@ -11,6 +11,8 @@ lazy from bs4 import BeautifulSoup, Tag
 from src.filtres import RE_GRADE_SUPERIEUR
 from src.sources.base import valider_url
 from src.types import DetailOffre, Offre
+
+journal = logging.getLogger(__name__)
 
 DOMAINE = "choisirleservicepublic.gouv.fr"
 URL_BASE = "https://choisirleservicepublic.gouv.fr"
@@ -275,17 +277,15 @@ def extraire_detail_offre(html: str) -> DetailOffre:
         try:
             data = json.loads(m.group(1))
         except json.JSONDecodeError:
-            print(
-                "Avertissement\u00a0: bloc JSON-LD de la fiche de poste illisible "
-                "(JSON invalide) — détail structuré incomplet pour cette offre.",
-                file=sys.stderr,
+            journal.warning(
+                "Bloc JSON-LD de la fiche de poste illisible "
+                "(JSON invalide) — détail structuré incomplet pour cette offre."
             )
     else:
-        print(
-            "Avertissement\u00a0: bloc JSON-LD absent de la fiche de poste — "
+        journal.warning(
+            "Bloc JSON-LD absent de la fiche de poste — "
             "détail structuré incomplet pour cette offre, seul le HTML brut "
-            "est conservé.",
-            file=sys.stderr,
+            "est conservé."
         )
 
     description = _extraire_description_poste(soup)
@@ -293,10 +293,8 @@ def extraire_detail_offre(html: str) -> DetailOffre:
         # Filet de sécurité : bloc DOM absent, retombe sur le JSON-LD dégradé.
         description = str(data.get("Description", "")).strip()
     if data and not description:
-        print(
-            "Avertissement\u00a0: champ Description vide dans le JSON-LD de la "
-            "fiche de poste.",
-            file=sys.stderr,
+        journal.warning(
+            "Champ Description vide dans le JSON-LD de la " "fiche de poste."
         )
 
     return {

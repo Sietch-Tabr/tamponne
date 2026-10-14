@@ -315,7 +315,10 @@ def test_ajouter_puis_retirer_raccourci_en_arriere_plan(
 
 
 def test_raccourci_indisponible_masque_la_feuille(
-    qapp: QApplication, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+    qapp: QApplication,
+    qtbot: QtBot,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     monkeypatch.setattr(raccourci, "systeme_courant", lambda: None)
     reglages = ControleurReglages()
@@ -323,6 +326,9 @@ def test_raccourci_indisponible_masque_la_feuille(
     with qtbot.waitSignal(reglages.erreur_signalee) as signal:
         reglages.ajouter_raccourci()
     assert signal.args == ["Raccourci indisponible sur ce système."]
+    # Toute erreur montrée à l'utilisateur laisse sa ligne dans le journal.
+    assert "ERROR" in caplog.text
+    assert "Raccourci indisponible sur ce système." in caplog.text
     reglages.arreter()
 
 

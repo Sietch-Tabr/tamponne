@@ -23,12 +23,14 @@ Sans dépendance à Qt : l'interface n'est importée que par le sous-processus.
 
 import ctypes
 import os
+import platform
 import re
 import shutil
 import subprocess
 import sys
 from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
+from datetime import datetime
 from pathlib import Path
 from typing import TextIO
 
@@ -41,8 +43,8 @@ CODE_MAJ_INACHEVEE = 3
 """Code de sortie du lanceur quand une mise à jour n'a pu être terminée
 (déjà signalé : distinct du 1 d'une interface arrêtée sur une erreur)."""
 
-JOURNAL_AFFICHE = str(Path("data") / "journal_lancement.log")
-"""Journal du lancement (`CHEMIN_JOURNAL`), tel que nommé à l'utilisateur."""
+JOURNAL_AFFICHE = str(Path("data") / "tamponne.log")
+"""Journal (`CHEMIN_JOURNAL`), tel que nommé à l'utilisateur."""
 MESSAGE_RELANCER = (
     "La mise à jour de Tamponné n'a pas pu se terminer\u00a0: uv n'a pas pu "
     "télécharger Python ou ses composants, même après sa propre mise à jour.\n\n"
@@ -67,23 +69,27 @@ MOTIF_DEMARRAGE = "la nouvelle version ne démarrait pas"
 MOTIF_TELECHARGEMENT = "elle n'a pas pu être téléchargée"
 MOTIF_INSTALLATION = "ses fichiers n'ont pas pu être installés"
 LONGUEUR_DETAIL = 300
-MOTIF_ERREUR = re.compile(r"(error:|[A-Za-z_.]*(Error|Exception)\b)")
 """Au-delà, la dernière erreur est tronquée dans la boîte de dialogue (le
 journal garde tout)."""
+MOTIF_ERREUR = re.compile(r"(error:|[A-Za-z_.]*(Error|Exception)\b)")
+DEBUT_EN_TETE = "===== "
+"""Début de la ligne qui ouvre chaque lancement dans le journal."""
 
 
 def premiere_erreur() -> str:
-    """Première erreur écrite dans le journal du lancement : ligne `error:`
-    de uv ou exception Python (`…Error: …`), sinon dernière ligne écrite ;
-    la première est la cause, les suivantes en découlent."""
+    """Première erreur écrite dans le journal depuis le début du lancement
+    en cours (dernier en-tête) : ligne `error:` de uv ou exception Python
+    (`…Error: …`), sinon dernière ligne écrite ; la première est la cause,
+    les suivantes en découlent."""
     try:
         texte = CHEMIN_JOURNAL.read_text(encoding="utf-8", errors="replace")
     except OSError:
         return ""
+    lancement = texte.rsplit(f"\n{DEBUT_EN_TETE}", 1)[-1]
     lignes = [
         ligne.strip()
-        for ligne in texte.splitlines()
-        if ligne.strip() and not ligne.startswith("$ ")
+        for ligne in lancement.splitlines()
+        if ligne.strip() and not ligne.startswith(("$ ", DEBUT_EN_TETE))
     ]
     erreur = next((ligne for ligne in lignes if MOTIF_ERREUR.match(ligne)), None)
     if erreur is None:
@@ -132,9 +138,16 @@ FLUX_MARQUE_DU_WEB = ":Zone.Identifier"
 """Flux NTFS posé par Windows sur un fichier téléchargé (ou extrait d'un zip
 téléchargé) : il fait afficher un avertissement à chaque ouverture."""
 DOSSIERS_SANS_MARQUE = frozenset({".git", ".venv", "data", maj.NOM_PRECEDENTE})
-CHEMIN_JOURNAL = CHEMIN_RACINE / "data" / "journal_lancement.log"
-"""Sorties des commandes du dernier lancement (uv, interface), pour le
-diagnostic : sous Windows, elles n'ont pas de console où s'afficher."""
+CHEMIN_JOURNAL = CHEMIN_RACINE / "data" / "tamponne.log"
+"""Journal de Tamponné : sorties des commandes (uv, interface et ses
+erreurs horodatées) et messages du lanceur, lancement après lancement. Sous
+Windows, ces sorties n'ont pas de console où s'afficher."""
+CHEMIN_JOURNAL_ARCHIVE = CHEMIN_RACINE / "data" / "tamponne.1.log"
+"""Journal précédent, gardé une fois `TAILLE_MAX_JOURNAL` dépassée."""
+TAILLE_MAX_JOURNAL = 1_000_000
+NOM_ANCIEN_JOURNAL = "journal_lancement.log"
+"""Journal des versions précédentes (jusqu'à la 1.3.4), retiré par
+`ouvrir_journal` : `src.nettoyage` ne touche jamais à `data/`."""
 INSTALLEUR_UV_WINDOWS = (
     "powershell",
     "-NoProfile",
@@ -182,6 +195,39 @@ def anonymiser(texte: str) -> str:
     for forme in {str(personnel), personnel.as_posix()}:
         texte = texte.replace(forme, "~")
     return texte
+
+
+def ouvrir_journal() -> None:
+    """Ouvre le lancement dans le journal : archive le journal s'il dépasse
+    `TAILLE_MAX_JOURNAL` (une seule archive, `CHEMIN_JOURNAL_ARCHIVE`), puis
+    écrit l'en-tête daté avec les versions de Tamponné, du système et de
+    Python. Retire au passage l'ancien journal (`NOM_ANCIEN_JOURNAL`)."""
+    try:
+        (CHEMIN_JOURNAL.parent / NOM_ANCIEN_JOURNAL).unlink(missing_ok=True)
+    except OSError:
+        pass
+    try:
+        if CHEMIN_JOURNAL.stat().st_size > TAILLE_MAX_JOURNAL:
+            CHEMIN_JOURNAL.replace(CHEMIN_JOURNAL_ARCHIVE)
+    except OSError:
+        pass
+    en_tete = (
+        f"{DEBUT_EN_TETE}{datetime.now():%Y-%m-%d %H:%M:%S} · Tamponné "
+        f"{maj.version_locale()} · {platform.system()} {platform.release()} · "
+        f"Python {platform.python_version()} ====="
+    )
+    noter(en_tete)
+
+
+def noter(texte: str) -> None:
+    """Ajoute `texte` (une ou plusieurs lignes) au journal, anonymisé ; un
+    journal impossible à écrire n'empêche jamais le lancement."""
+    try:
+        CHEMIN_JOURNAL.parent.mkdir(parents=True, exist_ok=True)
+        with CHEMIN_JOURNAL.open("a", encoding="utf-8") as journal:
+            journal.write(anonymiser(texte.rstrip("\n") + "\n"))
+    except OSError:
+        pass
 
 
 def _executer(commande: Sequence[str]) -> int:
@@ -265,8 +311,9 @@ def python_de_base() -> Path:
 
 
 def signaler(message: str) -> None:
-    """Message d'erreur sur la sortie d'erreur et, sous Windows où le
-    lanceur tourne sans console, dans une boîte de dialogue."""
+    """Message d'erreur dans le journal, sur la sortie d'erreur et, sous
+    Windows où le lanceur tourne sans console, dans une boîte de dialogue."""
+    noter(f"{datetime.now():%H:%M:%S} ERREUR lanceur\u00a0: {message}")
     print(message, file=sys.stderr)
     if sys.platform == "win32":
         ctypes.windll.user32.MessageBoxW(None, message, "Tamponné", 0x10)
@@ -402,7 +449,7 @@ if __name__ == "__main__":
         retirer_marque_du_web()
         _relancer_sans_console()
         raise SystemExit(0)
-    CHEMIN_JOURNAL.unlink(missing_ok=True)
+    ouvrir_journal()
     code_sortie = lancer()
     if sys.platform == "win32" and code_sortie not in (0, CODE_MAJ_INACHEVEE):
         signaler(avec_detail(MESSAGE_ERREUR))

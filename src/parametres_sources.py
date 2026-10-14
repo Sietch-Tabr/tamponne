@@ -1,12 +1,14 @@
 """Sources d'offres actives — quelles sources interroger à la recherche."""
 
 import json
-import sys
+import logging
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Final
 
 from src.utils import ecriture_atomique
+
+journal = logging.getLogger(__name__)
 
 CHEMIN_SOURCES = Path(__file__).parent.parent / "data" / "sources.json"
 
@@ -37,10 +39,9 @@ def charger_sources_actives() -> dict[str, bool]:
         try:
             etats = json.loads(CHEMIN_SOURCES.read_text(encoding="utf-8"))
         except json.JSONDecodeError, OSError:
-            print(
-                f"Avertissement\u00a0: {CHEMIN_SOURCES.name} illisible ou corrompu, "
-                "toutes les sources sont réactivées.",
-                file=sys.stderr,
+            journal.warning(
+                "%s illisible ou corrompu, toutes les sources sont réactivées.",
+                CHEMIN_SOURCES.name,
             )
             etats = {}
     return {cle: etats.get(cle, True) for cle in SOURCES_DISPONIBLES}

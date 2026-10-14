@@ -1,7 +1,7 @@
 """Cache local des organisations et des offres vues."""
 
 import json
-import sys
+import logging
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -11,6 +11,8 @@ lazy from bs4 import BeautifulSoup, Tag
 from src.sources.choisirleservicepublic.api import telecharger_page_offres
 from src.types import Offre, OffreCache, Organisations
 from src.utils import ecriture_atomique
+
+journal = logging.getLogger(__name__)
 
 CHEMIN_CACHE = Path(__file__).parent.parent / "data" / "cache.json"
 CHEMIN_OFFRES = Path(__file__).parent.parent / "data" / "offres.json"
@@ -25,12 +27,10 @@ def _charger_cache() -> dict[str, Any]:
     try:
         return json.loads(CHEMIN_CACHE.read_text(encoding="utf-8"))
     except json.JSONDecodeError, OSError:
-        # stderr, pas de bibliothèque d'UI : ce module n'est lié à
+        # Journal plutôt qu'un message d'interface : ce module n'est lié à
         # aucune interface particulière.
-        print(
-            f"Avertissement\u00a0: {CHEMIN_CACHE.name} illisible ou corrompu, "
-            "cache réinitialisé.",
-            file=sys.stderr,
+        journal.warning(
+            "%s illisible ou corrompu, cache réinitialisé.", CHEMIN_CACHE.name
         )
         return {}
 
@@ -136,10 +136,8 @@ def _charger_offres() -> dict[str, dict[str, OffreCache]]:
     try:
         return json.loads(CHEMIN_OFFRES.read_text(encoding="utf-8"))
     except json.JSONDecodeError, OSError:
-        print(
-            f"Avertissement\u00a0: {CHEMIN_OFFRES.name} illisible ou corrompu, "
-            "cache réinitialisé.",
-            file=sys.stderr,
+        journal.warning(
+            "%s illisible ou corrompu, cache réinitialisé.", CHEMIN_OFFRES.name
         )
         return {}
 

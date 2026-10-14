@@ -1,7 +1,7 @@
 """Gestion des profils de recherche sauvegardés."""
 
 import json
-import sys
+import logging
 from datetime import date
 from pathlib import Path
 from typing import Any, cast
@@ -9,6 +9,8 @@ from typing import Any, cast
 from src.filtres import categorie_normalisee, resumer_filtres
 from src.types import FiltresRecherche, Profil
 from src.utils import ecriture_atomique
+
+journal = logging.getLogger(__name__)
 
 CHEMIN_PROFILS = Path(__file__).parent.parent / "data" / "profils.json"
 
@@ -20,12 +22,10 @@ def charger_profils() -> dict[str, Profil]:
     try:
         return json.loads(CHEMIN_PROFILS.read_text(encoding="utf-8"))
     except json.JSONDecodeError, OSError:
-        # stderr, pas de bibliothèque d'UI : ce module n'est lié à
+        # Journal plutôt qu'un message d'interface : ce module n'est lié à
         # aucune interface particulière.
-        print(
-            f"Avertissement\u00a0: {CHEMIN_PROFILS.name} illisible ou corrompu, "
-            "aucun profil chargé.",
-            file=sys.stderr,
+        journal.warning(
+            "%s illisible ou corrompu, aucun profil chargé.", CHEMIN_PROFILS.name
         )
         return {}
 

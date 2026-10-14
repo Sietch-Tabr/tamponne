@@ -92,6 +92,6 @@ Détail : « uv sync » a échoué ; son message exact est affiché dans le 
 uv run python -m src.lanceur \
     || signaler "Tamponné s'est arrêté sur une erreur.
 
-Relancez-le ; si le problème persiste, signalez-le sur Codeberg en joignant le fichier « data/journal_lancement.log » du dossier de Tamponné."
+Relancez-le ; si le problème persiste, signalez-le sur Codeberg en joignant le fichier « data/tamponne.log » du dossier de Tamponné."
 exit 0
 }
