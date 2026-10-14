@@ -4,8 +4,8 @@ import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import Tamponne
 
-/*! Écran Aide (« Notice d'utilisation ») : feuilles explicatives, textes
-    repris de la maquette. */
+/*! Écran Aide (« Notice d'utilisation ») : feuilles explicatives. Mise en
+    page de la maquette, textes complétés pour couvrir toute l'application. */
 Item {
     id: racine
 
@@ -146,6 +146,10 @@ Item {
                     Definition { text: "Par défaut, seuls les postes ouverts aux titulaires sont affichés (titulaires + postes ouverts aux deux statuts). «\u00a0Titulaire uniquement\u00a0» et «\u00a0Contractuel uniquement\u00a0» resserrent, «\u00a0Tous (y compris contractuels)\u00a0» ajoute les postes réservés aux contractuels." }
                     Terme { text: "Options" }
                     Definition { text: "Management et Télétravail\u00a0: cochés = seulement les postes concernés. Le mot-clé est transmis tel quel au moteur de recherche de chaque site." }
+                    Terme { text: "Expérience et date de publication" }
+                    Definition { text: "Expérience souhaitée (débutant, confirmé, expert) et ancienneté de l'offre (48\u00a0heures, 7 ou 14\u00a0jours)\u00a0; «\u00a0Indifférente\u00a0» ne filtre pas." }
+                    Terme { text: "RAZ" }
+                    Definition { text: "Vide toutes les cases du formulaire." }
                 }
 
                 ColumnLayout {
@@ -170,25 +174,79 @@ Item {
                 }
 
                 FeuilleNotice {
+                    titre: "La recherche et le registre"
+                    Definition { text: "«\u00a0Lancer la recherche\u00a0» interroge les sources actives en même temps et affiche l'avancement de chacune. Une source injoignable est signalée sans arrêter les autres." }
+                    Terme { text: "Registre des offres" }
+                    Definition { text: "Les offres trouvées, une seule fois même si plusieurs sites les publient. Un clic sur un en-tête de colonne trie. La ligne sous le titre compte les offres inscrites, nouvelles et écartées (grades supérieurs)." }
+                    Terme { text: "Filtrer · Nouvelles seulement" }
+                    Definition { text: "Filtrer garde les lignes qui contiennent le texte saisi, dans n'importe quelle colonne. «\u00a0Nouvelles seulement\u00a0» ne montre que les offres marquées «\u00a0Nouveau\u00a0»." }
+                    Terme { text: "Consulter · Exporter" }
+                    Definition { text: "Consulter affiche la fiche de poste, avec «\u00a0Postuler\u00a0» quand le site le permet. Double-clic ou Entrée ouvre l'offre dans le navigateur. Exporter enregistre le registre affiché (tri et filtre compris) en page HTML dans le dossier «\u00a0exports\u00a0»." }
+                }
+
+                FeuilleNotice {
+                    titre: "Les sources consultées"
+                    Definition { text: "Quatre sites, activables dans Réglages\u00a0› Sources consultées. Ils ne comprennent pas tous les mêmes cases\u00a0:" }
+                    Terme { text: "Choisir le service public" }
+                    Definition { text: "Toutes les cases. Seul site à connaître domaines et organisations." }
+                    Terme { text: "emploi-territorial.fr" }
+                    Definition { text: "Catégorie, expérience, management, télétravail, mot-clé, «\u00a0Titulaire uniquement\u00a0» et localisations par département (une région seule ne restreint pas le lieu)." }
+                    Terme { text: "Passerelles (Bercy) et FHF" }
+                    Definition { text: "Mot-clé seulement\u00a0: leurs résultats sont plus larges." }
+                    Terme { text: "Pour toutes les sources" }
+                    Definition { text: "Corps / grade et Grades supérieurs s'appliquent au titre de chaque offre. Un site n'est pas interrogé si son versant n'est pas coché (emploi-territorial\u00a0: Territorial, Passerelles\u00a0: État, FHF\u00a0: Hospitalier)." }
+                }
+
+                FeuilleNotice {
                     titre: "Les fiches de recherche"
-                    Definition { text: "Une fiche, c'est une demande de recherche classée sous un nom, avec «\u00a0Classer en profil\u00a0»." }
+                    Definition { text: "Une fiche, c'est une demande de recherche classée sous un nom, avec «\u00a0Classer en profil\u00a0». «\u00a0Nouvelle fiche\u00a0» ouvre un formulaire vierge." }
                     Terme { text: "Lancer" }
                     Definition { text: "Lance la recherche immédiatement (double-clic sur la fiche aussi)." }
+                    Terme { text: "Offres nouvelles" }
+                    Definition { text: "Une recherche lancée depuis une fiche marque «\u00a0Nouveau\u00a0» les offres jamais vues pour cette fiche. Si les cases ont été changées entre-temps, rien n'est marqué. Une offre absente des résultats pendant 30\u00a0jours redevient nouvelle." }
                     Terme { text: "modifier · dupliquer · supprimer" }
-                    Definition { text: "Change les cases sans lancer, copie la fiche sous un autre nom, ou la jette (confirmation demandée)." }
+                    Definition { text: "Modifier rouvre le formulaire\u00a0: «\u00a0Enregistrer la fiche\u00a0» garde les nouvelles cases sans lancer, «\u00a0Annuler\u00a0» revient aux fiches. Dupliquer copie la fiche sous un autre nom, supprimer la jette (confirmation demandée)." }
                 }
 
                 FeuilleNotice {
                     titre: "Les dossiers de suivi"
                     Definition { text: "Dans le registre, sélectionner une offre puis «\u00a0Tamponner pour suivi\u00a0» ouvre un dossier et archive la fiche de poste en PDF. Le statut est toujours celui du dernier tampon de l'historique." }
+                    Terme { text: "voir l'offre · archive PDF · détail" }
+                    Definition { text: "L'offre en ligne, la copie PDF conservée au moment du suivi (consultable hors ligne), ou la fiche de poste dans Tamponné." }
+                    Terme { text: "ajouter un événement" }
+                    Definition { text: "Envoi, accusé de réception, entretien, relance, réponse… Le type proposé est la suite logique du dernier tampon, à sa date. Une note est possible." }
                     Terme { text: "Relance suggérée" }
                     Definition { text: "Post-it collé quand rien ne s'est passé depuis 3 semaines et que le dossier n'est pas clos (réponse positive ou refus)." }
                     Terme { text: "Offre dépubliée" }
-                    Definition { text: "L'offre a disparu du site («\u00a0Vérifier les offres\u00a0»)\u00a0; la copie archivée reste consultable." }
+                    Definition { text: "«\u00a0Vérifier les offres\u00a0» interroge les sites pour chaque dossier\u00a0: une offre disparue est marquée dépubliée, sa copie archivée reste consultable. Les offres que le site n'a pas pu confirmer sont signalées à part." }
                     Terme { text: "Tampons" }
                     Definition { text: "Un clic sur un tampon de l'historique permet de modifier ou de supprimer l'événement\u00a0; un même événement ne peut pas être tamponné deux fois à la même date." }
                     Terme { text: "Clavier" }
                     Definition { text: "Entrée ouvre le détail du dossier sélectionné, Suppr (ou Retour arrière) arrête son suivi après confirmation\u00a0; clic droit pour toutes les actions." }
+                }
+
+                FeuilleNotice {
+                    titre: "Les réglages"
+                    Terme { text: "Avis de mise à jour" }
+                    Definition { text: "Tamponné cherche une nouvelle version à chaque démarrage\u00a0; une pastille sur l'onglet Réglages la signale. «\u00a0Installer et redémarrer\u00a0» l'applique tout de suite, «\u00a0Au prochain lancement\u00a0» plus tard. Si la nouvelle version ne démarre pas, la précédente est remise en place." }
+                    Terme { text: "Raccourci" }
+                    Definition { text: "Ajoute Tamponné au menu des applications (question posée au premier lancement). Si le dossier de Tamponné est déplacé, le raccourci se met à jour d'un clic." }
+                    Terme { text: "Sauvegarde" }
+                    Definition { text: "Exporter réunit fiches, dossiers suivis, offres vues et réglages dans un fichier .zip\u00a0; Importer remplace toutes les données par celles d'un tel fichier, après confirmation, et garde une copie des anciennes." }
+                    Terme { text: "Exports de recherche" }
+                    Definition { text: "Nombre et taille des pages HTML exportées depuis le registre, avec de quoi ouvrir leur dossier ou les supprimer toutes." }
+                    Terme { text: "Classement" }
+                    Definition { text: "Thème jour, nuit ou celui du système, animations réduites, et liste des organisations\u00a0: rechargée d'elle-même tous les 7\u00a0jours, «\u00a0Rafraîchir le cache\u00a0» la recharge tout de suite." }
+                }
+
+                FeuilleNotice {
+                    titre: "Raccourcis et données"
+                    Terme { text: "Menus et clavier" }
+                    Definition { text: "Fichier\u00a0› Nouvelle recherche (Ctrl+N), Suivi de candidature, Quitter (Ctrl+Q)\u00a0; Aide\u00a0› Aide de Tamponné. Sur Mac, Ctrl correspond à Cmd." }
+                    Terme { text: "Bureau de nuit" }
+                    Definition { text: "Le bouton en haut à droite passe du thème jour au thème nuit, comme le réglage Thème." }
+                    Terme { text: "Où sont mes données\u00a0?" }
+                    Definition { text: "Tout reste dans le dossier de Tamponné\u00a0: données dans «\u00a0data\u00a0», pages exportées dans «\u00a0exports\u00a0». Le dossier peut être déplacé ou copié tel quel\u00a0; pour changer d'ordinateur, la Sauvegarde suffit." }
                 }
             }
         }

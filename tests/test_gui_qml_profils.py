@@ -1,6 +1,7 @@
 """Tests de l'écran Profils QML (EcranProfils.qml, FicheBristol.qml) avec
 les fiches de démonstration de la maquette."""
 
+import re
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -85,7 +86,9 @@ def test_ecran_profils_expose_fiches_et_actions(
     assert "Mes fiches de recherche" in noms
     assert "2 fiches classées" in noms
     assert "Attaché, Paris et petite couronne" in noms
-    assert not any("nouvelle" in nom for nom in noms)
+    # Pas de compteur de nouvelles sur les fiches ; l'Aide parle des
+    # offres nouvelles, d'où la recherche d'un nombre.
+    assert not any(re.search(r"\d\s+nouvelle", nom) for nom in noms)
     assert "Lancer la fiche «\u00a0Hospitalier, achats\u00a0»" in noms
     assert "Nouvelle fiche" in noms
 

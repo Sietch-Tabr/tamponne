@@ -96,8 +96,12 @@ def test_ecran_aide_expose_ses_rubriques(
         "Les cases du formulaire",
         "Exemples de demande",
         "Grades supérieurs (IDIV / IP / AFIP)",
+        "La recherche et le registre",
+        "Les sources consultées",
         "Les fiches de recherche",
         "Les dossiers de suivi",
+        "Les réglages",
+        "Raccourcis et données",
         "Tampons",
     ):
         assert rubrique in noms
