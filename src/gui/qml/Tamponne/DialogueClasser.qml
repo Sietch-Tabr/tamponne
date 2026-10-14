@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import Tamponne
 
-/*! « Classer en profil » : la demande de recherche actuelle devient une
+/*! « Créer une fiche » : la demande de recherche actuelle devient une
     fiche (nom interne et intitulé affiché). */
 Dialogue {
     id: racine
@@ -11,7 +11,7 @@ Dialogue {
 
     signal classe(string nom, string intitule)
 
-    titre: "Classer en profil"
+    titre: "Créer une fiche"
     width: 470
 
     function ouvrir() {
@@ -72,7 +72,7 @@ Dialogue {
         },
         BoutonTampon {
             Layout.margins: 4
-            text: "Classer"
+            text: "Créer"
             onClicked: racine.classe(champNom.text, champIntitule.text)
         }
     ]
