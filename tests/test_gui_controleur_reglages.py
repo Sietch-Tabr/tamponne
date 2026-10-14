@@ -8,10 +8,18 @@ import pytest
 from PySide6.QtWidgets import QApplication
 from pytestqt.qtbot import QtBot
 
-from src import maj, parametres_affichage, parametres_sources, profils, raccourci
+from src import (
+    export,
+    maj,
+    parametres_affichage,
+    parametres_sources,
+    profils,
+    raccourci,
+)
 from src.gui import controleur_reglages, travailleurs
 from src.gui.controleur_reglages import (
     MESSAGE_CACHE_INDISPONIBLE,
+    MESSAGE_EXPORTS_NON_SUPPRIMES,
     ControleurReglages,
 )
 from src.gui.pont import Pont
@@ -344,3 +352,43 @@ def test_importer_un_fichier_douteux_signale_l_erreur_sans_redemarrer(
         reglages.importer_donnees(faux.as_uri())
     assert signal.args == ["Ce fichier n'est pas une sauvegarde de Tamponné."]
     assert reglages.redemarrage_demande is False
+
+
+def test_exports_relus_a_l_actualisation() -> None:
+    reglages = ControleurReglages()
+    assert reglages.property("exports") == {
+        "nombre": 0,
+        "texte": "Aucun export de recherche.",
+    }
+    export.DOSSIER_EXPORTS.mkdir(parents=True)
+    (export.DOSSIER_EXPORTS / "a.html").write_bytes(b"x" * 2500)
+    reglages.actualiser_exports()
+    assert reglages.property("exports") == {
+        "nombre": 1,
+        "texte": "1\u00a0fichier, 2\u00a0Ko",
+    }
+    assert "l'export de recherche" in reglages.confirmation_suppression_exports()
+
+
+def test_supprimer_exports_vide_le_dossier() -> None:
+    export.DOSSIER_EXPORTS.mkdir(parents=True)
+    (export.DOSSIER_EXPORTS / "a.html").write_text("x", encoding="utf-8")
+    reglages = ControleurReglages()
+    reglages.supprimer_exports()
+    assert reglages.property("exports")["nombre"] == 0
+    assert not (export.DOSSIER_EXPORTS / "a.html").exists()
+
+
+def test_supprimer_exports_en_echec_signale_l_erreur(
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def echouer() -> None:
+        raise PermissionError("fichier ouvert")
+
+    monkeypatch.setattr(export, "supprimer_exports", echouer)
+    reglages = ControleurReglages()
+    with qtbot.waitSignal(reglages.erreur_signalee) as signal:
+        reglages.supprimer_exports()
+    assert signal.args == [
+        MESSAGE_EXPORTS_NON_SUPPRIMES.format(erreur="fichier ouvert")
+    ]

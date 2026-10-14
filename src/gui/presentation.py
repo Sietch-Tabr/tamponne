@@ -499,3 +499,31 @@ def texte_date_cache(moment: datetime | None) -> str:
         f"En cache depuis le {jour}\u00a0{_NOMS_MOIS[local.month - 1]}\u00a0"
         f"{local.year} à\u00a0{local.hour}\u00a0h\u00a0{local.minute:02d}"
     )
+
+
+def _taille_lisible(octets: int) -> str:
+    """Taille en Ko ou Mo, virgule décimale française."""
+    if octets < 1_000_000:
+        return f"{max(1, round(octets / 1000))}\u00a0Ko"
+    return f"{octets / 1_000_000:.1f}".replace(".", ",") + "\u00a0Mo"
+
+
+def texte_exports(nombre: int, octets: int) -> str:
+    """État du dossier des exports de recherche (feuille Sauvegarde)."""
+    if nombre == 0:
+        return "Aucun export de recherche."
+    fichiers = "1\u00a0fichier" if nombre == 1 else f"{nombre}\u00a0fichiers"
+    return f"{fichiers}, {_taille_lisible(octets)}"
+
+
+def texte_confirmation_exports(nombre: int) -> str:
+    """Question posée avant de supprimer les exports de recherche."""
+    cible = (
+        "l'export de recherche"
+        if nombre == 1
+        else f"les {nombre}\u00a0exports de recherche"
+    )
+    return (
+        f"Supprimer définitivement {cible}\u00a0? "
+        "Les fiches et le suivi ne sont pas touchés."
+    )
