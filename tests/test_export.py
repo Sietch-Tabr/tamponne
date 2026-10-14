@@ -24,11 +24,6 @@ def _offre(**champs: str) -> Offre:
     return offre
 
 
-@pytest.fixture(autouse=True)
-def _exports_vers_tmp(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(export, "DOSSIER_EXPORTS", tmp_path / "exports")
-
-
 def test_exporter_html_ecrit_une_ligne_par_offre() -> None:
     chemin = export.exporter_html([_offre(), _offre(reference="MINT_2026-2")], "A", 3)
     page = chemin.read_text(encoding="utf-8")
@@ -55,3 +50,49 @@ def test_exporter_html_nom_de_fichier_tire_du_profil() -> None:
     assert chemin.parent == export.DOSSIER_EXPORTS
     assert chemin.name.startswith("fiche-paris---rh_")
     assert chemin.suffix == ".html"
+
+
+def test_etat_exports_sans_dossier_est_vide() -> None:
+    assert export.etat_exports() == (0, 0)
+
+
+def test_etat_exports_compte_les_fichiers_html() -> None:
+    export.DOSSIER_EXPORTS.mkdir(parents=True)
+    (export.DOSSIER_EXPORTS / "a.html").write_text("abc", encoding="utf-8")
+    (export.DOSSIER_EXPORTS / "b.html").write_text("de", encoding="utf-8")
+    (export.DOSSIER_EXPORTS / "notes.txt").write_text("ignoré", encoding="utf-8")
+    assert export.etat_exports() == (2, 5)
+
+
+def test_supprimer_exports_ne_garde_que_les_autres_fichiers() -> None:
+    export.exporter_html([_offre()], "A", 1)
+    (export.DOSSIER_EXPORTS / "notes.txt").write_text("gardé", encoding="utf-8")
+    export.supprimer_exports()
+    assert export.etat_exports() == (0, 0)
+    assert (export.DOSSIER_EXPORTS / "notes.txt").exists()
+
+
+def test_supprimer_exports_sans_dossier_ne_fait_rien() -> None:
+    export.supprimer_exports()
+    assert not export.DOSSIER_EXPORTS.exists()
+
+
+def test_supprimer_exports_en_echec_supprime_les_autres_puis_leve(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    export.DOSSIER_EXPORTS.mkdir(parents=True)
+    bloque = export.DOSSIER_EXPORTS / "a.html"
+    libre = export.DOSSIER_EXPORTS / "b.html"
+    bloque.write_text("x", encoding="utf-8")
+    libre.write_text("x", encoding="utf-8")
+    unlink = Path.unlink
+
+    def unlink_bloque(chemin: Path, missing_ok: bool = False) -> None:
+        if chemin.name == "a.html":
+            raise PermissionError("fichier ouvert")
+        unlink(chemin, missing_ok=missing_ok)
+
+    monkeypatch.setattr(Path, "unlink", unlink_bloque)
+    with pytest.raises(PermissionError):
+        export.supprimer_exports()
+    assert bloque.exists() and not libre.exists()

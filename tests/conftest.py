@@ -13,6 +13,7 @@ import pytest  # noqa: E402
 from src import (  # noqa: E402
     cache,
     candidatures,
+    export,
     maj,
     parametres_affichage,
     profils,
@@ -50,6 +51,15 @@ def _rediriger_candidatures_vers_tmp(
         candidatures, "CHEMIN_CANDIDATURES", tmp_path / "candidatures.json"
     )
     monkeypatch.setattr(candidatures, "DOSSIER_ARCHIVES", tmp_path / "archives")
+
+
+@pytest.fixture(autouse=True)
+def _rediriger_exports_vers_tmp(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """L'écran Réglages lit et supprime les exports HTML : jamais le vrai
+    dossier exports/ pendant les tests."""
+    monkeypatch.setattr(export, "DOSSIER_EXPORTS", tmp_path / "exports")
 
 
 @pytest.fixture(autouse=True)

@@ -1,6 +1,6 @@
 """Contrôleur de l'écran Réglages : sources consultées, préférences
-d'affichage, avis de mise à jour, cache des organisations, raccourci et
-sauvegarde des données."""
+d'affichage, avis de mise à jour, cache des organisations, raccourci,
+sauvegarde des données et exports de recherche."""
 
 import html
 from collections.abc import Callable
@@ -11,14 +11,16 @@ from typing import cast
 from PySide6.QtCore import Property, QObject, QThread, QUrl, Signal, Slot
 from PySide6.QtGui import QDesktopServices
 
-from src import raccourci, sauvegarde
+from src import export, raccourci, sauvegarde
 from src.cache import date_cache_organisations, obtenir_organisations
 from src.gui.presentation import (
     TEXTES_RACCOURCI,
     notes_en_html,
     texte_avis_sans_publication,
+    texte_confirmation_exports,
     texte_confirmation_import,
     texte_date_cache,
+    texte_exports,
 )
 from src.gui.travailleurs import TacheReseau, VerificateurMiseAJour
 from src.maj import ecrire_maj_disponible, lire_echec, version_locale
@@ -32,6 +34,11 @@ from src.parametres_sources import (
     sauvegarder_sources_actives,
 )
 from src.types import InfoMaj, Organisations
+
+MESSAGE_EXPORTS_NON_SUPPRIMES = (
+    "Certains exports n'ont pas pu être supprimés. Fermez-les s'ils sont "
+    "ouverts, puis réessayez.\nDétail\u00a0: {erreur}"
+)
 
 MESSAGE_CACHE_INDISPONIBLE = (
     "Le site choisirleservicepublic.gouv.fr est inaccessible. Réessayer plus tard."
@@ -76,6 +83,7 @@ class ControleurReglages(QObject):
         self._verificateur: VerificateurMiseAJour | None = None
         self._thread_cache: QThread | None = None
         self._tache_cache: TacheReseau | None = None
+        self._etat_exports = export.etat_exports()
         self._etat_raccourci = raccourci.etat()
         self._raccourci_en_cours = False
         self._thread_raccourci: QThread | None = None
@@ -395,6 +403,43 @@ class ControleurReglages(QObject):
             return
         self._redemarrage_demande = True
         self.quitter_demande.emit()
+
+    # --- Exports de recherche ---
+
+    def _lire_exports(self) -> dict[str, object]:
+        nombre, octets = self._etat_exports
+        return {"nombre": nombre, "texte": texte_exports(nombre, octets)}
+
+    exports = Property(dict, _lire_exports, notify=etat_change)
+    """Exports HTML de la recherche : `nombre` et `texte` (`texte_exports`)."""
+
+    @Slot()
+    def actualiser_exports(self) -> None:
+        """Relit le dossier des exports (un export a pu être fait depuis
+        l'écran Recherche)."""
+        self._etat_exports = export.etat_exports()
+        self.etat_change.emit()
+
+    @Slot(result=str)
+    def confirmation_suppression_exports(self) -> str:
+        """Question posée avant de supprimer les exports."""
+        return texte_confirmation_exports(self._etat_exports[0])
+
+    @Slot()
+    def supprimer_exports(self) -> None:
+        """Supprime les exports HTML ; un échec est signalé (`erreur_signalee`)."""
+        try:
+            export.supprimer_exports()
+        except OSError as erreur:
+            self.erreur_signalee.emit(
+                MESSAGE_EXPORTS_NON_SUPPRIMES.format(erreur=erreur)
+            )
+        self.actualiser_exports()
+
+    @Slot()
+    def ouvrir_dossier_exports(self) -> None:
+        """Affiche le dossier des exports dans le gestionnaire de fichiers."""
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(export.DOSSIER_EXPORTS)))
 
     @Slot(str)
     def ouvrir_dossier(self, chemin: str) -> None:

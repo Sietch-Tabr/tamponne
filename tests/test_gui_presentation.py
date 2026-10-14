@@ -14,6 +14,8 @@ from src.gui.presentation import (
     reformater_date_iso,
     resume_registre,
     texte_date_cache,
+    texte_confirmation_exports,
+    texte_exports,
     texte_nombre_fiches,
 )
 from src.types import Candidature, EvenementCandidature, Profil
@@ -357,3 +359,21 @@ def test_texte_date_cache_en_heure_locale() -> None:
 def test_texte_date_cache_premier_du_mois() -> None:
     moment = datetime(2026, 3, 1, 9, 30).astimezone()
     assert texte_date_cache(moment).startswith("En cache depuis le 1er\u00a0mars")
+
+
+def test_texte_exports_aucun() -> None:
+    assert texte_exports(0, 0) == "Aucun export de recherche."
+
+
+def test_texte_exports_en_ko_jamais_zero() -> None:
+    assert texte_exports(1, 120) == "1\u00a0fichier, 1\u00a0Ko"
+    assert texte_exports(3, 45_600) == "3\u00a0fichiers, 46\u00a0Ko"
+
+
+def test_texte_exports_en_mo_virgule_decimale() -> None:
+    assert texte_exports(12, 1_440_000) == "12\u00a0fichiers, 1,4\u00a0Mo"
+
+
+def test_texte_confirmation_exports_singulier_et_pluriel() -> None:
+    assert "l'export de recherche\u00a0?" in texte_confirmation_exports(1)
+    assert "les 12\u00a0exports de recherche\u00a0?" in texte_confirmation_exports(12)

@@ -13,7 +13,7 @@ from PySide6.QtQuick import QQuickItem
 from PySide6.QtWidgets import QApplication
 from pytestqt.qtbot import QtBot
 
-from src import parametres_affichage, parametres_sources, raccourci
+from src import export, parametres_affichage, parametres_sources, raccourci
 from src.gui import application, controleur_reglages
 from src.gui.pont import Pont
 
@@ -164,6 +164,41 @@ def test_date_cache_affichee_apres_rafraichissement(
     assert date.property("text") == (
         "En cache depuis le 12\u00a0octobre\u00a02026 à\u00a014\u00a0h\u00a005"
     )
+
+
+def test_exports_sans_fichier_masque_les_boutons(
+    chargement: tuple[QQmlApplicationEngine, Pont, list[str]], qapp: QApplication
+) -> None:
+    moteur, _, _ = chargement
+    racine = _afficher(moteur, 4, qapp)
+    assert _element(racine, "etatExports").property("text") == (
+        "Aucun export de recherche."
+    )
+    assert _element(racine, "boutonSupprimerExports").isVisible() is False
+
+
+def test_supprimer_exports_apres_confirmation(
+    chargement: tuple[QQmlApplicationEngine, Pont, list[str]], qapp: QApplication
+) -> None:
+    moteur, _, avertissements = chargement
+    racine = _afficher(moteur, 0, qapp)
+    export.DOSSIER_EXPORTS.mkdir(parents=True)
+    (export.DOSSIER_EXPORTS / "a.html").write_text("x", encoding="utf-8")
+    racine.setProperty("ongletCourant", 4)
+    qapp.processEvents()
+    bouton = _element(racine, "boutonSupprimerExports")
+    assert bouton.isVisible() is True
+    QMetaObject.invokeMethod(bouton, "clicked")
+    qapp.processEvents()
+    confirmation = racine.findChild(QObject, "confirmationExports")
+    assert confirmation is not None and confirmation.property("opened") is True
+    QMetaObject.invokeMethod(confirmation, "confirme")
+    qapp.processEvents()
+    assert export.etat_exports() == (0, 0)
+    assert _element(racine, "etatExports").property("text") == (
+        "Aucun export de recherche."
+    )
+    assert avertissements == []
 
 
 def test_case_source_enregistre_le_choix(

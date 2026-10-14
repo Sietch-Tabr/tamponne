@@ -109,6 +109,13 @@ Item {
         onConfirme: racine.reglages.importer_donnees(fichier)
     }
 
+    DialogueConfirmation {
+        id: confirmationExports
+        objectName: "confirmationExports"
+        width: 460
+        onConfirme: racine.reglages.supprimer_exports()
+    }
+
     DialogueAvis {
         id: avisExport
         titre: "Sauvegarde prête"
@@ -387,6 +394,47 @@ Item {
                                     objectName: "boutonImporter"
                                     text: "Importer…"
                                     onClicked: choixImport.open()
+                                }
+                            }
+
+                            Column {
+                                width: parent.width
+                                spacing: 4
+                                Texte {
+                                    text: "Exports de recherche"
+                                    color: Theme.encre2
+                                    font.family: Theme.policeMono
+                                    font.pixelSize: 13
+                                    font.capitalization: Font.AllUppercase
+                                    font.letterSpacing: 0.5
+                                    wrapMode: Text.NoWrap
+                                    Accessible.ignored: true
+                                }
+                                Texte {
+                                    objectName: "etatExports"
+                                    width: parent.width
+                                    text: racine.reglages.exports.texte
+                                }
+                            }
+
+                            Flow {
+                                visible: racine.reglages.exports.nombre > 0
+                                width: parent.width
+                                spacing: 8
+                                BoutonEtiquette {
+                                    objectName: "boutonOuvrirExports"
+                                    text: "Ouvrir le dossier"
+                                    Accessible.name: "Exports de recherche\u00a0: " + text
+                                    onClicked: racine.reglages.ouvrir_dossier_exports()
+                                }
+                                BoutonEtiquette {
+                                    objectName: "boutonSupprimerExports"
+                                    text: "Supprimer…"
+                                    encre: Theme.rougeEtiquette
+                                    Accessible.name: "Exports de recherche\u00a0: Supprimer"
+                                    onClicked: confirmationExports.demander(
+                                        "Supprimer les exports",
+                                        racine.reglages.confirmation_suppression_exports())
                                 }
                             }
                         }
