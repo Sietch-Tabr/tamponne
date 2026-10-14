@@ -2,6 +2,7 @@
 exposition aux lecteurs d'écran et branchements vers `ControleurReglages`."""
 
 from collections.abc import Iterator
+from datetime import datetime
 from pathlib import Path
 
 import pytest
@@ -13,7 +14,7 @@ from PySide6.QtWidgets import QApplication
 from pytestqt.qtbot import QtBot
 
 from src import parametres_affichage, parametres_sources, raccourci
-from src.gui import application
+from src.gui import application, controleur_reglages
 from src.gui.pont import Pont
 
 
@@ -134,6 +135,35 @@ def test_avis_disponible_affiche_les_boutons_d_installation(
     racine = _afficher(moteur, 4, qapp)
     assert _element(racine, "boutonInstaller").isVisible() is True
     assert _element(racine, "boutonReporter").isVisible() is True
+
+
+def test_date_cache_affichee_apres_rafraichissement(
+    chargement: tuple[QQmlApplicationEngine, Pont, list[str]],
+    qapp: QApplication,
+    qtbot: QtBot,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    moteur, pont, _ = chargement
+    racine = _afficher(moteur, 4, qapp)
+    assert _element(racine, "dateCache").isVisible() is False
+    monkeypatch.setattr(
+        controleur_reglages, "obtenir_organisations", lambda forcer=False: {}
+    )
+    monkeypatch.setattr(
+        controleur_reglages,
+        "date_cache_organisations",
+        lambda: datetime(2026, 10, 12, 14, 5).astimezone(),
+    )
+    reglages = pont.reglages_controleur
+    with qtbot.waitSignal(reglages.organisations_rafraichies, timeout=5000):
+        reglages.rafraichir_cache()
+    reglages.arreter()
+    qapp.processEvents()
+    date = _element(racine, "dateCache")
+    assert date.isVisible() is True
+    assert date.property("text") == (
+        "En cache depuis le 12\u00a0octobre\u00a02026 à\u00a014\u00a0h\u00a005"
+    )
 
 
 def test_case_source_enregistre_le_choix(

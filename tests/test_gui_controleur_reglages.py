@@ -1,7 +1,7 @@
 """Tests de src/gui/controleur_reglages.py : sources, préférences,
 avis de mise à jour et rafraîchissement du cache des organisations."""
 
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 import pytest
@@ -15,6 +15,7 @@ from src.gui.controleur_reglages import (
     ControleurReglages,
 )
 from src.gui.pont import Pont
+from src.gui.presentation import texte_date_cache
 from src.types import InfoMaj, Organisations
 
 INFO: InfoMaj = {
@@ -204,7 +205,13 @@ def test_rafraichir_cache_transmet_les_organisations(
     monkeypatch.setattr(
         controleur_reglages, "obtenir_organisations", lambda forcer=False: orgas
     )
+    moment = datetime(2026, 10, 12, 14, 5).astimezone()
+    monkeypatch.setattr(controleur_reglages, "date_cache_organisations", lambda: None)
     reglages = ControleurReglages()
+    assert reglages.property("date_cache") == ""
+    monkeypatch.setattr(
+        controleur_reglages, "date_cache_organisations", lambda: moment
+    )
     with qtbot.waitSignal(reglages.organisations_rafraichies, timeout=5000) as signal:
         reglages.rafraichir_cache()
         assert reglages.property("cache_en_cours") is True
@@ -212,6 +219,7 @@ def test_rafraichir_cache_transmet_les_organisations(
     assert signal.args == [orgas]
     assert reglages.property("cache_en_cours") is False
     assert reglages.property("message_cache") == ""
+    assert reglages.property("date_cache") == texte_date_cache(moment)
 
 
 def test_rafraichir_cache_en_echec_affiche_un_message(

@@ -12,12 +12,13 @@ from PySide6.QtCore import Property, QObject, QThread, QUrl, Signal, Slot
 from PySide6.QtGui import QDesktopServices
 
 from src import raccourci, sauvegarde
-from src.cache import obtenir_organisations
+from src.cache import date_cache_organisations, obtenir_organisations
 from src.gui.presentation import (
     TEXTES_RACCOURCI,
     notes_en_html,
     texte_avis_sans_publication,
     texte_confirmation_import,
+    texte_date_cache,
 )
 from src.gui.travailleurs import TacheReseau, VerificateurMiseAJour
 from src.maj import ecrire_maj_disponible, lire_echec, version_locale
@@ -70,6 +71,7 @@ class ControleurReglages(QObject):
         self._redemarrage_demande = False
         self._cache_en_cours = False
         self._message_cache = ""
+        self._date_cache = texte_date_cache(date_cache_organisations())
         self._thread_maj: QThread | None = None
         self._verificateur: VerificateurMiseAJour | None = None
         self._thread_cache: QThread | None = None
@@ -241,6 +243,13 @@ class ControleurReglages(QObject):
     message_cache = Property(str, _lire_message_cache, notify=etat_change)
     """Erreur du dernier rafraîchissement du cache, vide sinon."""
 
+    def _lire_date_cache(self) -> str:
+        return self._date_cache
+
+    date_cache = Property(str, _lire_date_cache, notify=etat_change)
+    """Date de mise en cache des organisations (`texte_date_cache`), vide
+    sans cache."""
+
     @Slot()
     def rafraichir_cache(self) -> None:
         """Recharge les organisations depuis le site, sans figer l'interface."""
@@ -263,6 +272,7 @@ class ControleurReglages(QObject):
 
     def _on_cache_rafraichi(self, organisations: object) -> None:
         self._cache_en_cours = False
+        self._date_cache = texte_date_cache(date_cache_organisations())
         self.organisations_rafraichies.emit(cast(Organisations, organisations))
         self.etat_change.emit()
 

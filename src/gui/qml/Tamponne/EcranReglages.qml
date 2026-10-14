@@ -508,6 +508,13 @@ Item {
                                 Accessible.name: "Liste des organisations\u00a0: " + text
                                 onClicked: racine.reglages.rafraichir_cache()
                             }
+                            Texte {
+                                objectName: "dateCache"
+                                visible: text !== ""
+                                width: parent.width
+                                text: racine.reglages.date_cache
+                                color: Theme.encre2
+                            }
                         }
 
                         Texte {
