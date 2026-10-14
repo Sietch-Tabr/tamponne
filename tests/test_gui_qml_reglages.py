@@ -122,6 +122,7 @@ def test_ecran_reglages_expose_sources_et_classement(
         "Réduire les animations",
         "Liste des organisations\u00a0: Rafraîchir le cache",
         "Sauvegarde",
+        "Maintenance",
         "Exporter…",
         "Importer…",
     ):
