@@ -47,12 +47,22 @@ def test_entetes_et_nombre_de_colonnes(qapp: QApplication) -> None:
 def test_cellules_numero_date_courte_tirets_et_source(qapp: QApplication) -> None:
     modele = _modele(qapp)
     affiche = Qt.ItemDataRole.DisplayRole
-    assert _valeur(modele, 0, 0, affiche) == "001"
+    assert _valeur(modele, 0, 0, affiche) == "01"
     assert _valeur(modele, 0, 4, affiche) == "02/10/26"
     assert _valeur(modele, 0, 2, affiche) == "—"
     assert _valeur(modele, 0, 5, affiche) == SOURCE_PAR_DEFAUT
     assert _valeur(modele, 1, 4, affiche) == "—"
     assert _valeur(modele, 1, 5, affiche) == "FHF"
+
+
+def test_numero_a_la_largeur_du_dernier(qapp: QApplication) -> None:
+    modele = ModeleRegistre()
+    offres = [_offre(str(i), "01/10/2026") for i in range(120)]
+    modele.definir_offres(offres, set())
+    assert modele.numero(0) == "001"
+    assert modele.numero(119) == "120"
+    modele.definir_offres(offres[:9], set())
+    assert modele.numero(0) == "01"
 
 
 def test_tampon_nouveau_sur_l_intitule_seulement(qapp: QApplication) -> None:

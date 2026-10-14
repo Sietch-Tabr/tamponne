@@ -161,7 +161,7 @@ def test_recherche_remplit_le_registre_et_le_resume(
     assert resume.startswith("2 inscrites · 1 écartée (grades supérieurs) · ")
     avancement = {a["nom"]: a["etat"] for a in controleur.property("avancement")}
     assert set(avancement.values()) == {"terminé · 2 offres", "terminé · 1 offre"}
-    assert _cellule(controleur, 0, 0) == "001"
+    assert _cellule(controleur, 0, 0) == "01"
     assert _cellule(controleur, 0, 1) == "Attaché(e) d'administration RH"
     assert _cellule(controleur, 0, 4) == "01/10/26"
     assert _cellule(controleur, 1, 5) == "Fonction publique territoriale"
@@ -276,7 +276,7 @@ def test_numero_de_selection_suit_le_registre_apres_tri(
     assert controleur.property("numero_selection") == ""
     controleur.trier(4)
     controleur.selectionner(0)
-    assert controleur.property("numero_selection") == "002"
+    assert controleur.property("numero_selection") == "02"
 
 
 def test_categorie_a_plus_autres_envoie_la_cle_connue_des_sources(
