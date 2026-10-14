@@ -151,6 +151,15 @@ def test_est_grade_superieur_afipa() -> None:
     assert est_grade_superieur("AFIPA - Attaché principal")
 
 
+def test_est_grade_superieur_idiv_en_minuscules() -> None:
+    assert est_grade_superieur("IDiv - Responsable de pôle")
+
+
+def test_est_grade_superieur_ip_suivi_d_une_minuscule_refuse() -> None:
+    assert not est_grade_superieur("Ipso facto - chargé de mission")
+    assert not est_grade_superieur("Ip technicien réseau")
+
+
 def test_est_grade_superieur_grade_normal_refuse() -> None:
     assert not est_grade_superieur("Technicien informatique")
 

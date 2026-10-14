@@ -137,15 +137,15 @@ Item {
                 FeuilleNotice {
                     titre: "Les cases du formulaire"
                     Terme { text: "Catégorie" }
-                    Definition { text: "Niveau hiérarchique du poste\u00a0: A+ (encadrement supérieur), A (cadre), B (profession intermédiaire), C (employé). Le corps / grade affine la catégorie\u00a0: Attaché, Attaché principal, Attaché hors classe, Adjoint administratif…" }
+                    Definition { text: "Niveau hiérarchique du poste\u00a0: A+ (direction, ou autres emplois fonctionnels), A (cadre), B (profession intermédiaire), C (employé). Le corps / grade affine la catégorie\u00a0: Attaché, Attaché principal, Attaché hors classe, Adjoint administratif…" }
                     Terme { text: "Versant" }
                     Definition { text: "La branche de la fonction publique\u00a0: État, Hospitalier, Territorial. Plusieurs cases à la fois possibles\u00a0; aucune cochée = tous les versants." }
                     Terme { text: "Poste et Lieu" }
                     Definition { text: "Domaines, localisations et organisations s'ouvrent dans une fenêtre de sélection avec un champ de recherche\u00a0: pratique avec 114 localisations et environ 2 400 sous-organisations." }
                     Terme { text: "Type de poste" }
-                    Definition { text: "Par défaut, seuls les postes ouverts aux titulaires sont affichés (titulaires + postes ouverts aux deux statuts). Choisir «\u00a0Tous\u00a0» pour voir aussi les postes réservés aux contractuels." }
+                    Definition { text: "Par défaut, seuls les postes ouverts aux titulaires sont affichés (titulaires + postes ouverts aux deux statuts). «\u00a0Titulaire uniquement\u00a0» et «\u00a0Contractuel uniquement\u00a0» resserrent, «\u00a0Tous (y compris contractuels)\u00a0» ajoute les postes réservés aux contractuels." }
                     Terme { text: "Options" }
-                    Definition { text: "Management et Télétravail\u00a0: cochés = seulement les postes concernés. Le mot-clé cherche dans le titre et le corps de l'offre, pas seulement l'intitulé." }
+                    Definition { text: "Management et Télétravail\u00a0: cochés = seulement les postes concernés. Le mot-clé est transmis tel quel au moteur de recherche de chaque site." }
                 }
 
                 ColumnLayout {
@@ -160,12 +160,12 @@ Item {
                         Definition { text: "Le grade repère «\u00a0attaché principal\u00a0» dans le titre, quel que soit le versant." }
                         Terme { text: "Chef de projet informatique (État)" }
                         Exemple { text: "Catégorie → A<br>Versant → État<br>Poste → Domaine «\u00a0Numérique\u00a0»<br>Options → mot-clé «\u00a0chef de projet\u00a0»" }
-                        Definition { text: "Pas de grade statutaire pour ce métier\u00a0: le mot-clé resserre sur l'intitulé." }
+                        Definition { text: "Pas de grade statutaire pour ce métier\u00a0: le mot-clé resserre la recherche." }
                     }
 
                     FeuilleNotice {
-                        titre: "Grades supérieurs (IDIV / IP / AFIPA)"
-                        Definition { text: "Par défaut, les offres dont le titre commence par un grade d'encadrement supérieur de la DGFiP (IDIV, AFIPA, IP suivi d'une majuscule, ex. IPFiP) sont écartées du registre\u00a0: postes très spécifiques, peu pertinents pour une recherche large. Cocher «\u00a0Grades supérieurs\u00a0» dans la demande pour les voir quand même." }
+                        titre: "Grades supérieurs (IDIV / IP / AFIP)"
+                        Definition { text: "Par défaut, les offres dont le titre commence par un grade d'encadrement supérieur de la DGFiP (IDIV, AFIP ou AFIPA, IP suivi d'une majuscule, d'une espace, d'un tiret ou d'une parenthèse, ex. IPFiP) sont écartées du registre\u00a0: postes très spécifiques, peu pertinents pour une recherche large. Cocher «\u00a0Grades supérieurs\u00a0» dans la demande pour les voir quand même." }
                     }
                 }
 
@@ -188,7 +188,7 @@ Item {
                     Terme { text: "Tampons" }
                     Definition { text: "Un clic sur un tampon de l'historique permet de modifier ou de supprimer l'événement\u00a0; un même événement ne peut pas être tamponné deux fois à la même date." }
                     Terme { text: "Clavier" }
-                    Definition { text: "Entrée ouvre le détail du dossier sélectionné, Suppr arrête son suivi\u00a0; clic droit pour toutes les actions." }
+                    Definition { text: "Entrée ouvre le détail du dossier sélectionné, Suppr (ou Retour arrière) arrête son suivi après confirmation\u00a0; clic droit pour toutes les actions." }
                 }
             }
         }
