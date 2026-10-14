@@ -233,8 +233,8 @@ Item {
                     Definition { text: "Ajoute Tamponné au menu des applications (question posée au premier lancement). Si le dossier de Tamponné est déplacé, le raccourci se met à jour d'un clic." }
                     Terme { text: "Sauvegarde" }
                     Definition { text: "Exporter réunit fiches, dossiers suivis, offres vues et réglages dans un fichier .zip\u00a0; Importer remplace toutes les données par celles d'un tel fichier, après confirmation, et garde une copie des anciennes." }
-                    Terme { text: "Exports de recherche" }
-                    Definition { text: "Nombre et taille des pages HTML exportées depuis le registre, avec de quoi ouvrir leur dossier ou les supprimer toutes." }
+                    Terme { text: "Maintenance" }
+                    Definition { text: "Exports de recherche\u00a0: nombre et taille des pages HTML exportées depuis le registre, avec de quoi ouvrir leur dossier ou les supprimer toutes." }
                     Terme { text: "Classement" }
                     Definition { text: "Thème jour, nuit ou celui du système, animations réduites, et liste des organisations\u00a0: rechargée d'elle-même tous les 7\u00a0jours, «\u00a0Rafraîchir le cache\u00a0» la recharge tout de suite." }
                 }
