@@ -18,7 +18,7 @@ from src.maj import (
     maj_en_echec,
     verifier_derniere_publication,
 )
-from src.recherche import RechercheImpossible, rechercher_toutes_sources
+from src.recherche.orchestration import RechercheImpossible, rechercher_toutes_sources
 from src.sources.detail import verifier_disponibilite
 from src.types import Candidature, FiltresRecherche, Organisations
 
@@ -26,7 +26,7 @@ journal = logging.getLogger(__name__)
 
 
 class TravailleurRecherche(QObject):
-    """Adaptateur Qt de `src.recherche.rechercher_toutes_sources` (sources
+    """Adaptateur Qt de `src.recherche.orchestration.rechercher_toutes_sources` (sources
     actives interrogées en parallèle, fusion, dédoublonnage) — à déplacer
     dans un `QThread` avant de démarrer (`moveToThread`).
 
@@ -56,7 +56,7 @@ class TravailleurRecherche(QObject):
     def executer(self) -> None:
         """Slot à connecter à `QThread.started` — tourne dans le thread
         du worker une fois `moveToThread` appelé. Relaie en signaux les
-        callbacks de `src.recherche.rechercher_toutes_sources`."""
+        callbacks de `src.recherche.orchestration.rechercher_toutes_sources`."""
         try:
             offres, nb_pages, arret_anticipe = rechercher_toutes_sources(
                 self._filtres,

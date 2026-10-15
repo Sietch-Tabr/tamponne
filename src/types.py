@@ -175,7 +175,7 @@ class EvenementCandidature(TypedDict, closed=True):
 
     Attributes:
         date: Date de l'événement au format ``YYYY-MM-DD``.
-        type: Clé parmi :data:`~src.candidatures.TYPES_EVENEMENT`.
+        type: Clé parmi :data:`~src.donnees.candidatures.TYPES_EVENEMENT`.
         note: Note libre optionnelle, chaîne vide si absente.
     """
 
@@ -188,10 +188,10 @@ class Candidature(TypedDict, closed=True):
     """Candidature suivie pour une offre, stockée dans
     ``data/candidatures.json`` sous forme de ``dict[str, Candidature]``
     indexé par la référence de l'offre (clé naturelle, unique — même
-    convention que ``cache_profil[ref]`` dans `src/cache.py`).
+    convention que ``cache_profil[ref]`` dans `src/donnees/cache.py`).
 
     Le statut affiché est toujours dérivé du dernier événement de
-    `historique` (voir :func:`~src.candidatures.dernier_evenement`),
+    `historique` (voir :func:`~src.donnees.candidatures.dernier_evenement`),
     jamais stocké comme champ à part qu'on écraserait — pour garder la
     trace complète d'un recrutement qui peut s'étaler sur plusieurs mois.
 
@@ -214,7 +214,7 @@ class Candidature(TypedDict, closed=True):
             `DetailOffre`.
         offre_source: Source de l'offre au moment du suivi (absente des
             candidatures enregistrées avant la 2.0, voir
-            :func:`~src.candidatures.source_candidature`).
+            :func:`~src.donnees.candidatures.source_candidature`).
     """
 
     offre_titre: str
@@ -277,7 +277,7 @@ class EchecMaj(TypedDict, closed=True):
 
 class ResultatTraite(TypedDict, closed=True):
     """Résultat d'une recherche après post-traitement
-    (`src.recherche.post_traiter_resultats`).
+    (`src.recherche.orchestration.post_traiter_resultats`).
 
     Attributes:
         offres: Offres conservées après filtres de grade.

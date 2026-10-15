@@ -106,44 +106,51 @@ uv run python -m src.lanceur           # avec mises à jour et redémarrage
 uv run python -m src.gui.application   # interface seule
 ```
 
-**Dépendances** : `PySide6` (interface Qt Quick/QML), `beautifulsoup4` (parsing HTML). Polices embarquées : [Archivo](https://fonts.google.com/specimen/Archivo) et [IBM Plex Mono](https://github.com/IBM/plex), sous licence SIL OFL 1.1 (`src/gui/qml/Tamponne/polices/`).
+**Dépendances** : `PySide6` (interface Qt Quick/QML), `beautifulsoup4` (parsing HTML), `truststore` (certificats HTTPS vérifiés par le système). Polices embarquées : [Archivo](https://fonts.google.com/specimen/Archivo) et [IBM Plex Mono](https://github.com/IBM/plex), sous licence SIL OFL 1.1 (`src/gui/qml/Tamponne/polices/`).
 
 ## Architecture
 
 ```
 src/
-  gui/
-    application.py           point d'entrée : moteur QML, vérification de mise à jour
-    pont.py                  objet unique exposé au QML (contrôleurs)
-    controleur_*.py          un contrôleur par écran : Profils, Recherche, Suivi, Réglages
-    presentation.py          textes affichés, calculés sans Qt
-    modele_offres.py         registre : modèle, tri et filtres
-    modele_registre.py       colonnes du registre des offres
-    travailleurs.py          tâches réseau sur QThread (recherche, vérifications)
-    qml/Tamponne/            interface QML : Theme.qml (couleurs jour/nuit), écrans,
-                             dialogues, composants, polices embarquées
-    icones/                  icône de l'application (SVG source, PNG, ICO, ICNS)
+  lanceur.py                 boucle de lancement : mise à jour en attente, redémarrage
+  maj.py                     vérification/application des mises à jour (publications Codeberg)
+  nettoyage.py               retrait des fichiers supprimés d'une version à l'autre
+  types.py                   structures de données partagées (TypedDict)
+  utils.py                   écriture JSON atomique
+  filtres.py                 constantes IDs API (catégories, grades, versants, domaines, localisations)
+  formatage.py               mise en forme des offres
+  chemins.py                 dossiers de l'installation (racine, data, exports)
+  donnees/
+    cache.py                 cache organisations (7 j) + offres vues par fiche (30 j)
+    candidatures.py          suivi de candidature
+    profils.py               fiches de recherche sauvegardées
+    parametres_sources.py    sources actives/inactives
+    parametres_affichage.py  thème et réduction des animations
+    sauvegarde.py            export et import des données
+  recherche/
+    orchestration.py         orchestration multi-source (sans Qt)
+    export.py                export HTML inline
+  systeme/
+    raccourci.py             raccourci du menu des applications (Windows, macOS, Linux)
+    journal.py               journal de l'interface (heure, niveau, module)
   sources/
     base.py                  Protocol commun aux sources d'offres + dédoublonnage
     choisirleservicepublic/  requêtes GET filtrées + parsing HTML (BeautifulSoup4)
     emploiterritorial/       portail légal CDG/CNFPT (FPT)
     passerellesmef/          portail Talentsoft des ministères économiques et financiers
     fhf/                     portail de la Fédération Hospitalière de France (FPH)
-  recherche.py               orchestration multi-source (sans Qt)
-  cache.py                   cache organisations (7 j) + offres vues par fiche (30 j)
-  candidatures.py            suivi de candidature
-  filtres.py                 constantes IDs API (catégories, grades, versants, domaines, localisations)
-  parametres_sources.py      sources actives/inactives
-  parametres_affichage.py    thème et réduction des animations
-  profils.py                 fiches de recherche sauvegardées
-  lanceur.py                 boucle de lancement : mise à jour en attente, redémarrage
-  maj.py                     vérification/application des mises à jour (publications Codeberg)
-  nettoyage.py               retrait des fichiers supprimés d'une version à l'autre
-  raccourci.py               raccourci du menu des applications (Windows, macOS, Linux)
-  sauvegarde.py              export et import des données
-  export.py                  export HTML inline
-  utils.py                   écriture JSON atomique
-  types.py                   structures de données partagées (TypedDict)
+  gui/
+    application.py           point d'entrée : moteur QML, vérification de mise à jour
+    pont.py                  objet unique exposé au QML (contrôleurs)
+    controleurs/             un contrôleur par écran : Profils, Recherche, Suivi, Réglages
+    modeles/                 registre : modèle, tri, filtres et colonnes
+    presentation.py          textes affichés, calculés sans Qt
+    travailleurs.py          tâches réseau sur QThread (recherche, vérifications)
+    qml/Tamponne/            interface QML : Theme.qml (couleurs jour/nuit), écrans,
+                             dialogues, composants, polices embarquées
+    icones/                  icône de l'application (SVG source, PNG, ICO, ICNS)
+tests/                       même arborescence que src/ ; test_architecture.py fige les
+                             dépendances entre composants
 data/
   profils.json               fiches de recherche
   candidatures.json          suivi de candidature
@@ -154,6 +161,7 @@ data/
   maj_disponible.json        marqueur de mise à jour en attente
   raccourci.json             dossier visé par le raccourci, question déjà posée
   sauvegarde-avant-import.zip  données d'avant le dernier import
+  tamponne.log               journal des lancements et des erreurs (archive : tamponne.1.log)
   archives/                  archives PDF des offres suivies
 exports/                     fichiers HTML générés
 outils/
@@ -198,7 +206,7 @@ Filtre Corps / grade : reconnaissance par mots-clés dans le titre, appliquée c
 
 ```bash
 uv sync                    # inclut le groupe dev (pytest, mypy...) par défaut
-uv run pytest -q           # suite de tests (pytest-qt, offscreen)
+uv run pytest -q           # suite de tests (pytest-qt, offscreen), dossiers miroirs de src/
 uv run mypy                # typage
 uv run pyside6-qmllint -I src/gui/qml src/gui/qml/Tamponne/*.qml
 uv run python -m outils.comparer_maquette recherche   # maquette / application, jour et nuit

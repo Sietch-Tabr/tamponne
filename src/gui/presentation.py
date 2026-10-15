@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Final
 
-from src.candidatures import (
+from src.donnees.candidatures import (
     TYPES_EVENEMENT,
     dernier_evenement,
     relance_suggeree,
@@ -32,7 +32,8 @@ LIBELLES_TAMPON: Final[Mapping[str, str]] = {
 def reformater_date_iso(date_iso: str, annee_courte: bool = False) -> str:
     """Reformate une date ISO (`YYYY-MM-DD`) en JJ/MM/AAAA, ou JJ/MM/AA si
     `annee_courte`. Retourne la chaîne d'origine si le format n'est pas
-    reconnu (ne devrait pas arriver, écrit uniquement par `src.candidatures`)."""
+    reconnu (ne devrait pas arriver, écrit uniquement par `src.donnees.candidatures`).
+    """
     try:
         jour = date.fromisoformat(date_iso)
     except ValueError:
@@ -100,10 +101,10 @@ def contenu_dossier(
 
     Args:
         reference: Référence de l'offre suivie (clé de `candidatures.json`).
-        candidature: Candidature telle que stockée par `src.candidatures`.
+        candidature: Candidature telle que stockée par `src.donnees.candidatures`.
         aujourd_hui: Date du jour, pour le nombre de jours sans nouvelles.
         archive_presente: Vrai si la copie PDF de la fiche existe
-            (`src.candidatures.chemin_archive_pdf`).
+            (`src.donnees.candidatures.chemin_archive_pdf`).
 
     Returns:
         Référence, titre, employeur et lieu, phrase de statut, tampons de
@@ -233,7 +234,7 @@ def lignes_fiche(profil: Profil) -> list[str]:
     """Résumé d'un profil sur la fiche bristol de l'écran Profils.
 
     Args:
-        profil: Profil tel que stocké par `src.profils`.
+        profil: Profil tel que stocké par `src.donnees.profils`.
 
     Returns:
         Une à trois lignes : catégories et versants ; lieu et options ;
@@ -430,7 +431,7 @@ TEXTES_RACCOURCI: Final[Mapping[str, str]] = {
     "a_jour": "Tamponné figure dans le menu des applications.",
     "deplace": "Le dossier a été déplacé\u00a0: le raccourci ne trouve plus Tamponné.",
 }
-"""État du raccourci (`src.raccourci.etat`) → phrase de la feuille Raccourci."""
+"""État du raccourci (`src.systeme.raccourci.etat`) → phrase de la feuille Raccourci."""
 
 
 def texte_avis_sans_publication(installee: str, en_cours: bool, erreur: str) -> str:

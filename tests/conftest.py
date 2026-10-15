@@ -10,17 +10,11 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pytest  # noqa: E402
 
-from src import (  # noqa: E402
-    cache,
-    candidatures,
-    export,
-    lanceur,
-    maj,
-    parametres_affichage,
-    profils,
-    raccourci,
-)
-from src.gui import travailleurs  # noqa: E402
+from src import lanceur, maj
+from src.donnees import cache, candidatures, parametres_affichage, profils
+from src.gui import travailleurs
+from src.recherche import export
+from src.systeme import raccourci
 
 
 @pytest.fixture(autouse=True)
