@@ -25,7 +25,10 @@ from pathlib import Path
 from src.types import EchecMaj, InfoMaj
 from src.utils import ecriture_atomique
 
-URL_API_RELEASES = "https://codeberg.org/api/v1/repos/Kwaite/tamponne/releases/latest"
+URL_API_RELEASES = (
+    "https://codeberg.org/api/v1/repos/Kwaite/tamponne/releases"
+    "?draft=false&pre-release=false&limit=50"
+)
 PREFIXE_ARCHIVES = "https://codeberg.org/Kwaite/tamponne/"
 """Seules les archives du dépôt sont téléchargées, quoi que dise l'API."""
 CHEMIN_RACINE = Path(__file__).parent.parent
@@ -48,15 +51,14 @@ def version_locale() -> str:
         return tomllib.load(f)["project"]["version"]
 
 
+def _tuple_version(version: str) -> tuple[int, ...]:
+    return tuple(int(p) for p in re.findall(r"\d+", version.strip().lstrip("vV")))
+
+
 def version_plus_recente(distante: str, locale: str) -> bool:
     """Compare deux versions par tuple d'entiers (`"1.2.0"` -> `(1, 2, 0)`),
     tolère un préfixe `v` (format des tags Codeberg, ex. `v1.2.0`)."""
-
-    def _tuple(v: str) -> tuple[int, ...]:
-        v = v.strip().lstrip("vV")
-        return tuple(int(p) for p in re.findall(r"\d+", v))
-
-    return _tuple(distante) > _tuple(locale)
+    return _tuple_version(distante) > _tuple_version(locale)
 
 
 class VerificationImpossible(RuntimeError):
@@ -65,8 +67,11 @@ class VerificationImpossible(RuntimeError):
 
 
 def verifier_derniere_publication() -> InfoMaj | None:
-    """Interroge la dernière publication Codeberg — `None` si aucune
-    publication ou si elle n'est pas plus récente.
+    """Interroge les publications Codeberg — `None` si aucune n'est plus
+    récente que la version installée.
+
+    Les notes réunissent toutes les publications postérieures à la version
+    installée, de la plus récente à la plus ancienne, chacune sous son numéro.
 
     Raises:
         VerificationImpossible: Codeberg injoignable ou réponse illisible :
@@ -81,16 +86,44 @@ def verifier_derniere_publication() -> InfoMaj | None:
     except (OSError, json.JSONDecodeError) as erreur:
         raise VerificationImpossible(str(erreur)) from erreur
 
-    tag = str(donnees.get("tag_name", ""))
-    if not tag or not version_plus_recente(tag, version_locale()):
+    if not isinstance(donnees, list):
+        raise VerificationImpossible("réponse inattendue de Codeberg")
+    installee = version_locale()
+    nouvelles = [
+        publication
+        for publication in donnees
+        if isinstance(publication, dict)
+        and publication.get("tag_name")
+        and version_plus_recente(str(publication["tag_name"]), installee)
+    ]
+    if not nouvelles:
         return None
-
+    nouvelles.sort(
+        key=lambda p: _tuple_version(str(p["tag_name"])),
+        reverse=True,
+    )
+    derniere = nouvelles[0]
+    notes = [
+        (str(p["tag_name"]).lstrip("vV"), str(p.get("body", "")).strip())
+        for p in nouvelles
+    ]
     return {
-        "version": tag.lstrip("vV"),
-        "notes": str(donnees.get("body", "")),
-        "url_zip": str(donnees.get("zipball_url", "")),
-        "url_publication": str(donnees.get("html_url", "")),
+        "version": str(derniere["tag_name"]).lstrip("vV"),
+        "notes": _notes_cumulees(notes),
+        "url_zip": str(derniere.get("zipball_url", "")),
+        "url_publication": str(derniere.get("html_url", "")),
     }
+
+
+def _notes_cumulees(notes: list[tuple[str, str]]) -> str:
+    """Notes de plusieurs versions : celle de la dernière seule, ou un titre
+    Markdown par version."""
+    if len(notes) == 1:
+        return notes[0][1]
+    return "\n\n".join(
+        f"## Version {version}\n\n{corps or 'Pas de notes de version.'}"
+        for version, corps in notes
+    )
 
 
 def lire_maj_disponible() -> InfoMaj | None:
