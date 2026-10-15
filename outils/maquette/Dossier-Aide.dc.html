@@ -337,122 +337,190 @@
             "
           >
             <section class="feuille" aria-labelledby="aide-cases">
-              <h2 id="aide-cases">Les cases du formulaire</h2>
-              <h3 class="terme">Catégorie</h3>
+            <h2 id="aide-cases">Les cases du formulaire</h2>
+            <h3 class="terme">Catégorie</h3>
+            <p class="definition">
+    Niveau hiérarchique du poste&nbsp;: A+ (direction, ou autres emplois fonctionnels), A (cadre), B (profession intermédiaire), C (employé). Le corps / grade affine la catégorie&nbsp;: Attaché, Attaché principal, Attaché hors classe, Adjoint administratif…
+  </p>
+            <h3 class="terme">Versant</h3>
+            <p class="definition">
+    La branche de la fonction publique&nbsp;: État, Hospitalier, Territorial. Plusieurs cases à la fois possibles&nbsp;; aucune cochée = tous les versants.
+  </p>
+            <h3 class="terme">Poste et Lieu</h3>
+            <p class="definition">
+    Domaines, localisations et organisations s'ouvrent dans une fenêtre de sélection avec un champ de recherche&nbsp;: pratique avec 114 localisations et environ 2 400 sous-organisations.
+  </p>
+            <h3 class="terme">Type de poste</h3>
+            <p class="definition">
+    Par défaut, seuls les postes ouverts aux titulaires sont affichés (titulaires + postes ouverts aux deux statuts). «&nbsp;Titulaire uniquement&nbsp;» et «&nbsp;Contractuel uniquement&nbsp;» resserrent, «&nbsp;Tous (y compris contractuels)&nbsp;» ajoute les postes réservés aux contractuels.
+  </p>
+            <h3 class="terme">Options</h3>
+            <p class="definition">
+    Management et Télétravail&nbsp;: cochés = seulement les postes concernés. Le mot-clé est transmis tel quel au moteur de recherche de chaque site.
+  </p>
+            <h3 class="terme">Expérience et date de publication</h3>
+            <p class="definition">
+    Expérience souhaitée (débutant, confirmé, expert) et ancienneté de l'offre (48&nbsp;heures, 7 ou 14&nbsp;jours)&nbsp;; «&nbsp;Indifférente&nbsp;» ne filtre pas.
+  </p>
+            <h3 class="terme">RAZ</h3>
+            <p class="definition">
+    Vide toutes les cases du formulaire.
+  </p>
+          </section>
+          <div style="display: flex; flex-direction: column; gap: 22px">
+            <section class="feuille" aria-labelledby="aide-exemples">
+              <h2 id="aide-exemples">Exemples de demande</h2>
+              <h3 class="terme">Attaché principal territorial (Hérault)</h3>
+              <p class="exemple">
+Catégorie → A<br>Corps / grade → Attaché principal<br>Versant → Territorial<br>Lieu → Localisation Hérault
+  </p>
               <p class="definition">
-                Niveau hiérarchique du poste&nbsp;: A+ (encadrement supérieur), A
-                (cadre), B (profession intermédiaire), C (employé). Le corps /
-                grade affine la catégorie&nbsp;: Attaché, Attaché principal, Attaché
-                hors classe, Adjoint administratif…
-              </p>
-              <h3 class="terme">Versant</h3>
+    Le grade repère «&nbsp;attaché principal&nbsp;» dans le titre, quel que soit le versant.
+  </p>
+              <h3 class="terme">Chef de projet informatique (État)</h3>
+              <p class="exemple">
+Catégorie → A<br>Versant → État<br>Poste → Domaine «&nbsp;Numérique&nbsp;»<br>Options → mot-clé «&nbsp;chef de projet&nbsp;»
+  </p>
               <p class="definition">
-                La branche de la fonction publique&nbsp;: État, Hospitalier,
-                Territorial. Plusieurs cases à la fois possibles&nbsp;; aucune cochée
-                = tous les versants.
-              </p>
-              <h3 class="terme">Poste et Lieu</h3>
-              <p class="definition">
-                Domaines, localisations et organisations s'ouvrent dans une
-                fenêtre de sélection avec un champ de recherche&nbsp;: pratique avec
-                114 localisations et environ 2 400 sous-organisations.
-              </p>
-              <h3 class="terme">Type de poste</h3>
-              <p class="definition">
-                Par défaut, seuls les postes ouverts aux titulaires sont
-                affichés (titulaires + postes ouverts aux deux statuts). Choisir
-                «&nbsp;Tous&nbsp;» pour voir aussi les postes réservés aux contractuels.
-              </p>
-              <h3 class="terme">Options</h3>
-              <p class="definition">
-                Management et Télétravail&nbsp;: cochés = seulement les postes
-                concernés. Le mot-clé cherche dans le titre et le corps de
-                l'offre, pas seulement l'intitulé.
-              </p>
+    Pas de grade statutaire pour ce métier&nbsp;: le mot-clé resserre la recherche.
+  </p>
             </section>
-
-            <div style="display: flex; flex-direction: column; gap: 22px">
-              <section class="feuille" aria-labelledby="aide-exemples">
-                <h2 id="aide-exemples">Exemples de demande</h2>
-                <h3 class="terme">Attaché principal territorial (Hérault)</h3>
-                <p class="exemple">
-Catégorie → A<br />Corps / grade → Attaché principal<br />Versant → Territorial<br />Lieu → Localisation Hérault
-                </p>
-                <p class="definition">
-                  Le grade repère «&nbsp;attaché principal&nbsp;» dans le titre, quel que
-                  soit le versant.
-                </p>
-                <h3 class="terme">Chef de projet informatique (État)</h3>
-                <p class="exemple">
-Catégorie → A<br />Versant → État<br />Poste → Domaine «&nbsp;Numérique&nbsp;»<br />Options → mot-clé «&nbsp;chef de projet&nbsp;»
-                </p>
-                <p class="definition">
-                  Pas de grade statutaire pour ce métier&nbsp;: le mot-clé resserre
-                  sur l'intitulé.
-                </p>
-              </section>
-
-              <section class="feuille" aria-labelledby="aide-grades">
-                <h2 id="aide-grades">Grades supérieurs (IDIV / IP / AFIPA)</h2>
-                <p class="definition">
-                  Par défaut, les offres dont le titre commence par un grade
-                  d'encadrement supérieur de la DGFiP (IDIV, AFIPA, IP suivi
-                  d'une majuscule, ex. IPFiP) sont écartées du registre&nbsp;: postes
-                  très spécifiques, peu pertinents pour une recherche large.
-                  Cocher «&nbsp;Grades supérieurs&nbsp;» dans la demande pour les voir
-                  quand même.
-                </p>
-              </section>
-            </div>
-
-            <section class="feuille" aria-labelledby="aide-fiches">
-              <h2 id="aide-fiches">Les fiches de recherche</h2>
+            <section class="feuille" aria-labelledby="aide-grades">
+              <h2 id="aide-grades">Grades supérieurs de la DGFiP</h2>
               <p class="definition">
-                Une fiche, c'est une demande de recherche classée sous un nom,
-                avec «&nbsp;Créer une fiche&nbsp;» dans l'écran Recherche.
-              </p>
-              <h3 class="terme">Lancer</h3>
+    Le site classe en catégorie A des postes d'encadrement de la DGFiP (impôts) réservés à des grades supérieurs&nbsp;: IDIV (inspecteur divisionnaire), IP ou IPFiP (inspecteur principal) et AFIP ou AFIPA (administrateur des finances publiques, ou son adjoint). Ils apparaissent donc dans une recherche en catégorie A.
+  </p>
               <p class="definition">
-                Lance la recherche immédiatement (double-clic sur la fiche
-                aussi).
-              </p>
-              <h3 class="terme">modifier · dupliquer · supprimer</h3>
-              <p class="definition">
-                Change les cases sans lancer, copie la fiche sous un autre nom,
-                ou la jette (confirmation demandée).
-              </p>
-            </section>
-
-            <section class="feuille" aria-labelledby="aide-dossiers">
-              <h2 id="aide-dossiers">Les dossiers de suivi</h2>
-              <p class="definition">
-                Dans le registre, sélectionner une offre puis «&nbsp;Tamponner pour
-                suivi&nbsp;» ouvre un dossier et archive la fiche de poste en PDF. Le
-                statut est toujours celui du dernier tampon de l'historique.
-              </p>
-              <h3 class="terme">Relance suggérée</h3>
-              <p class="definition">
-                Post-it collé quand rien ne s'est passé depuis 3 semaines et que
-                le dossier n'est pas clos (réponse positive ou refus).
-              </p>
-              <h3 class="terme">Offre dépubliée</h3>
-              <p class="definition">
-                L'offre a disparu du site («&nbsp;Vérifier les offres&nbsp;»)&nbsp;; la copie
-                archivée reste consultable.
-              </p>
-              <h3 class="terme">Tampons</h3>
-              <p class="definition">
-                Un clic sur un tampon de l'historique permet de modifier ou de
-                supprimer l'événement&nbsp;; un même événement ne peut pas être
-                tamponné deux fois à la même date.
-              </p>
-              <h3 class="terme">Clavier</h3>
-              <p class="definition">
-                Entrée ouvre le détail du dossier sélectionné, Suppr arrête son
-                suivi&nbsp;; clic droit pour toutes les actions.
-              </p>
+    Pour ne pas encombrer les résultats, ces offres sont masquées par défaut. Elles sont repérées au sigle en début de titre. Cocher «&nbsp;Grades supérieurs&nbsp;» dans la demande pour les afficher.
+  </p>
             </section>
           </div>
+          <section class="feuille" aria-labelledby="aide-recherche">
+            <h2 id="aide-recherche">La recherche et le registre</h2>
+            <p class="definition">
+    «&nbsp;Lancer la recherche&nbsp;» interroge les sources actives en même temps et affiche l'avancement de chacune. Une source injoignable est signalée sans arrêter les autres.
+  </p>
+            <h3 class="terme">Registre des offres</h3>
+            <p class="definition">
+    Les offres trouvées, une seule fois même si plusieurs sites les publient. Un clic sur un en-tête de colonne trie. La ligne sous le titre compte les offres inscrites, nouvelles et écartées (grades supérieurs).
+  </p>
+            <h3 class="terme">Filtrer · Nouvelles seulement</h3>
+            <p class="definition">
+    Filtrer garde les lignes qui contiennent le texte saisi, dans n'importe quelle colonne. «&nbsp;Nouvelles seulement&nbsp;» ne montre que les offres marquées «&nbsp;Nouveau&nbsp;».
+  </p>
+            <h3 class="terme">Consulter · Exporter</h3>
+            <p class="definition">
+    Consulter affiche la fiche de poste, avec «&nbsp;Postuler&nbsp;» quand le site le permet. Double-clic ou Entrée ouvre l'offre dans le navigateur. Exporter enregistre le registre affiché (tri et filtre compris) en page HTML dans le dossier «&nbsp;exports&nbsp;».
+  </p>
+          </section>
+          <section class="feuille" aria-labelledby="aide-sources">
+            <h2 id="aide-sources">Les sources consultées</h2>
+            <p class="definition">
+    Quatre sites, activables dans Réglages&nbsp;› Sources consultées. Ils ne comprennent pas tous les mêmes cases&nbsp;:
+  </p>
+            <h3 class="terme">Choisir le service public</h3>
+            <p class="definition">
+    Toutes les cases. Seul site à connaître domaines et organisations.
+  </p>
+            <h3 class="terme">emploi-territorial.fr</h3>
+            <p class="definition">
+    Catégorie, expérience, management, télétravail, mot-clé, «&nbsp;Titulaire uniquement&nbsp;» et localisations par département (une région seule ne restreint pas le lieu).
+  </p>
+            <h3 class="terme">Passerelles (Bercy) et FHF</h3>
+            <p class="definition">
+    Mot-clé seulement&nbsp;: leurs résultats sont plus larges.
+  </p>
+            <h3 class="terme">Pour toutes les sources</h3>
+            <p class="definition">
+    Corps / grade et Grades supérieurs s'appliquent au titre de chaque offre. Un site n'est pas interrogé si son versant n'est pas coché (emploi-territorial&nbsp;: Territorial, Passerelles&nbsp;: État, FHF&nbsp;: Hospitalier).
+  </p>
+          </section>
+          <section class="feuille" aria-labelledby="aide-fiches">
+            <h2 id="aide-fiches">Les fiches de recherche</h2>
+            <p class="definition">
+    Une fiche, c'est une demande de recherche enregistrée sous un nom, avec «&nbsp;Créer une fiche&nbsp;» dans l'écran Recherche. «&nbsp;Nouvelle fiche&nbsp;» ouvre un formulaire vierge.
+  </p>
+            <h3 class="terme">Lancer</h3>
+            <p class="definition">
+    Lance la recherche immédiatement (double-clic sur la fiche aussi).
+  </p>
+            <h3 class="terme">Offres nouvelles</h3>
+            <p class="definition">
+    Une recherche lancée depuis une fiche marque «&nbsp;Nouveau&nbsp;» les offres jamais vues pour cette fiche. Si les cases ont été changées entre-temps, rien n'est marqué. Une offre absente des résultats pendant 30&nbsp;jours redevient nouvelle.
+  </p>
+            <h3 class="terme">modifier · dupliquer · supprimer</h3>
+            <p class="definition">
+    Modifier rouvre le formulaire&nbsp;: «&nbsp;Enregistrer la fiche&nbsp;» garde les nouvelles cases sans lancer, «&nbsp;Annuler&nbsp;» revient aux fiches. Dupliquer copie la fiche sous un autre nom, supprimer la jette (confirmation demandée).
+  </p>
+          </section>
+          <section class="feuille" aria-labelledby="aide-dossiers">
+            <h2 id="aide-dossiers">Les dossiers de suivi</h2>
+            <p class="definition">
+    Dans le registre, sélectionner une offre puis «&nbsp;Tamponner pour suivi&nbsp;» ouvre un dossier et archive la fiche de poste en PDF. Le statut est toujours celui du dernier tampon de l'historique.
+  </p>
+            <h3 class="terme">voir l'offre · archive PDF · détail</h3>
+            <p class="definition">
+    L'offre en ligne, la copie PDF conservée au moment du suivi (consultable hors ligne), ou la fiche de poste dans Tamponné.
+  </p>
+            <h3 class="terme">ajouter un événement</h3>
+            <p class="definition">
+    Envoi, accusé de réception, entretien, relance, réponse… Le type proposé est la suite logique du dernier tampon, à sa date. Une note est possible.
+  </p>
+            <h3 class="terme">Relance suggérée</h3>
+            <p class="definition">
+    Post-it collé quand rien ne s'est passé depuis 3 semaines et que le dossier n'est pas clos (réponse positive ou refus).
+  </p>
+            <h3 class="terme">Offre dépubliée</h3>
+            <p class="definition">
+    «&nbsp;Vérifier les offres&nbsp;» interroge les sites pour chaque dossier&nbsp;: une offre disparue est marquée dépubliée, sa copie archivée reste consultable. Les offres que le site n'a pas pu confirmer sont signalées à part.
+  </p>
+            <h3 class="terme">Tampons</h3>
+            <p class="definition">
+    Un clic sur un tampon de l'historique permet de modifier ou de supprimer l'événement&nbsp;; un même événement ne peut pas être tamponné deux fois à la même date.
+  </p>
+            <h3 class="terme">Clavier</h3>
+            <p class="definition">
+    Entrée ouvre le détail du dossier sélectionné, Suppr (ou Retour arrière) arrête son suivi après confirmation&nbsp;; clic droit pour toutes les actions.
+  </p>
+          </section>
+          <section class="feuille" aria-labelledby="aide-reglages">
+            <h2 id="aide-reglages">Les réglages</h2>
+            <h3 class="terme">Avis de mise à jour</h3>
+            <p class="definition">
+    Tamponné cherche une nouvelle version à chaque démarrage&nbsp;; une pastille sur l'onglet Réglages la signale. «&nbsp;Installer et redémarrer&nbsp;» l'applique tout de suite, «&nbsp;Au prochain lancement&nbsp;» plus tard. Si la nouvelle version ne démarre pas, la précédente est remise en place.
+  </p>
+            <h3 class="terme">Raccourci</h3>
+            <p class="definition">
+    Ajoute Tamponné au menu des applications (question posée au premier lancement). Si le dossier de Tamponné est déplacé, le raccourci se met à jour d'un clic.
+  </p>
+            <h3 class="terme">Sauvegarde</h3>
+            <p class="definition">
+    Exporter réunit fiches, dossiers suivis, offres vues et réglages dans un fichier .zip&nbsp;; Importer remplace toutes les données par celles d'un tel fichier, après confirmation, et garde une copie des anciennes.
+  </p>
+            <h3 class="terme">Maintenance</h3>
+            <p class="definition">
+    Exports de recherche&nbsp;: nombre et taille des pages HTML exportées depuis le registre, avec de quoi ouvrir leur dossier ou les supprimer toutes.
+  </p>
+            <h3 class="terme">Classement</h3>
+            <p class="definition">
+    Thème jour, nuit ou celui du système, animations réduites, et liste des organisations&nbsp;: rechargée d'elle-même tous les 7&nbsp;jours, «&nbsp;Rafraîchir le cache&nbsp;» la recharge tout de suite.
+  </p>
+          </section>
+          <section class="feuille" aria-labelledby="aide-donnees">
+            <h2 id="aide-donnees">Raccourcis et données</h2>
+            <h3 class="terme">Menus et clavier</h3>
+            <p class="definition">
+    Fichier&nbsp;› Nouvelle recherche (Ctrl+N), Suivi de candidature, Quitter (Ctrl+Q)&nbsp;; Aide&nbsp;› Aide de Tamponné. Sur Mac, Ctrl correspond à Cmd.
+  </p>
+            <h3 class="terme">Bureau de nuit</h3>
+            <p class="definition">
+    Le bouton en haut à droite passe du thème jour au thème nuit, comme le réglage Thème.
+  </p>
+            <h3 class="terme">Où sont mes données&nbsp;?</h3>
+            <p class="definition">
+    Tout reste dans le dossier de Tamponné&nbsp;: données dans «&nbsp;data&nbsp;», pages exportées dans «&nbsp;exports&nbsp;», journal des erreurs dans «&nbsp;data/tamponne.log&nbsp;» (à joindre à un signalement sur Codeberg, après relecture). Le dossier peut être déplacé ou copié tel quel&nbsp;; pour changer d'ordinateur, la Sauvegarde suffit.
+  </p>
+          </section>
         </div>
       </div>
     </x-dc>
