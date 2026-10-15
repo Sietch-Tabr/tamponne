@@ -392,3 +392,14 @@ def test_executer_anonymise_le_dossier_personnel_dans_le_journal(
     contenu = journal.read_text(encoding="utf-8")
     assert personnel not in contenu
     assert "~/data" in contenu
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="SIGINT POSIX")
+def test_executer_survit_a_ctrl_c_pendant_l_execution(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(lanceur, "CHEMIN_JOURNAL", tmp_path / "tamponne.log")
+    monkeypatch.setattr(lanceur, "_sortie", None)
+    # L'enfant envoie SIGINT à son parent (le lanceur), comme le ferait le terminal.
+    script = "import os, signal; os.kill(os.getppid(), signal.SIGINT)"
+    assert lanceur._executer([sys.executable, "-c", script]) == 0

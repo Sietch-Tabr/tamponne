@@ -26,6 +26,7 @@ import os
 import platform
 import re
 import shutil
+import signal
 import subprocess
 import sys
 from collections.abc import Callable, Iterator, Sequence
@@ -230,6 +231,22 @@ def noter(texte: str) -> None:
         pass
 
 
+@contextmanager
+def _ctrl_c_laisse_a_l_enfant() -> Iterator[None]:
+    """Le terminal envoie Ctrl+C à tout le groupe de processus : le lanceur
+    l'ignore le temps de l'exécution, le processus lancé le traite seul (un
+    gestionnaire, contrairement à `SIG_IGN`, n'est pas hérité par l'enfant)."""
+    try:
+        precedent = signal.signal(signal.SIGINT, lambda *_: None)
+    except ValueError:  # hors du fil principal
+        yield
+        return
+    try:
+        yield
+    finally:
+        signal.signal(signal.SIGINT, precedent)
+
+
 def _executer(commande: Sequence[str]) -> int:
     """Lance `commande` depuis la racine de l'installation et attend sa fin.
     Ses sorties s'affichent au fil de l'eau (`_afficher`) et sont ajoutées à
@@ -241,21 +258,22 @@ def _executer(commande: Sequence[str]) -> int:
         drapeaux = 0
         if sys.platform == "win32":
             drapeaux = subprocess.CREATE_NO_WINDOW
-        processus = subprocess.Popen(
-            commande,
-            cwd=CHEMIN_RACINE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            encoding="utf-8",
-            errors="replace",
-            creationflags=drapeaux,
-        )
-        assert processus.stdout is not None
-        for ligne in processus.stdout:
-            journal.write(anonymiser(ligne))
-            journal.flush()
-            _afficher(ligne)
-        return processus.wait()
+        with _ctrl_c_laisse_a_l_enfant():
+            processus = subprocess.Popen(
+                commande,
+                cwd=CHEMIN_RACINE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                encoding="utf-8",
+                errors="replace",
+                creationflags=drapeaux,
+            )
+            assert processus.stdout is not None
+            for ligne in processus.stdout:
+                journal.write(anonymiser(ligne))
+                journal.flush()
+                _afficher(ligne)
+            return processus.wait()
 
 
 _sortie: TextIO | None = sys.stdout
