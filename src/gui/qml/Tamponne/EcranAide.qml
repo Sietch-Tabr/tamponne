@@ -168,8 +168,8 @@ Item {
                     }
 
                     FeuilleNotice {
-                        titre: "Grades supérieurs (IDIV / IP / AFIP)"
-                        Definition { text: "Par défaut, les offres dont le titre commence par un grade d'encadrement supérieur de la DGFiP (IDIV, AFIP ou AFIPA, IP suivi d'une majuscule, d'une espace, d'un tiret ou d'une parenthèse, ex. IPFiP) sont écartées du registre\u00a0: postes très spécifiques, peu pertinents pour une recherche large. Cocher «\u00a0Grades supérieurs\u00a0» dans la demande pour les voir quand même." }
+                        titre: "Grades supérieurs de la DGFiP"
+                        Definition { text: "Le site classe en catégorie A des postes d'encadrement de la DGFiP (impôts) réservés à des grades supérieurs\u00a0: IDIV (inspecteur divisionnaire), IP ou IPFiP (inspecteur principal) et AFIP ou AFIPA (administrateur des finances publiques, ou son adjoint). Ils apparaissent donc dans une recherche en catégorie A.\n\nPour ne pas encombrer les résultats, ces offres sont masquées par défaut. Elles sont repérées au sigle en début de titre. Cocher «\u00a0Grades supérieurs\u00a0» dans la demande pour les afficher." }
                     }
                 }
 
