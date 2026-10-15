@@ -4,6 +4,12 @@ Toutes les évolutions notables de Tamponné, de la plus récente à la plus
 ancienne. Le détail de chaque version est aussi publié sur la page
 [Releases](https://codeberg.org/Kwaite/tamponne/releases) du dépôt.
 
+## [1.4.1] — 2026-10-15
+
+### Corrections
+
+- Aide : la rubrique « Grades supérieurs de la DGFiP » explique les sigles (IDIV, IP, AFIP, AFIPA) et pourquoi ces offres sont masquées par défaut
+
 ## [1.4.0] — 2026-10-15
 
 ### Nouveautés
