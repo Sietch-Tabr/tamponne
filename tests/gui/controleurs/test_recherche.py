@@ -127,6 +127,16 @@ def test_formulaire_par_defaut_et_libelles_de_selection(
     assert controleur.property("etat")["categories"] == []
 
 
+def test_groupes_selection_des_localisations_affiche_le_numero(
+    controleur: ControleurRecherche,
+) -> None:
+    elements = controleur.groupes_selection("localisations")[0]["elements"]
+    libelles = {e["valeur"]: e["libelle"] for e in elements}
+    assert libelles["Paris"] == "Paris (75)"
+    assert libelles["Haute Corse"] == "Haute Corse (2B)"
+    assert libelles["Bretagne"] == "Bretagne"
+
+
 def test_groupes_selection_des_organisations_et_des_grades(
     controleur: ControleurRecherche,
 ) -> None:
@@ -208,7 +218,7 @@ def test_edition_enregistre_la_fiche_et_retourne_aux_profils(
     controleur.retour_profils.connect(lambda: retours.append(True))
     controleur.modifier_profil("fiche")
     assert controleur.property("edition") is True
-    assert controleur.property("texte_bouton") == "Enregistrer la fiche"
+    assert controleur.property("texte_bouton") == "Modifier la fiche"
     assert controleur.property("intitule_edition") == "Ma fiche"
     assert controleur.property("etat")["versants"] == []
     controleur.basculer("categories", "B", True)

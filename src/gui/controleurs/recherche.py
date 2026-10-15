@@ -34,6 +34,7 @@ from src.filtres import (
     EXPERIENCES,
     LIBELLES_CATEGORIES,
     LOCALISATIONS,
+    NUMEROS_DEPARTEMENTS,
     resumer_filtres,
 )
 from src.gui.modeles.offres import ProxyOffres
@@ -66,11 +67,18 @@ TYPES_POSTE: list[tuple[str, list[str] | str | None]] = [
 """(libellé, valeur de `FiltresRecherche.types_poste`)."""
 
 LIBELLE_LANCER = "Lancer la recherche"
-LIBELLE_ENREGISTRER = "Enregistrer la fiche"
+LIBELLE_MODIFIER = "Modifier la fiche"
 MESSAGE_ORGANISATIONS_ABSENTES = (
     "La liste des organisations n'est pas encore chargée\u00a0: relancez la "
     "recherche dans un instant, ou rafraîchissez-la dans Réglages."
 )
+
+
+def _libelle_localisation(lieu: str) -> str:
+    """« Paris (75) » pour un département : saisir le numéro le retrouve."""
+    numero = NUMEROS_DEPARTEMENTS.get(lieu)
+    return f"{lieu} ({numero})" if numero else lieu
+
 
 LISTES_SELECTION = ("domaines", "localisations", "organisations", "grades")
 
@@ -158,7 +166,7 @@ class ControleurRecherche(QObject):
         if self._thread is not None:
             pages, total = self._totaux_pages()
             return f"Page {pages}/{total}…" if total > 1 else "Recherche en cours…"
-        return LIBELLE_ENREGISTRER if self._edition else LIBELLE_LANCER
+        return LIBELLE_MODIFIER if self._edition else LIBELLE_LANCER
 
     def _lire_statut(self) -> str:
         pages, total = self._totaux_pages()
@@ -287,7 +295,7 @@ class ControleurRecherche(QObject):
                 {
                     "groupe": "",
                     "elements": [
-                        {"valeur": lieu, "libelle": lieu}
+                        {"valeur": lieu, "libelle": _libelle_localisation(lieu)}
                         for lieu in sorted(LOCALISATIONS)
                     ],
                 }

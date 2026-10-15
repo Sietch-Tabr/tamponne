@@ -1,7 +1,7 @@
 """Constantes statiques des filtres de recherche."""
 
 import re
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from typing import Final
 
 from src.types import FiltresRecherche, Offre
@@ -212,9 +212,228 @@ LOCALISATIONS: Final[Mapping[str, int]] = {
     "Yonne": 253,
 }
 
+NUMEROS_DEPARTEMENTS: Final[Mapping[str, str]] = {
+    "Ain": "01",
+    "Aisne": "02",
+    "Allier": "03",
+    "Alpes Hte Provence": "04",
+    "Alpes Maritimes": "06",
+    "Ardèche": "07",
+    "Ardennes": "08",
+    "Ariège": "09",
+    "Aube": "10",
+    "Aude": "11",
+    "Aveyron": "12",
+    "Bas Rhin": "67",
+    "Belfort": "90",
+    "Bouches du Rhône": "13",
+    "Calvados": "14",
+    "Cantal": "15",
+    "Charente": "16",
+    "Charente Maritime": "17",
+    "Cher": "18",
+    "Corse du Sud": "2A",
+    "Côtes d Armor": "22",
+    "Corrèze": "19",
+    "Creuse": "23",
+    "Deux Sèvres": "79",
+    "Dordogne": "24",
+    "Doubs": "25",
+    "Drôme": "26",
+    "Essonne": "91",
+    "Eure": "27",
+    "Eure et Loir": "28",
+    "Finistère": "29",
+    "Gard": "30",
+    "Gers": "32",
+    "Gironde": "33",
+    "Guadeloupe": "971",
+    "Guyane": "973",
+    "Haut Rhin": "68",
+    "Haute Corse": "2B",
+    "Haute Garonne": "31",
+    "Haute Loire": "43",
+    "Haute Savoie": "74",
+    "Haute Saône": "70",
+    "Haute Vienne": "87",
+    "Haute-Marne": "52",
+    "Hautes Alpes": "05",
+    "Hautes Pyrénées": "65",
+    "Hauts-de-Seine": "92",
+    "Hérault": "34",
+    "Ille et Vilaine": "35",
+    "Indre": "36",
+    "Indre et Loire": "37",
+    "Isère": "38",
+    "Jura": "39",
+    "Landes": "40",
+    "Loir et Cher": "41",
+    "Loire": "42",
+    "Loire Atlantique": "44",
+    "Loiret": "45",
+    "Lot": "46",
+    "Lot et Garonne": "47",
+    "Lozère": "48",
+    "Maine et Loire": "49",
+    "Manche": "50",
+    "Marne": "51",
+    "Martinique": "972",
+    "Mayenne": "53",
+    "Mayotte": "976",
+    "Meurthe et Moselle": "54",
+    "Meuse": "55",
+    "Morbihan": "56",
+    "Moselle": "57",
+    "Nièvre": "58",
+    "Nord": "59",
+    "Nouvelle Calédonie": "988",
+    "Oise": "60",
+    "Orne": "61",
+    "Paris": "75",
+    "Pas de Calais": "62",
+    "Puy de Dôme": "63",
+    "Pyrénées Atlantiques": "64",
+    "Pyrénées Orientales": "66",
+    "Réunion": "974",
+    "Rhône": "69",
+    "Saône et Loire": "71",
+    "Sarthe": "72",
+    "Savoie": "73",
+    "Seine Maritime": "76",
+    "Seine Saint-Denis": "93",
+    "Seine et Marne": "77",
+    "Somme": "80",
+    "Tarn": "81",
+    "Tarn et Garonne": "82",
+    "Val d'Oise": "95",
+    "Val de Marne": "94",
+    "Var": "83",
+    "Vaucluse": "84",
+    "Vendée": "85",
+    "Vienne": "86",
+    "Vosges": "88",
+    "Yvelines": "78",
+    "Yonne": "89",
+}
+"""Département (clé de `LOCALISATIONS`) → numéro officiel (« 2A » et « 2B »
+pour la Corse, trois chiffres outre-mer)."""
+
+NUMEROS_REGIONS: Final[Mapping[str, tuple[str, ...]]] = {
+    "Auvergne-Rhône-Alpes": (
+        "01",
+        "03",
+        "07",
+        "15",
+        "26",
+        "38",
+        "42",
+        "43",
+        "63",
+        "69",
+        "73",
+        "74",
+    ),
+    "Bourgogne-Franche-Comté": ("21", "25", "39", "58", "70", "71", "89", "90"),
+    "Bretagne": ("22", "29", "35", "56"),
+    "Centre - Val de Loire": ("18", "28", "36", "37", "41", "45"),
+    "Corse": ("2A", "2B"),
+    "DOM": ("971", "972", "973", "974", "976"),
+    "Grand Est": ("08", "10", "51", "52", "54", "55", "57", "67", "68", "88"),
+    "Hauts de France": ("02", "59", "60", "62", "80"),
+    "Ile-de-France": ("75", "77", "78", "91", "92", "93", "94", "95"),
+    "Normandie": ("14", "27", "50", "61", "76"),
+    "Nouvelle Aquitaine": (
+        "16",
+        "17",
+        "19",
+        "23",
+        "24",
+        "33",
+        "40",
+        "47",
+        "64",
+        "79",
+        "86",
+        "87",
+    ),
+    "Occitanie": (
+        "09",
+        "11",
+        "12",
+        "30",
+        "31",
+        "32",
+        "34",
+        "46",
+        "48",
+        "65",
+        "66",
+        "81",
+        "82",
+    ),
+    "Pays de La Loire": ("44", "49", "53", "72", "85"),
+}
+"""Région (clé de `LOCALISATIONS`) → numéros de ses départements, y compris
+ceux que `LOCALISATIONS` ne propose pas seuls (Côte-d'Or)."""
+
+_RE_NUMERO_ENTRE_PARENTHESES = re.compile(r"\(\s*(\d{2,3}|2[AB])\s*\)", re.IGNORECASE)
+_RE_CODE_POSTAL = re.compile(r"\b(\d{5})\b")
+_RE_CATEGORIE = re.compile(r"cat[ée]gorie\s+(A\+|A\b|B\b|C\b)", re.IGNORECASE)
+
+
+def numeros_departements(localisations: Iterable[str]) -> set[str]:
+    """Numéros des départements visés par `localisations` (clés de
+    `LOCALISATIONS`) : un département donne son numéro, une région ceux de
+    tous ses départements. Les valeurs inconnues sont ignorées."""
+    numeros: set[str] = set()
+    for lieu in localisations:
+        if lieu in NUMEROS_REGIONS:
+            numeros.update(NUMEROS_REGIONS[lieu])
+        elif lieu in NUMEROS_DEPARTEMENTS:
+            numeros.add(NUMEROS_DEPARTEMENTS[lieu])
+    return numeros
+
+
+def numero_departement_texte(texte: str) -> str | None:
+    """Numéro de département d'un lieu d'offre, `None` s'il n'y en a pas.
+
+    Reconnaît « Paris (75) », « Haute Corse (2b) » puis, à défaut, le
+    dernier code postal d'une adresse (« 93186 Montreuil Cedex »). Un code
+    postal de Corse (20xxx) donne 2A ou 2B selon sa tranche, outre-mer les
+    trois premiers chiffres.
+    """
+    if m := _RE_NUMERO_ENTRE_PARENTHESES.search(texte):
+        return m.group(1).upper()
+    codes = _RE_CODE_POSTAL.findall(texte)
+    if not codes:
+        return None
+    code = codes[-1]
+    if code.startswith("20"):
+        return "2A" if int(code) < 20200 else "2B"
+    if code.startswith(("97", "98")):
+        return code[:3]
+    return code[:2]
+
+
+def cle_categorie(texte: str) -> str | None:
+    """Clé de `CATEGORIES` d'un libellé de fiche (« Catégorie A (cadre) »),
+    `None` si le libellé n'en contient pas."""
+    m = _RE_CATEGORIE.search(texte)
+    if m is None:
+        return None
+    lettre = m.group(1).upper()
+    if lettre != "A+":
+        return lettre
+    return (
+        "A+ (autres emplois fonctionnels)"
+        if "autres" in texte.lower()
+        else "A+ (direction)"
+    )
+
+
 # Regex de détection des grades supérieurs (IDiv, IP*, AFIP/AFIPA). « IP »
 # reste sensible à la casse : « Ipsum… » ou « Iphone… » ne sont pas des grades.
-RE_GRADE_SUPERIEUR = re.compile(r"^(?:(?i:IDIV|AFIPA?)|IP[A-Z\s\-\(])")
+RE_GRADE_SUPERIEUR = re.compile(r"^(?:(?i:IDIV|AFIPA?)|IP[A-Z\s\-\(/])")
 
 CORPS_GRADES: Final[Mapping[str, Mapping[str, re.Pattern[str]]]] = {
     # Décret n°2011-1317 du 17 octobre 2011, article 4.
