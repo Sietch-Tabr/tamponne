@@ -212,8 +212,9 @@ LOCALISATIONS: Final[Mapping[str, int]] = {
     "Yonne": 253,
 }
 
-# Regex de détection des grades supérieurs (IDiv, IP*, AFIPA)
-RE_GRADE_SUPERIEUR = re.compile(r"^(IDIV|AFIPA?|IP[A-Z\s\-\(])", re.IGNORECASE)
+# Regex de détection des grades supérieurs (IDiv, IP*, AFIP/AFIPA). « IP »
+# reste sensible à la casse : « Ipsum… » ou « Iphone… » ne sont pas des grades.
+RE_GRADE_SUPERIEUR = re.compile(r"^(?:(?i:IDIV|AFIPA?)|IP[A-Z\s\-\(])")
 
 CORPS_GRADES: Final[Mapping[str, Mapping[str, re.Pattern[str]]]] = {
     # Décret n°2011-1317 du 17 octobre 2011, article 4.
