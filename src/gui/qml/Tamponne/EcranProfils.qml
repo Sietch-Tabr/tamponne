@@ -191,7 +191,7 @@ Item {
                         width: parent.width
                         horizontalAlignment: Text.AlignHCenter
                         lineHeight: 24
-                        text: "Aucune fiche classée.\nLancer une recherche puis «\u00a0Classer en profil\u00a0»."
+                        text: "Aucune fiche classée.\nLancer une recherche puis «\u00a0Créer une fiche\u00a0»."
                     }
                     BoutonEtiquette {
                         anchors.horizontalCenter: parent.horizontalCenter

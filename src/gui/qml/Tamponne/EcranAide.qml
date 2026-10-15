@@ -199,7 +199,7 @@ Item {
 
                 FeuilleNotice {
                     titre: "Les fiches de recherche"
-                    Definition { text: "Une fiche, c'est une demande de recherche classée sous un nom, avec «\u00a0Classer en profil\u00a0». «\u00a0Nouvelle fiche\u00a0» ouvre un formulaire vierge." }
+                    Definition { text: "Une fiche, c'est une demande de recherche enregistrée sous un nom, avec «\u00a0Créer une fiche\u00a0» dans l'écran Recherche. «\u00a0Nouvelle fiche\u00a0» ouvre un formulaire vierge." }
                     Terme { text: "Lancer" }
                     Definition { text: "Lance la recherche immédiatement (double-clic sur la fiche aussi)." }
                     Terme { text: "Offres nouvelles" }

@@ -272,7 +272,7 @@ Feuille {
 
             BoutonEtiquette {
                 Layout.fillWidth: true
-                text: "Classer en profil"
+                text: "Créer une fiche"
                 onClicked: racine.classementDemande()
             }
             BoutonEtiquette {
