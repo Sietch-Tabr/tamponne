@@ -14,6 +14,7 @@ from src import (  # noqa: E402
     cache,
     candidatures,
     export,
+    lanceur,
     maj,
     parametres_affichage,
     profils,
@@ -104,6 +105,16 @@ def _rediriger_maj_vers_tmp(
     monkeypatch.setattr(maj, "CHEMIN_RACINE", tmp_path_factory.mktemp("installation"))
     monkeypatch.setattr(maj, "CHEMIN_MARQUEUR", tmp_path / "maj_disponible.json")
     monkeypatch.setattr(maj, "CHEMIN_ECHEC", tmp_path / "maj_echouee.json")
+
+
+@pytest.fixture(autouse=True)
+def _rediriger_journal_vers_tmp(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Le lanceur note ses messages dans le journal : jamais dans le vrai
+    data/tamponne.log pendant les tests."""
+    monkeypatch.setattr(lanceur, "CHEMIN_JOURNAL", tmp_path / "tamponne.log")
+    monkeypatch.setattr(lanceur, "CHEMIN_JOURNAL_ARCHIVE", tmp_path / "tamponne.1.log")
 
 
 @pytest.fixture(autouse=True)

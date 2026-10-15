@@ -5,6 +5,7 @@ callbacks, que `src.gui.travailleurs.TravailleurRecherche` relaie en
 signaux Qt.
 """
 
+import logging
 from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor
 
@@ -24,6 +25,8 @@ from src.sources.fhf import Fhf
 from src.sources.fhf.dedoublonnage import filtrer_doublons_fhf
 from src.sources.passerellesmef import PasserellesMef
 from src.types import FiltresRecherche, Offre, Organisations, ResultatTraite
+
+journal = logging.getLogger(__name__)
 
 
 class RechercheImpossible(Exception):
@@ -151,12 +154,14 @@ def rechercher_toutes_sources(
                 offres, nb_pages, arret_anticipe = futur.result()
             except RuntimeError as erreur:
                 nb_echecs += 1
+                journal.warning("%s indisponible\u00a0: %s", nom_affiche, erreur)
                 on_avertissement(f"{nom_affiche} indisponible\u00a0: {erreur}")
                 continue
             # Page au format imprévu (site modifié) : cette source seule est
             # perdue, les autres restent affichées.
             except Exception as erreur:  # noqa: BLE001
                 nb_echecs += 1
+                journal.exception("%s\u00a0: réponse inattendue du site", nom_affiche)
                 on_avertissement(
                     f"{nom_affiche} indisponible\u00a0: réponse inattendue du site "
                     f"({type(erreur).__name__}\u00a0: {erreur})"
@@ -170,6 +175,7 @@ def rechercher_toutes_sources(
                 arret_anticipe_reference = arret_anticipe
 
     if nb_echecs == len(sources):
+        journal.error("Recherche impossible\u00a0: toutes les sources ont échoué")
         raise RechercheImpossible(
             "Toutes les sources actives sont indisponibles. Réessayer dans un moment."
         )

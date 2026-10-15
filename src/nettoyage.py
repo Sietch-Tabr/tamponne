@@ -6,9 +6,11 @@ de la racine et les fichiers de développement livrés jusqu'à la 1.2.2
 resteraient. Ce nettoyage, lancé au démarrage, les retire une fois pour toutes.
 """
 
+import logging
 import shutil
-import sys
 from pathlib import Path
+
+journal = logging.getLogger(__name__)
 
 CHEMIN_RACINE = Path(__file__).parent.parent
 
@@ -74,8 +76,8 @@ def nettoyer_fichiers_obsoletes(racine: Path = CHEMIN_RACINE) -> list[str]:
 
     Sans effet sur un clone de développement (`.git/` présent : git gère
     déjà les suppressions) et sans effet si tout est déjà propre. Une
-    suppression impossible est signalée sur la sortie d'erreur sans
-    empêcher le lancement.
+    suppression impossible est notée dans le journal sans empêcher le
+    lancement.
 
     Args:
         racine: Dossier d'installation (racine du projet).
@@ -98,10 +100,7 @@ def nettoyer_fichiers_obsoletes(racine: Path = CHEMIN_RACINE) -> list[str]:
                     compile_.unlink(missing_ok=True)
                 cible.unlink()
         except OSError as erreur:
-            print(
-                f"Avertissement : impossible de supprimer {relatif} ({erreur}).",
-                file=sys.stderr,
-            )
+            journal.warning("Impossible de supprimer %s (%s).", relatif, erreur)
             continue
         supprimes.append(relatif)
     return supprimes

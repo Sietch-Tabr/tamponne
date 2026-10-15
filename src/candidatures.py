@@ -6,8 +6,8 @@ utilisateurs).
 """
 
 import json
+import logging
 import re
-import sys
 from collections.abc import Mapping
 from datetime import date
 from pathlib import Path
@@ -27,6 +27,8 @@ from src.sources.choisirleservicepublic.extraction import (
 from src.sources.detail import recuperer_detail_offre
 from src.types import Candidature, DetailOffre, EvenementCandidature, Offre
 from src.utils import ecriture_atomique
+
+journal = logging.getLogger(__name__)
 
 CHEMIN_CANDIDATURES = Path(__file__).parent.parent / "data" / "candidatures.json"
 DOSSIER_ARCHIVES = Path(__file__).parent.parent / "data" / "archives"
@@ -65,18 +67,12 @@ def generer_archive_pdf(reference: str, page_html: str) -> bool:
     """
     url_pdf = _extraire_url_pdf(page_html)
     if not url_pdf:
-        print(
-            "Avertissement\u00a0: lien PDF introuvable, archive non générée.",
-            file=sys.stderr,
-        )
+        journal.warning("Lien PDF introuvable, archive non générée.")
         return False
     try:
         contenu = telecharger_binaire(url_pdf)
     except RuntimeError:
-        print(
-            f"Avertissement\u00a0: échec de téléchargement du PDF ({url_pdf}).",
-            file=sys.stderr,
-        )
+        journal.warning("Échec de téléchargement du PDF (%s).", url_pdf)
         return False
 
     chemin = chemin_archive_pdf(reference)
@@ -84,10 +80,7 @@ def generer_archive_pdf(reference: str, page_html: str) -> bool:
         chemin.parent.mkdir(parents=True, exist_ok=True)
         chemin.write_bytes(contenu)
     except OSError:
-        print(
-            f"Avertissement\u00a0: échec d'écriture de l'archive PDF ({chemin}).",
-            file=sys.stderr,
-        )
+        journal.warning("Échec d'écriture de l'archive PDF (%s).", chemin)
         return False
     return True
 
@@ -118,10 +111,9 @@ def charger_candidatures() -> dict[str, Candidature]:
     try:
         return json.loads(CHEMIN_CANDIDATURES.read_text(encoding="utf-8"))
     except json.JSONDecodeError, OSError:
-        print(
-            f"Avertissement\u00a0: {CHEMIN_CANDIDATURES.name} illisible ou corrompu, "
-            "aucune candidature chargée.",
-            file=sys.stderr,
+        journal.warning(
+            "%s illisible ou corrompu, aucune candidature chargée.",
+            CHEMIN_CANDIDATURES.name,
         )
         return {}
 

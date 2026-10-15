@@ -1,6 +1,7 @@
 """Tests de src/lanceur.py : boucle de mise à jour, de retour arrière et de
 redémarrage."""
 
+import re
 import sys
 from collections.abc import Callable, Sequence
 from pathlib import Path
@@ -60,9 +61,6 @@ def marqueur(monkeypatch: pytest.MonkeyPatch) -> Path:
     pyproject.write_text('[project]\nversion = "1.0.0"\n', encoding="utf-8")
     monkeypatch.setattr(maj, "CHEMIN_PYPROJECT", pyproject)
     monkeypatch.setattr(lanceur.shutil, "which", lambda _nom: "/bin/uv")
-    monkeypatch.setattr(
-        lanceur, "CHEMIN_JOURNAL", maj.CHEMIN_RACINE / "journal_lancement.log"
-    )
     return maj.CHEMIN_MARQUEUR
 
 
@@ -257,7 +255,7 @@ def test_avec_detail_donne_la_premiere_erreur_du_journal(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """La cause (uv trop ancien), pas l'échec de sa mise à jour qui suit."""
-    journal = tmp_path / "journal_lancement.log"
+    journal = tmp_path / "tamponne.log"
     journal.write_text(
         "$ uv sync\n"
         "error: Required uv version `>=0.13.0` does not match the running version\n"
@@ -276,7 +274,7 @@ def test_avec_detail_donne_la_premiere_erreur_du_journal(
 def test_avec_detail_donne_l_exception_python(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    journal = tmp_path / "journal_lancement.log"
+    journal = tmp_path / "tamponne.log"
     journal.write_text(
         "Traceback (most recent call last):\n"
         '  File "src/gui/application.py", line 3, in <module>\n'
@@ -285,6 +283,68 @@ def test_avec_detail_donne_l_exception_python(
     )
     monkeypatch.setattr(lanceur, "CHEMIN_JOURNAL", journal)
     assert lanceur.premiere_erreur() == "ModuleNotFoundError: No module named 'PySide6'"
+
+
+def test_premiere_erreur_ignore_les_lancements_precedents(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    journal = tmp_path / "tamponne.log"
+    journal.write_text(
+        "===== 2026-10-13 09:00:00 · Tamponné 1.3.3 · Darwin 25 · Python 3.14.0 =====\n"
+        "ModuleNotFoundError: No module named 'PySide6'\n"
+        "===== 2026-10-14 09:00:00 · Tamponné 1.3.4 · Darwin 25 · Python 3.14.0 =====\n"
+        "$ uv sync\n"
+        "error: Failed to fetch\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(lanceur, "CHEMIN_JOURNAL", journal)
+    assert lanceur.premiere_erreur() == "error: Failed to fetch"
+
+
+def test_ouvrir_journal_garde_l_historique_sous_un_en_tete(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(maj, "version_locale", lambda: "9.9.9")
+    lanceur.CHEMIN_JOURNAL.write_text("lancement d'hier\n", encoding="utf-8")
+    lanceur.ouvrir_journal()
+    lignes = lanceur.CHEMIN_JOURNAL.read_text(encoding="utf-8").splitlines()
+    assert lignes[0] == "lancement d'hier"
+    assert lignes[1].startswith(lanceur.DEBUT_EN_TETE)
+    assert "· Tamponné 9.9.9 · " in lignes[1]
+    assert lignes[1].endswith(" =====")
+
+
+def test_ouvrir_journal_retire_l_ancien_journal() -> None:
+    ancien = lanceur.CHEMIN_JOURNAL.parent / lanceur.NOM_ANCIEN_JOURNAL
+    ancien.write_text("ancien format\n", encoding="utf-8")
+    lanceur.ouvrir_journal()
+    assert not ancien.exists()
+
+
+def test_ouvrir_journal_archive_au_dela_de_la_taille_maximale(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(lanceur, "TAILLE_MAX_JOURNAL", 10)
+    lanceur.CHEMIN_JOURNAL_ARCHIVE.write_text("très ancien\n", encoding="utf-8")
+    lanceur.CHEMIN_JOURNAL.write_text("ancien journal trop long\n", encoding="utf-8")
+    lanceur.ouvrir_journal()
+    assert lanceur.CHEMIN_JOURNAL_ARCHIVE.read_text(encoding="utf-8") == (
+        "ancien journal trop long\n"
+    )
+    assert lanceur.CHEMIN_JOURNAL.read_text(encoding="utf-8").startswith(
+        lanceur.DEBUT_EN_TETE
+    )
+
+
+def test_signaler_note_le_message_dans_le_journal(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(lanceur.sys, "platform", "linux")
+    lanceur.signaler("Mise à jour annulée.")
+    contenu = lanceur.CHEMIN_JOURNAL.read_text(encoding="utf-8")
+    assert re.search(
+        r"^\d\d:\d\d:\d\d ERREUR lanceur\u00a0: Mise à jour annulée\.$", contenu, re.M
+    )
 
 
 def test_avec_detail_sans_journal_garde_le_message(
@@ -297,7 +357,7 @@ def test_avec_detail_sans_journal_garde_le_message(
 def test_executer_affiche_et_journalise_les_sorties(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    journal = tmp_path / "journal_lancement.log"
+    journal = tmp_path / "tamponne.log"
     monkeypatch.setattr(lanceur, "CHEMIN_JOURNAL", journal)
     monkeypatch.setattr(lanceur, "_sortie", sys.stdout)
     code = lanceur._executer(
@@ -324,7 +384,7 @@ def test_lanceur_sans_option_silencieuse() -> None:
 def test_executer_anonymise_le_dossier_personnel_dans_le_journal(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    journal = tmp_path / "journal_lancement.log"
+    journal = tmp_path / "tamponne.log"
     monkeypatch.setattr(lanceur, "CHEMIN_JOURNAL", journal)
     monkeypatch.setattr(lanceur, "_sortie", None)
     personnel = str(Path.home())

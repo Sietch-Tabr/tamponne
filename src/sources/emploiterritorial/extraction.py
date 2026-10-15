@@ -1,12 +1,14 @@
 """Extraction des offres et fiches détail — HTML d'emploi-territorial.fr."""
 
+import logging
 import re
-import sys
 
 lazy from bs4 import BeautifulSoup, Tag
 
 from src.sources.base import texte_lisible, valider_url
 from src.types import DetailOffre, Offre
+
+journal = logging.getLogger(__name__)
 
 DOMAINE = "emploi-territorial.fr"
 URL_BASE = "https://www.emploi-territorial.fr"
@@ -177,10 +179,9 @@ def extraire_detail_offre(html: str) -> DetailOffre:
         if label.lower() not in _LIBELLES_DEDIES
     }
     if not champs and not soup.find("h2"):
-        print(
-            "Avertissement\u00a0: structure de fiche inattendue sur "
-            "emploi-territorial.fr, détail incomplet pour cette offre.",
-            file=sys.stderr,
+        journal.warning(
+            "Structure de fiche inattendue sur "
+            "emploi-territorial.fr, détail incomplet pour cette offre."
         )
 
     return {

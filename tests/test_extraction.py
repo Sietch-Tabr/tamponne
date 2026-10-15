@@ -285,7 +285,7 @@ def test_extraire_detail_offre_description_json_ld_utilisee_si_dom_absent() -> N
 
 
 def test_extraire_detail_offre_json_ld_absent(
-    capsys: pytest.CaptureFixture[str],
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     detail = extraire_detail_offre(_ABOUT_AGENCY + _ACCORDEON)
     assert detail["description"] == ""
@@ -293,20 +293,20 @@ def test_extraire_detail_offre_json_ld_absent(
     # le reste (accordéon, à propos) reste extrait même sans JSON-LD
     assert detail["a_propos_employeur"] == "Présentation du service employeur."
     assert "Statut du poste" in detail["sections_complementaires"]
-    assert "JSON-LD absent" in capsys.readouterr().err
+    assert "JSON-LD absent" in caplog.text
 
 
 def test_extraire_detail_offre_json_ld_invalide(
-    capsys: pytest.CaptureFixture[str],
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     html = '<script type="application/ld+json">{ceci n"est pas du json}</script>'
     detail = extraire_detail_offre(html)
     assert detail["description"] == ""
-    assert "JSON invalide" in capsys.readouterr().err
+    assert "JSON invalide" in caplog.text
 
 
 def test_extraire_detail_offre_description_vide_avec_data_logge_avertissement(
-    capsys: pytest.CaptureFixture[str],
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     html = """
     <script type="application/ld+json">
@@ -316,7 +316,7 @@ def test_extraire_detail_offre_description_vide_avec_data_logge_avertissement(
     detail = extraire_detail_offre(html)
     assert detail["description"] == ""
     assert detail["salaire"] == "1500"
-    assert "Description vide" in capsys.readouterr().err
+    assert "Description vide" in caplog.text
 
 
 def test_extraire_detail_offre_sans_a_propos_employeur() -> None:

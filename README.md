@@ -87,7 +87,7 @@ Ce mécanisme repose sur les lanceurs (`Tamponne.command`, `Tamponne.bat`, ou le
 
 ## En cas de problème
 
-Les messages d'erreur disent quoi faire, suivis d'une ligne « Détail » qui reprend l'erreur technique. Tout ce que le dernier lancement a affiché est enregistré dans `data/journal_lancement.log` (le chemin de votre dossier personnel y est remplacé par `~`) : joignez-le à un signalement sur [Codeberg](https://codeberg.org/Kwaite/tamponne/issues), après l'avoir relu.
+Les messages d'erreur disent quoi faire, suivis d'une ligne « Détail » qui reprend l'erreur technique. Le journal `data/tamponne.log` garde, lancement après lancement, l'heure et le détail technique de chaque erreur (sources injoignables, mises à jour, sauvegardes…) ainsi que les sorties de uv ; au-delà de 1 Mo, il est archivé dans `data/tamponne.1.log`. Le chemin de votre dossier personnel y est remplacé par `~`, et vos fiches, notes et candidatures n'y figurent pas : joignez-le à un signalement sur [Codeberg](https://codeberg.org/Kwaite/tamponne/issues), après l'avoir relu.
 
 ## Sécurité et confidentialité
 

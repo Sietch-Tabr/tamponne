@@ -1,6 +1,7 @@
 """Écran Recherche côté Python : demande de recherche (formulaire),
 lancement en arrière-plan, registre des offres et actions sur une offre."""
 
+import logging
 from collections.abc import Callable
 from datetime import datetime
 from typing import Any, cast
@@ -44,6 +45,8 @@ from src.recherche import post_traiter_resultats
 from src.sources.choisirleservicepublic import MAX_PAGES
 from src.sources.detail import recuperer_detail_offre
 from src.types import FiltresRecherche, Offre, Organisations, Profil
+
+journal = logging.getLogger(__name__)
 
 INDIFFERENTE = "Indifférente"
 
@@ -649,6 +652,7 @@ class ControleurRecherche(QObject):
             suite(resultat)
 
     def _on_tache_echouee(self, message: str) -> None:
+        journal.warning("Fiche ou suivi impossible\u00a0: %s", message)
         self._suites.pop(id(self.sender()), None)
         self.action_echouee.emit(f"Opération impossible\u00a0: {message}")
 

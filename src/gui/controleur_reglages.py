@@ -3,6 +3,7 @@ d'affichage, avis de mise à jour, cache des organisations, raccourci,
 sauvegarde des données et exports de recherche."""
 
 import html
+import logging
 from collections.abc import Callable
 from datetime import date
 from pathlib import Path
@@ -34,6 +35,8 @@ from src.parametres_sources import (
     sauvegarder_sources_actives,
 )
 from src.types import InfoMaj, Organisations
+
+journal = logging.getLogger(__name__)
 
 MESSAGE_EXPORTS_NON_SUPPRIMES = (
     "Certains exports n'ont pas pu être supprimés. Fermez-les s'ils sont "
@@ -68,6 +71,7 @@ class ControleurReglages(QObject):
 
     def __init__(self, parent: QObject | None = None) -> None:
         super().__init__(parent)
+        self.erreur_signalee.connect(self._journaliser_erreur)
         self._sources = charger_sources_actives()
         self._reduire_animations = charger_reduire_animations()
         self._info_maj: InfoMaj | None = None
@@ -284,7 +288,12 @@ class ControleurReglages(QObject):
         self.organisations_rafraichies.emit(cast(Organisations, organisations))
         self.etat_change.emit()
 
-    def _on_cache_echoue(self, _message: str) -> None:
+    @staticmethod
+    def _journaliser_erreur(message: str) -> None:
+        journal.error("%s", message)
+
+    def _on_cache_echoue(self, message: str) -> None:
+        journal.warning("Liste des organisations non rafraîchie\u00a0: %s", message)
         self._cache_en_cours = False
         self._message_cache = MESSAGE_CACHE_INDISPONIBLE
         self.etat_change.emit()

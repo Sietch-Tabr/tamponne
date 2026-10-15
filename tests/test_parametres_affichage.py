@@ -36,11 +36,11 @@ def test_charger_mode_theme_valeur_inconnue_retourne_auto() -> None:
 
 
 def test_charger_mode_theme_fichier_corrompu_retourne_auto(
-    capsys: pytest.CaptureFixture[str],
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     parametres_affichage.CHEMIN_AFFICHAGE.write_text("{pas du json", encoding="utf-8")
     assert charger_mode_theme() == "auto"
-    assert "affichage.json" in capsys.readouterr().err
+    assert "affichage.json" in caplog.text
 
 
 def test_reduire_animations_conserve_le_theme() -> None:

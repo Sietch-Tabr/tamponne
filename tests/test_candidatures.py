@@ -154,17 +154,17 @@ def test_generer_archive_pdf_reussi(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_generer_archive_pdf_sans_lien_echoue_sans_lever(
-    capsys: pytest.CaptureFixture[str],
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     reussi = candidatures.generer_archive_pdf("ref-1", "<html></html>")
 
     assert reussi is False
     assert not candidatures.chemin_archive_pdf("ref-1").exists()
-    assert "lien PDF introuvable" in capsys.readouterr().err
+    assert "Lien PDF introuvable" in caplog.text
 
 
 def test_generer_archive_pdf_echec_reseau_echoue_sans_lever(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
     def _leve_erreur(url: str) -> None:
         raise RuntimeError("Erreur réseau")
@@ -173,7 +173,7 @@ def test_generer_archive_pdf_echec_reseau_echoue_sans_lever(
     reussi = candidatures.generer_archive_pdf("ref-1", _PAGE_AVEC_LIEN_PDF)
 
     assert reussi is False
-    assert "échec de téléchargement" in capsys.readouterr().err
+    assert "Échec de téléchargement" in caplog.text
 
 
 def test_suivre_offre_enregistre_detail_et_archive_pdf(

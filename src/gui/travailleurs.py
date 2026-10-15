@@ -7,6 +7,7 @@ connexion à une fonction/lambda ordinaire ne garantit pas l'exécution
 sur le bon thread.
 """
 
+import logging
 from collections.abc import Callable
 
 from PySide6.QtCore import QObject, Signal
@@ -20,6 +21,8 @@ from src.maj import (
 from src.recherche import RechercheImpossible, rechercher_toutes_sources
 from src.sources.detail import verifier_disponibilite
 from src.types import Candidature, FiltresRecherche, Organisations
+
+journal = logging.getLogger(__name__)
 
 
 class TravailleurRecherche(QObject):
@@ -65,6 +68,7 @@ class TravailleurRecherche(QObject):
                 on_offres_source=self.offres_source.emit,
             )
         except RechercheImpossible as erreur:
+            journal.error("Recherche impossible\u00a0: %s", erreur)
             self.erreur.emit(str(erreur))
             return
         self.resultat.emit(offres, nb_pages, arret_anticipe)
@@ -100,6 +104,7 @@ class VerificateurDisponibilite(QObject):
             try:
                 resultats[reference] = verifier_disponibilite(url)
             except RuntimeError as erreur:
+                journal.warning("Offre %s non vérifiée\u00a0: %s", reference, erreur)
                 echecs[reference] = str(erreur)
             self.progression.emit(i, total)
         self.resultat.emit(resultats, echecs)
@@ -125,6 +130,7 @@ class VerificateurMiseAJour(QObject):
         try:
             info = verifier_derniere_publication()
         except VerificationImpossible as erreur:
+            journal.warning("Vérification de mise à jour impossible\u00a0: %s", erreur)
             self.echec.emit(str(erreur))
             return
         if info is not None and not maj_en_echec(info["version"]):

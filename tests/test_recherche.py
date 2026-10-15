@@ -109,7 +109,7 @@ def test_rechercher_dedoublonne_les_offres_communes(
 
 
 def test_rechercher_avertissement_sur_echec_partiel_sans_bloquer(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
     monkeypatch.setattr(
         ChoisirLeServicePublic,
@@ -130,10 +130,11 @@ def test_rechercher_avertissement_sur_echec_partiel_sans_bloquer(
     assert len(avertissements) == 1
     assert "indisponible" in avertissements[0]
     assert resultats[0][0][0]["reference"] == "O1"
+    assert "indisponible\u00a0: Erreur réseau" in caplog.text
 
 
 def test_rechercher_source_au_format_imprevu_n_arrete_pas_les_autres(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
     monkeypatch.setattr(
         ChoisirLeServicePublic,
@@ -153,6 +154,8 @@ def test_rechercher_source_au_format_imprevu_n_arrete_pas_les_autres(
     assert erreurs == []
     assert resultats[0][0][0]["reference"] == "O1"
     assert "réponse inattendue du site (AttributeError" in avertissements[0]
+    # Journal : la trace complète, pour retrouver la ligne qui a cédé.
+    assert "Traceback" in caplog.text and "_format_imprevu" in caplog.text
 
 
 def test_rechercher_erreur_si_toutes_les_sources_echouent(
