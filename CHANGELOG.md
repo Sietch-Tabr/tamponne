@@ -4,6 +4,28 @@ Toutes les évolutions notables de Tamponné, de la plus récente à la plus
 ancienne. Le détail de chaque version est aussi publié sur la page
 [Releases](https://codeberg.org/Kwaite/tamponne/releases) du dépôt.
 
+## [1.4.0] — 2026-10-15
+
+### Nouveautés
+
+- Réglages : nouvelle feuille « Maintenance » qui indique le nombre et la taille des exports de recherche, avec de quoi ouvrir leur dossier ou les supprimer tous (après confirmation)
+- Réglages : la date de mise en cache de la liste des organisations s'affiche sous « Rafraîchir le cache »
+- Journal `data/tamponne.log` : conservé d'un lancement à l'autre, avec l'heure et le détail de chaque erreur (source injoignable, mise à jour, sauvegarde…) ; archivé au-delà de 1 Mo, à joindre à un signalement
+- Aide complète : recherche et registre, sources consultées (cases comprises par chaque site), fiches, suivi, réglages, raccourcis et emplacement des données
+- Le bouton « Classer en profil » devient « Créer une fiche »
+- Registre : le numéro des offres s'adapte à leur nombre (« 01 » à « 28 » au lieu de « 001 »)
+
+### Corrections
+
+- Les certificats HTTPS sont vérifiés par le système, comme le navigateur : cible l'erreur « certificate verify failed » de Passerelles sous Windows derrière un proxy d'entreprise
+- Grades supérieurs : un titre qui commence par « Ip » suivi d'une minuscule n'est plus écarté à tort
+- Aide corrigée (catégories, type de poste, mot-clé, clavier du suivi)
+
+### En coulisses
+
+- `src/` et `tests/` rangés par paquets (données, recherche, système, interface), avec un test qui fige les dépendances entre composants
+- Nouvelle dépendance : `truststore`
+
 ## [1.3.4] — 2026-10-13
 
 ### Fiches détaillées (emploi-territorial, FHF, Passerelles)
