@@ -5,11 +5,15 @@ from typing import cast
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
 
-from src.gui.controleur_profils import ControleurProfils
-from src.gui.controleur_recherche import ControleurRecherche
-from src.gui.controleur_reglages import ControleurReglages
-from src.gui.controleur_suivi import ControleurSuivi
-from src.parametres_affichage import MODES_THEME, ModeTheme, sauvegarder_mode_theme
+from src.donnees.parametres_affichage import (
+    MODES_THEME,
+    ModeTheme,
+    sauvegarder_mode_theme,
+)
+from src.gui.controleurs.profils import ControleurProfils
+from src.gui.controleurs.recherche import ControleurRecherche
+from src.gui.controleurs.reglages import ControleurReglages
+from src.gui.controleurs.suivi import ControleurSuivi
 from src.types import Organisations
 
 

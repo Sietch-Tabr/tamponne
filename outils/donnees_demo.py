@@ -8,9 +8,9 @@ from typing import cast
 
 from PySide6.QtCore import QObject
 
-from src import candidatures, profils
-from src.gui import controleur_reglages
-from src.gui.controleur_recherche import ControleurRecherche
+from src.donnees import candidatures, profils
+from src.gui.controleurs import reglages as controleur_reglages
+from src.gui.controleurs.recherche import ControleurRecherche
 from src.types import Candidature, DetailOffre, EvenementCandidature, Offre
 
 _DETAIL_VIDE: DetailOffre = {

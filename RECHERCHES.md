@@ -233,7 +233,7 @@ il faut extraire leurs IDs de la même façon (voir section 4).
 
 ## 4. Structure HTML des organisations — cache automatique
 
-Les organisations sont désormais scrappées automatiquement par `src/cache.py`
+Les organisations sont désormais scrappées automatiquement par `src/donnees/cache.py`
 au premier lancement (TTL 7 jours). **L'extraction manuelle n'est plus nécessaire.**
 
 ### Structure HTML découverte

@@ -1,0 +1,228 @@
+"""Cache local des organisations et des offres vues."""
+
+import json
+import logging
+from datetime import UTC, datetime
+from typing import Any
+
+lazy from bs4 import BeautifulSoup, Tag
+
+from src.chemins import DATA
+from src.sources.choisirleservicepublic.api import telecharger_page_offres
+from src.types import Offre, OffreCache, Organisations
+from src.utils import ecriture_atomique
+
+journal = logging.getLogger(__name__)
+
+CHEMIN_CACHE = DATA / "cache.json"
+CHEMIN_OFFRES = DATA / "offres.json"
+TTL_ORGANISATIONS = 7 * 24 * 3600  # 7 jours en secondes
+TTL_OFFRES = 30 * 24 * 3600  # 30 jours en secondes
+
+
+def _charger_cache() -> dict[str, Any]:
+    """Charge le cache JSON depuis le disque."""
+    if not CHEMIN_CACHE.exists():
+        return {}
+    try:
+        return json.loads(CHEMIN_CACHE.read_text(encoding="utf-8"))
+    except json.JSONDecodeError, OSError:
+        # Journal plutôt qu'un message d'interface : ce module n'est lié à
+        # aucune interface particulière.
+        journal.warning(
+            "%s illisible ou corrompu, cache réinitialisé.", CHEMIN_CACHE.name
+        )
+        return {}
+
+
+def _sauvegarder_cache(cache: dict[str, Any]) -> None:
+    """Écrit le cache JSON sur le disque."""
+    ecriture_atomique(CHEMIN_CACHE, cache)
+
+
+def _organisations_expirees(cache: dict[str, Any]) -> bool:
+    """Retourne True si le cache organisations est absent ou expiré."""
+    entree = cache.get("organisations")
+    if not entree:
+        return True
+    try:
+        cached_at = datetime.fromisoformat(entree["cached_at"])
+        age = (datetime.now(UTC) - cached_at).total_seconds()
+        return age > TTL_ORGANISATIONS
+    except KeyError, ValueError, TypeError:
+        return True
+
+
+def _attribut(balise: Tag, nom: str) -> str:
+    """Valeur texte d'un attribut HTML, vide s'il est absent (ou multiple,
+    ce qui n'arrive pas pour les attributs lus ici)."""
+    valeur = balise.get(nom)
+    return valeur if isinstance(valeur, str) else ""
+
+
+def _scraper_organisations() -> Organisations:
+    """Scrape /nos-offres/ et retourne {ministère: {sous-org: id}}."""
+    html = telecharger_page_offres()
+    soup = BeautifulSoup(html, "html.parser")
+
+    parents: dict[str, dict] = {}
+    for inp in soup.find_all(
+        "input", attrs={"data-slug": "organisations", "data-has-children": True}
+    ):
+        parent_id = _attribut(inp, "id")
+        desc = _attribut(inp, "data-desc")
+        if parent_id and desc:
+            parents[parent_id] = {"nom": desc, "enfants": {}}
+
+    for inp in soup.find_all(
+        "input", attrs={"data-slug": "organisations", "data-parent": True}
+    ):
+        parent_id = _attribut(inp, "data-parent")
+        if not parent_id or parent_id not in parents:
+            continue
+        desc = _attribut(inp, "data-desc")
+        valeur = _attribut(inp, "value")
+        if desc and valeur.isdigit():
+            parents[parent_id]["enfants"][desc] = int(valeur)
+
+    resultat: dict[str, dict[str, int]] = {}
+    for infos in parents.values():
+        if infos["enfants"]:
+            resultat[infos["nom"]] = dict(sorted(infos["enfants"].items()))
+
+    return dict(sorted(resultat.items()))
+
+
+def organisations_en_cache() -> tuple[Organisations, bool]:
+    """Organisations lues sur le disque, même périmées, sans accès réseau.
+
+    Returns:
+        Les organisations (vides si le cache est absent ou illisible) et
+        vrai s'il faut les rafraîchir (absentes ou plus vieilles que
+        `TTL_ORGANISATIONS`).
+    """
+    cache = _charger_cache()
+    entree = cache.get("organisations")
+    donnees = entree.get("data") if isinstance(entree, dict) else None
+    return (
+        donnees if isinstance(donnees, dict) else {},
+        _organisations_expirees(cache),
+    )
+
+
+def obtenir_organisations(forcer: bool = False) -> Organisations:
+    """Retourne les organisations depuis le cache ou scrape si expiré."""
+    cache = _charger_cache()
+
+    if forcer or _organisations_expirees(cache):
+        data = _scraper_organisations()
+        cache["organisations"] = {
+            "cached_at": datetime.now(UTC).isoformat(),
+            "data": data,
+        }
+        _sauvegarder_cache(cache)
+        return data
+
+    return cache["organisations"]["data"]
+
+
+# --- Cache des offres par profil ---
+
+
+def _charger_offres() -> dict[str, dict[str, OffreCache]]:
+    """Charge le cache des offres depuis le disque."""
+    if not CHEMIN_OFFRES.exists():
+        return {}
+    try:
+        return json.loads(CHEMIN_OFFRES.read_text(encoding="utf-8"))
+    except json.JSONDecodeError, OSError:
+        journal.warning(
+            "%s illisible ou corrompu, cache réinitialisé.", CHEMIN_OFFRES.name
+        )
+        return {}
+
+
+def _sauvegarder_offres(offres: dict[str, dict[str, OffreCache]]) -> None:
+    """Écrit le cache des offres sur le disque."""
+    ecriture_atomique(CHEMIN_OFFRES, offres)
+
+
+def maj_cache_offres(nom_profil: str, offres_fraiches: list[Offre]) -> set[str]:
+    """Met à jour le cache des offres pour un profil.
+
+    Ajoute les offres inconnues, met à jour ``derniere_vue`` des offres
+    existantes, et purge celles absentes depuis plus de TTL_OFFRES secondes.
+
+    Lors de la purge, si ``derniere_vue`` est absent ou non parsable, la valeur
+    par défaut est ``maintenant_iso`` (ISO 8601 UTC), ce qui préserve l'offre
+    dans le cache. Si le parsing échoue avec ValueError ou TypeError, l'offre
+    est purgée immédiatement.
+
+    Args:
+        nom_profil: Clé identifiant le profil dans le cache des offres.
+        offres_fraiches: Offres retournées par la dernière recherche.
+
+    Returns:
+        Références des offres jamais vues pour ce profil avant cet appel.
+    """
+    maintenant = datetime.now(UTC)
+    maintenant_iso = maintenant.isoformat()
+    toutes = _charger_offres()
+    cache_profil = toutes.get(nom_profil, {})
+
+    refs_fraiches = {o["reference"] for o in offres_fraiches if o.get("reference")}
+    nouvelles: set[str] = set()
+
+    for offre in offres_fraiches:
+        ref = offre.get("reference")
+        if not ref:
+            continue
+        if ref not in cache_profil:
+            nouvelles.add(ref)
+            cache_profil[ref] = {
+                **offre,
+                "vu_le": maintenant_iso,
+                "derniere_vue": maintenant_iso,
+            }
+        else:
+            cache_profil[ref].update({**offre, "derniere_vue": maintenant_iso})
+
+    # Purge des offres absentes depuis plus de TTL_OFFRES
+    a_purger = []
+    for ref, donnees in cache_profil.items():
+        if ref not in refs_fraiches:
+            try:
+                derniere = datetime.fromisoformat(
+                    donnees.get("derniere_vue", maintenant_iso)
+                )
+                age = (maintenant - derniere).total_seconds()
+                if age > TTL_OFFRES:
+                    a_purger.append(ref)
+            except ValueError, TypeError:
+                a_purger.append(ref)
+    for ref in a_purger:
+        del cache_profil[ref]
+
+    toutes[nom_profil] = cache_profil
+    _sauvegarder_offres(toutes)
+    return nouvelles
+
+
+def obtenir_offres_cachetees(nom_profil: str) -> dict[str, OffreCache]:
+    """Retourne les offres en cache pour un profil (référence → données)."""
+    return _charger_offres().get(nom_profil, {})
+
+
+# --- Cache des organisations ---
+
+
+def date_cache_organisations() -> datetime | None:
+    """Moment (UTC) où les organisations ont été mises en cache, ou None si
+    le cache est absent ou illisible."""
+    entree = _charger_cache().get("organisations")
+    if not entree:
+        return None
+    try:
+        return datetime.fromisoformat(entree["cached_at"])
+    except KeyError, ValueError, TypeError:
+        return None

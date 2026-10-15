@@ -27,7 +27,8 @@ from PySide6.QtQuick import QQuickWindow  # noqa: E402
 from shiboken6 import Shiboken  # noqa: E402
 
 from outils import donnees_demo  # noqa: E402
-from src import parametres_affichage, parametres_sources, raccourci  # noqa: E402
+from src.donnees import parametres_affichage, parametres_sources
+from src.systeme import raccourci
 
 RACINE = Path(__file__).parent.parent
 DOSSIER_MAQUETTE = Path(__file__).parent / "maquette"
@@ -142,7 +143,8 @@ def capturer_maquette(fichier: str, nuit: bool, hauteur: int, dossier: Path) -> 
 def capturer_qml(onglet: int, nuit: bool, hauteur: int, action: str) -> QImage:
     """Capture hors écran de la fenêtre QML sur l'onglet demandé, après
     avoir ouvert une fenêtre de l'écran Suivi si `action` est renseignée."""
-    from src.gui import application, controleur_suivi
+    from src.gui import application
+    from src.gui.controleurs import suivi as controleur_suivi
     from src.gui.pont import Pont
 
     controleur_suivi.date_du_jour = lambda: date(2026, 10, 4)

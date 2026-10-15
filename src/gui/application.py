@@ -17,13 +17,16 @@ from PySide6.QtCore import (
 from PySide6.QtGui import QGuiApplication, QIcon, QWindow
 from PySide6.QtQml import QQmlApplicationEngine
 
-from src import journal
-from src.cache import organisations_en_cache
+from src.donnees.cache import organisations_en_cache
+from src.donnees.parametres_affichage import (
+    charger_mode_theme,
+    charger_reduire_animations,
+)
 from src.gui.pont import Pont
 from src.lanceur import CODE_REDEMARRAGE
 from src.maj import valider_maj
 from src.nettoyage import nettoyer_fichiers_obsoletes
-from src.parametres_affichage import charger_mode_theme, charger_reduire_animations
+from src.systeme import journal
 
 DOSSIER_QML = Path(__file__).parent / "qml"
 ICONE = Path(__file__).parent / "icones" / "tamponne.png"
@@ -91,7 +94,7 @@ def adapter_a_l_ecran(fenetre: QWindow) -> None:
 
 def main() -> int:
     """Lance l'application QML, après avoir configuré le journal
-    (`src.journal`, messages de Qt compris), retiré les fichiers obsolètes
+    (`src.systeme.journal`, messages de Qt compris), retiré les fichiers obsolètes
     laissés par les mises à jour (`src.nettoyage`) et confié la
     vérification des certificats HTTPS au système (`truststore`). Les
     organisations absentes ou périmées sont rechargées en arrière-plan,

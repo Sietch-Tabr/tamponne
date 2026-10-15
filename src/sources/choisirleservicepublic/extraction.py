@@ -144,7 +144,7 @@ DETAIL_VIDE: DetailOffre = {
 }
 """DetailOffre par défaut — réutilisé par `recuperer_detail_offre`
 (src/sources/choisirleservicepublic/__init__.py) et `ajouter_candidature`
-(src/candidatures.py) quand aucun détail n'a pu être récupéré."""
+(src/donnees/candidatures.py) quand aucun détail n'a pu être récupéré."""
 
 
 _RE_ESPACES_HORIZ = re.compile(r"[ \t]+")
