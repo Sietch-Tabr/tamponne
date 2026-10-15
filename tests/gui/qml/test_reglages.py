@@ -98,7 +98,7 @@ def test_ecran_aide_expose_ses_rubriques(
         "Notice d'utilisation",
         "Les cases du formulaire",
         "Exemples de demande",
-        "Grades supérieurs (IDIV / IP / AFIP)",
+        "Grades supérieurs de la DGFiP",
         "La recherche et le registre",
         "Les sources consultées",
         "Les fiches de recherche",
