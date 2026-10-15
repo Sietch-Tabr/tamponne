@@ -4,6 +4,7 @@ import ctypes
 import sys
 from pathlib import Path
 
+import truststore
 from PySide6.QtCore import QObject, Qt, QUrl
 from PySide6.QtGui import QGuiApplication, QIcon, QWindow
 from PySide6.QtQml import QQmlApplicationEngine
@@ -62,8 +63,10 @@ def adapter_a_l_ecran(fenetre: QWindow) -> None:
 
 def main() -> int:
     """Lance l'application QML, après avoir retiré les fichiers obsolètes
-    laissés par les mises à jour (`src.nettoyage`). Les organisations
-    absentes ou périmées sont rechargées en arrière-plan, fenêtre affichée.
+    laissés par les mises à jour (`src.nettoyage`) et confié la
+    vérification des certificats HTTPS au système (`truststore`). Les
+    organisations absentes ou périmées sont rechargées en arrière-plan,
+    fenêtre affichée.
     Une fois la fenêtre chargée, la dernière mise à jour est validée
     (`maj.valider_maj`).
 
@@ -74,6 +77,9 @@ def main() -> int:
         la boucle Qt.
     """
     nettoyer_fichiers_obsoletes()
+    # Certificats vérifiés par le système, comme le navigateur : seul, Python
+    # ignore les racines que Windows ne télécharge qu'à la demande.
+    truststore.inject_into_ssl()
     if sys.platform == "win32":
         # Sans identifiant propre, Windows range la fenêtre sous python.exe
         # et la barre des tâches montre l'icône de Python.
