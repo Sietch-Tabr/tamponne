@@ -1,9 +1,9 @@
 """Source emploi-territorial.fr — implémente `SourceOffres`.
 
 Portail légal CDG/CNFPT de la fonction publique territoriale. Câblés côté
-filtres : mot-clé libre, catégorie, département (localisations qui sont des
-départements — les régions/le groupement DOM n'ont pas d'équivalent côté ET,
-voir `filtres.DEPARTEMENTS`), expérience, management, télétravail, et le
+filtres : mot-clé libre, catégorie, département (une région ou le groupement
+DOM est remplacé par ses départements, voir `filtres.codes_departements`),
+expérience, management, télétravail, et le
 type de poste dans le seul cas net « titulaire uniquement ». Filière et
 cadre d'emplois/grade fonctionnent côté site (vérifié) mais restent à
 mapper, ignorés silencieusement en attendant plutôt que mappés à l'aveugle.
@@ -27,9 +27,9 @@ from src.sources.emploiterritorial.extraction import (
 )
 from src.sources.emploiterritorial.filtres import (
     CATEGORIES,
-    DEPARTEMENTS,
     EXPERIENCES,
     TYPE_CONTRAT_TITULAIRE,
+    codes_departements,
 )
 from src.types import DetailOffre, FiltresRecherche, Offre
 
@@ -57,11 +57,10 @@ class EmploiTerritorial:
         categories = [
             CATEGORIES[c] for c in filtres.get("categories", []) if c in CATEGORIES
         ]
-        departements = [
-            DEPARTEMENTS[loc]
-            for loc in filtres.get("localisations", [])
-            if loc in DEPARTEMENTS
-        ]
+        localisations = filtres.get("localisations", [])
+        departements = codes_departements(localisations)
+        if localisations and not departements:
+            return [], 1, False  # lieux sans équivalent : ne rien montrer d'ailleurs
         experience = EXPERIENCES.get(filtres.get("experience") or "", "")
         # Seul « titulaire uniquement » a un équivalent net côté ET (Emploi
         # permanent) ; les autres choix n'ont pas de code unique : non filtrés.

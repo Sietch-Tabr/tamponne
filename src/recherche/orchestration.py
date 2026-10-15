@@ -6,8 +6,9 @@ signaux Qt.
 """
 
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from concurrent.futures import Future, ThreadPoolExecutor
+from typing import Final
 
 from src.donnees.cache import maj_cache_offres
 from src.donnees.parametres_sources import (
@@ -49,11 +50,56 @@ def construire_source(cle: str, orgas_cache: Organisations) -> SourceOffres | No
     return None
 
 
+# Critères qu'une source n'applique pas du tout : elle renverrait des offres
+# hors sujet, elle est donc écartée quand l'un d'eux est renseigné.
+CRITERES_NON_HONORES: Final[Mapping[str, tuple[str, ...]]] = {
+    "emploiterritorial": ("domaines", "organisations", "date_publication"),
+    "passerellesmef": ("experience",),
+    "fhf": (
+        "localisations",
+        "categories",
+        "domaines",
+        "organisations",
+        "experience",
+        "date_publication",
+        "management",
+        "teletravail",
+    ),
+}
+
+_LIBELLES_CRITERES: Final[Mapping[str, str]] = {
+    "localisations": "la localisation",
+    "categories": "la catégorie",
+    "domaines": "le domaine",
+    "organisations": "l'organisation",
+    "experience": "l'expérience",
+    "date_publication": "la date de publication",
+    "management": "le management",
+    "teletravail": "le télétravail",
+}
+
+
+def criteres_non_honores(cle: str, filtres: FiltresRecherche) -> list[str]:
+    """Libellés des critères renseignés que la source `cle` ne sait pas
+    appliquer."""
+    return [
+        _LIBELLES_CRITERES[critere]
+        for critere in CRITERES_NON_HONORES.get(cle, ())
+        if filtres.get(critere)
+    ]
+
+
 def sources_a_interroger(
-    filtres: FiltresRecherche, orgas_cache: Organisations
+    filtres: FiltresRecherche,
+    orgas_cache: Organisations,
+    ecartees: list[str] | None = None,
 ) -> list[tuple[str, str, SourceOffres]]:
     """(clé, nom affiché, source) des sources actives et compatibles avec
-    le filtre Versant, dans l'ordre de `SOURCES_DISPONIBLES`."""
+    le filtre Versant, dans l'ordre de `SOURCES_DISPONIBLES`.
+
+    Une source qui ne sait pas appliquer un critère renseigné est écartée ;
+    si `ecartees` est fourni, un message par source écartée y est ajouté.
+    """
     sources_actives = charger_sources_actives()
     versants_filtres = filtres.get("versants") or []
     resultat: list[tuple[str, str, SourceOffres]] = []
@@ -67,6 +113,13 @@ def sources_a_interroger(
             and versant_source not in versants_filtres
         ):
             continue  # source mono-versant exclue par le filtre Versant
+        if ignores := criteres_non_honores(cle, filtres):
+            if ecartees is not None:
+                ecartees.append(
+                    f"{nom_affiche} non interrogée\u00a0: elle ne filtre pas sur "
+                    + ", ".join(ignores)
+                )
+            continue
         source = construire_source(cle, orgas_cache)
         if source is not None:
             resultat.append((cle, nom_affiche, source))
@@ -118,11 +171,16 @@ def rechercher_toutes_sources(
     Raises:
         RechercheImpossible: aucune source active, ou toutes en échec.
     """
-    sources = sources_a_interroger(filtres, orgas_cache)
+    ecartees: list[str] = []
+    sources = sources_a_interroger(filtres, orgas_cache, ecartees)
     if not sources:
         raise RechercheImpossible(
-            "Aucune source cochée\u00a0: voir Réglages › Sources consultées."
+            "Aucune source ne sait appliquer ces critères."
+            if ecartees
+            else "Aucune source cochée\u00a0: voir Réglages › Sources consultées."
         )
+    for message in ecartees:
+        on_avertissement(message)
 
     def _interroger(
         nom_affiche: str, source: SourceOffres

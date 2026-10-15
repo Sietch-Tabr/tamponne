@@ -11,9 +11,11 @@ import pytest
 from src.donnees import cache, parametres_sources, profils
 from src.recherche.orchestration import (
     RechercheImpossible,
+    criteres_non_honores,
     lignes_resume,
     post_traiter_resultats,
     rechercher_toutes_sources,
+    sources_a_interroger,
 )
 from src.sources import emploiterritorial as emploiterritorial_module
 from src.sources.choisirleservicepublic import ChoisirLeServicePublic
@@ -583,3 +585,44 @@ def test_lignes_resume_aucune_offre() -> None:
         {}, {"offres": [], "nb_exclus": 0, "nouvelles": set()}, 1, False, []
     )
     assert lignes[-1] == "Aucune offre trouvée."
+
+
+# --- sources écartées faute de savoir appliquer un critère ---
+
+
+def test_sources_a_interroger_ecarte_fhf_et_signale_pourquoi() -> None:
+    parametres_sources.sauvegarder_sources_actives(
+        dict.fromkeys(parametres_sources.SOURCES_DISPONIBLES, True)
+    )
+    ecartees: list[str] = []
+    sources = sources_a_interroger({"localisations": ["Paris"]}, {}, ecartees)
+    assert [cle for cle, _, _ in sources] == [
+        "choisirleservicepublic",
+        "emploiterritorial",
+        "passerellesmef",
+    ]
+    assert len(ecartees) == 1
+    assert "la localisation" in ecartees[0]
+
+
+def test_criteres_non_honores_ignore_les_criteres_vides() -> None:
+    assert criteres_non_honores("fhf", {"localisations": [], "management": False}) == []
+    assert criteres_non_honores("emploiterritorial", {"domaines": ["Numérique"]}) == [
+        "le domaine"
+    ]
+    assert criteres_non_honores("choisirleservicepublic", {"domaines": ["X"]}) == []
+
+
+def test_rechercher_erreur_si_aucune_source_ne_sait_filtrer(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    parametres_sources.sauvegarder_sources_actives(
+        {
+            "choisirleservicepublic": False,
+            "emploiterritorial": False,
+            "passerellesmef": False,
+            "fhf": True,
+        }
+    )
+    with pytest.raises(RechercheImpossible, match="ne sait appliquer"):
+        rechercher_toutes_sources({"localisations": ["Paris"]}, {})
