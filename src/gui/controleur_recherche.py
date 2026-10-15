@@ -200,7 +200,7 @@ class ControleurRecherche(QObject):
         source = self._proxy.mapToSource(
             self._proxy.index(self._ligne_selectionnee, 0, QModelIndex())
         )
-        return f"{source.row() + 1:03d}" if source.isValid() else ""
+        return self._modele.numero(source.row()) if source.isValid() else ""
 
     def _lire_choix(self) -> dict[str, Any]:
         return {

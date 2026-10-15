@@ -49,10 +49,16 @@ class ModeleRegistre(ModeleOffres):
         roles[ROLE_NOUVELLE] = QByteArray(b"nouvelle")
         return roles
 
+    def numero(self, ligne: int) -> str:
+        """N° d'ordre de la ligne, complété de zéros à la largeur du dernier
+        (2 chiffres au moins) : « 01 » à « 28 » pour 28 offres."""
+        largeur = max(2, len(str(self.rowCount())))
+        return f"{ligne + 1:0{largeur}d}"
+
     def _valeur(self, ligne: int, colonne: int) -> str:
         offre = self.offre(ligne)
         if colonne == COLONNE_NUMERO:
-            return f"{ligne + 1:03d}"
+            return self.numero(ligne)
         if colonne == COLONNE_INTITULE:
             return offre["titre"]
         if colonne == 2:
