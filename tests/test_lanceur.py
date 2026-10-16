@@ -1,6 +1,7 @@
 """Tests de src/lanceur.py : boucle de mise à jour, de retour arrière et de
 redémarrage."""
 
+import io
 import re
 import sys
 from collections.abc import Callable, Sequence
@@ -403,3 +404,128 @@ def test_executer_survit_a_ctrl_c_pendant_l_execution(
     # L'enfant envoie SIGINT à son parent (le lanceur), comme le ferait le terminal.
     script = "import os, signal; os.kill(os.getppid(), signal.SIGINT)"
     assert lanceur._executer([sys.executable, "-c", script]) == 0
+
+
+# --- messages mis en valeur ---
+
+
+def test_mettre_en_valeur_en_couleurs_encadre_le_message() -> None:
+    texte = lanceur.mettre_en_valeur("Installation de uv", couleurs=True)
+    lignes = texte.strip("\n").splitlines()
+    assert len(lignes) == 3
+    assert all(ligne.startswith(lanceur.ATTRIBUTS_ANNONCE) for ligne in lignes)
+    assert all(ligne.endswith(lanceur.FIN_ATTRIBUTS) for ligne in lignes)
+    assert "Installation de uv" in lignes[1]
+    assert "Installation de uv" not in lignes[0] + lignes[2]
+
+
+def test_mettre_en_valeur_sans_couleurs_garde_un_repere_visible() -> None:
+    assert lanceur.mettre_en_valeur("Installation de uv", couleurs=False) == (
+        "\n>>> Installation de uv\n\n"
+    )
+
+
+class _Terminal(io.StringIO):
+    def isatty(self) -> bool:
+        return True
+
+
+def test_annoncer_colore_sur_un_terminal(monkeypatch: pytest.MonkeyPatch) -> None:
+    sortie = _Terminal()
+    monkeypatch.setattr(lanceur, "_sortie", sortie)
+    monkeypatch.delenv("NO_COLOR", raising=False)
+    lanceur.annoncer("Mise à jour de uv")
+    assert lanceur.ATTRIBUTS_ANNONCE in sortie.getvalue()
+    assert "Mise à jour de uv" in sortie.getvalue()
+
+
+def test_annoncer_respecte_no_color_et_les_sorties_redirigees(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    terminal = _Terminal()
+    monkeypatch.setattr(lanceur, "_sortie", terminal)
+    monkeypatch.setenv("NO_COLOR", "1")
+    lanceur.annoncer("Message")
+    assert lanceur.ATTRIBUTS_ANNONCE not in terminal.getvalue()
+    assert ">>> Message" in terminal.getvalue()
+
+    fichier = io.StringIO()
+    monkeypatch.delenv("NO_COLOR")
+    monkeypatch.setattr(lanceur, "_sortie", fichier)
+    lanceur.annoncer("Message")
+    assert lanceur.ATTRIBUTS_ANNONCE not in fichier.getvalue()
+
+
+def test_synchroniser_annonce_la_mise_a_jour_de_uv_en_valeur(
+    marqueur: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    sortie = _Terminal()
+    monkeypatch.setattr(lanceur, "_sortie", sortie)
+    monkeypatch.delenv("NO_COLOR", raising=False)
+    executeur = Executeur({"sync": [1, 0], "self": [0]})
+    assert lanceur.synchroniser(executeur)
+    assert lanceur.ATTRIBUTS_ANNONCE + "  " + lanceur.TITRE_MAJ_UV in sortie.getvalue()
+
+
+# --- un seul lanceur à la fois ---
+
+
+@pytest.fixture
+def verrou(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    chemin = tmp_path / "tamponne.verrou"
+    monkeypatch.setattr(lanceur, "CHEMIN_VERROU", chemin)
+    return chemin
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="verrou testé sous POSIX")
+def test_instance_unique_refuse_un_second_lanceur_puis_se_libere(verrou: Path) -> None:
+    with lanceur.instance_unique():
+        assert not lanceur.verrou_libre()
+        with pytest.raises(lanceur.DejaLance):
+            with lanceur.instance_unique():
+                pass
+    assert lanceur.verrou_libre()
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="verrou testé sous POSIX")
+def test_instance_unique_survit_a_un_fichier_laisse_par_un_lanceur_mort(
+    verrou: Path,
+) -> None:
+    verrou.write_text("reste d'un lancement interrompu", encoding="utf-8")
+    assert lanceur.verrou_libre()
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="verrou testé sous POSIX")
+def test_principal_deuxieme_lancement_le_dit_sans_rien_lancer(
+    verrou: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    lances: list[str] = []
+
+    def lancer_espion() -> int:
+        lances.append("lancé")
+        return 0
+
+    monkeypatch.setattr(lanceur, "lancer", lancer_espion)
+    monkeypatch.setattr(lanceur, "CHEMIN_JOURNAL", verrou.parent / "tamponne.log")
+    with lanceur.instance_unique():
+        assert lanceur.principal() == 0
+    assert lances == []
+    assert lanceur.MESSAGE_DEJA_LANCE in capsys.readouterr().err
+    assert "déjà ouvert" in (verrou.parent / "tamponne.log").read_text(encoding="utf-8")
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="verrou testé sous POSIX")
+def test_principal_lance_une_fois_et_libere_le_verrou(
+    verrou: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(lanceur, "CHEMIN_JOURNAL", verrou.parent / "tamponne.log")
+    pendant: list[bool] = []
+
+    def lancer_factice() -> int:
+        pendant.append(lanceur.verrou_libre())
+        return 7
+
+    monkeypatch.setattr(lanceur, "lancer", lancer_factice)
+    assert lanceur.principal() == 7
+    assert pendant == [False]
+    assert lanceur.verrou_libre()

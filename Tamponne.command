@@ -27,6 +27,34 @@ signaler() {
     fi
 }
 
+# Message de Tamponné en bandeau bleu : il se distingue des sorties de uv.
+annoncer() {
+    if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
+        printf '\n\033[1;97;44m  \033[K\033[0m\n\033[1;97;44m  %s\033[K\033[0m\n\033[1;97;44m  \033[K\033[0m\n\n' "$1"
+    else
+        printf '\n>>> %s\n\n' "$1"
+    fi
+}
+
+# Information sans erreur (Tamponné déjà ouvert) : notification discrète,
+# pas de boîte de dialogue à fermer pour chaque clic de trop.
+prevenir() {
+    echo "$1" >&2
+    if [ -t 2 ]; then
+        if [ -n "${TAMPONNE_TERMINAL:-}" ]; then
+            read -r -p "Appuyez sur Entrée pour fermer." _
+        else
+            sleep 6
+        fi
+    elif command -v osascript >/dev/null 2>&1; then
+        osascript -e 'on run argv' \
+            -e 'display notification (item 1 of argv) with title "Tamponné"' \
+            -e 'end run' "$1" >/dev/null 2>&1
+    elif command -v notify-send >/dev/null 2>&1; then
+        notify-send "Tamponné" "$1"
+    fi
+}
+
 # Linux : lancé par double-clic, aucun terminal n'affiche l'installation
 # (macOS ouvre toujours Terminal pour un .command). On s'y relance.
 if [ ! -t 1 ] && [ "$(uname)" = Linux ] && [ -z "${TAMPONNE_TERMINAL:-}" ] \
@@ -44,8 +72,29 @@ if [ ! -t 1 ] && [ "$(uname)" = Linux ] && [ -z "${TAMPONNE_TERMINAL:-}" ] \
         && notify-send "Tamponné" "Premier lancement : installation en cours (quelques minutes)…"
 fi
 
+# Un seul Tamponné à la fois (double-clic répété, raccourci cliqué deux fois) :
+# verrou par dossier (mkdir est atomique) tenu jusqu'à la sortie du script.
+# Celui d'un lancement interrompu se reconnaît à son processus disparu.
+dossier_verrou="$PWD/data/.lancement.verrou"
+deja_ouvert="Tamponné est déjà ouvert, ou en cours d'ouverture.
+
+Patientez quelques instants (la première ouverture peut durer une minute), ou cherchez sa fenêtre dans le Dock ou la barre des tâches."
+mkdir -p data
+if ! mkdir "$dossier_verrou" 2>/dev/null; then
+    pid=$(cat "$dossier_verrou/pid" 2>/dev/null)
+    [ -z "$pid" ] && { sleep 1; pid=$(cat "$dossier_verrou/pid" 2>/dev/null); }
+    if [ -n "$pid" ] && ps -p "$pid" -o command= 2>/dev/null | grep -qi "bash\|Tamponne"; then
+        prevenir "$deja_ouvert"
+        exit 0
+    fi
+    rm -rf "$dossier_verrou"
+    mkdir "$dossier_verrou" 2>/dev/null || { prevenir "$deja_ouvert"; exit 0; }
+fi
+echo $$ > "$dossier_verrou/pid"
+trap 'rm -rf "$dossier_verrou"' EXIT
+
 if ! command -v uv >/dev/null 2>&1; then
-    echo "Installation de uv, le gestionnaire de Python de Tamponné…"
+    annoncer "Installation de uv, le gestionnaire de Python de Tamponné…"
     if command -v curl >/dev/null 2>&1; then
         curl -LsSf https://astral.sh/uv/install.sh | sh
     else
@@ -68,14 +117,14 @@ fi
 premier_lancement=
 if [ ! -d .venv ]; then
     premier_lancement=1
-    echo "Premier lancement : téléchargement de Python et des composants (quelques minutes)…"
+    annoncer "Premier lancement : téléchargement de Python et des composants (quelques minutes)…"
     uv sync
 else
     uv sync
 fi || {
     # Un uv trop ancien ne connaît pas la version de Python demandée
     # (required-version) ; installé par Homebrew, il refuse sans dommage.
-    echo "Mise à jour de uv, le gestionnaire de Python de Tamponné…"
+    annoncer "Mise à jour de uv, le gestionnaire de Python de Tamponné…"
     uv self update
     uv sync
 } || {
@@ -88,7 +137,7 @@ Détail : « uv sync » a échoué ; son message exact est affiché dans le 
 }
 
 [ -n "$premier_lancement" ] \
-    && echo "Installation terminée. Tamponné s'ouvre dans quelques instants (jusqu'à une minute la première fois)…"
+    && annoncer "Installation terminée. Tamponné s'ouvre dans quelques instants (jusqu'à une minute la première fois)…"
 uv run python -m src.lanceur \
     || signaler "Tamponné s'est arrêté sur une erreur.
 

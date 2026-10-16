@@ -1,7 +1,13 @@
 """Garde-fous des scripts de lancement `Tamponne.command` et `Tamponne.bat`."""
 
 import os
+import shutil
+import subprocess
+import sys
+import time
 from pathlib import Path
+
+import pytest
 
 RACINE = Path(__file__).parent.parent
 
@@ -128,3 +134,133 @@ def test_tamponne_bat_n_affiche_jamais_les_identifiants_du_proxy() -> None:
     for ligne in messages:
         assert "{ $env:HTTPS_PROXY }" not in ligne
         assert "$p.Host + ':' + $p.Port" in ligne
+
+
+# --- un seul lancement à la fois (macOS et Linux) ---
+
+
+def _installation_factice(tmp_path: Path, duree: int) -> tuple[Path, dict[str, str]]:
+    """Copie du script dans un dossier d'essai, avec un faux `uv` (la
+    synchronisation réussit, le lanceur dure `duree` secondes)."""
+    dossier = tmp_path / "installation"
+    dossier.mkdir()
+    script = dossier / "Tamponne.command"
+    shutil.copy(RACINE / "Tamponne.command", script)
+    script.chmod(0o755)
+    maison = tmp_path / "maison"
+    (maison / ".local" / "bin").mkdir(parents=True)
+    faux_uv = maison / ".local" / "bin" / "uv"
+    faux_uv.write_text(
+        f'#!/bin/bash\n[ "$1" = run ] && {{ echo lanceur-demarre; sleep {duree}; }}\nexit 0\n',
+        encoding="utf-8",
+    )
+    faux_uv.chmod(0o755)
+    environnement = {**os.environ, "HOME": str(maison), "NO_COLOR": "1"}
+    environnement.pop("TAMPONNE_TERMINAL", None)
+    return script, environnement
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="script bash")
+def test_tamponne_command_refuse_un_second_lancement(tmp_path: Path) -> None:
+    script, env = _installation_factice(tmp_path, duree=4)
+    premier = subprocess.Popen(
+        ["/bin/bash", str(script)],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        env=env,
+    )
+    verrou = script.parent / "data" / ".lancement.verrou"
+    for _ in range(50):
+        if (verrou / "pid").exists():
+            break
+        time.sleep(0.1)
+    assert (verrou / "pid").read_text().strip() == str(premier.pid)
+
+    second = subprocess.run(
+        ["/bin/bash", str(script)],
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=30,
+        stdin=subprocess.DEVNULL,
+    )
+    assert second.returncode == 0
+    assert "déjà ouvert" in second.stderr
+    assert "lanceur-demarre" not in second.stdout
+    sortie, _ = premier.communicate(timeout=30)
+    assert "lanceur-demarre" in sortie
+    assert not verrou.exists()
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="script bash")
+def test_tamponne_command_reprend_le_verrou_d_un_lancement_interrompu(
+    tmp_path: Path,
+) -> None:
+    script, env = _installation_factice(tmp_path, duree=0)
+    verrou = script.parent / "data" / ".lancement.verrou"
+    verrou.mkdir(parents=True)
+    (verrou / "pid").write_text("999999\n", encoding="utf-8")
+    resultat = subprocess.run(
+        ["/bin/bash", str(script)],
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=30,
+        stdin=subprocess.DEVNULL,
+    )
+    assert resultat.returncode == 0
+    assert "lanceur-demarre" in resultat.stdout
+    assert not verrou.exists()
+
+
+def test_tamponne_command_met_les_messages_en_valeur() -> None:
+    """Les messages explicatifs passent par `annoncer`, jamais par un
+    simple `echo` noyé dans les sorties de uv."""
+    contenu = (RACINE / "Tamponne.command").read_text(encoding="utf-8")
+    for debut in (
+        "Installation de uv",
+        "Premier lancement",
+        "Mise à jour de uv",
+        "Installation terminée",
+    ):
+        lignes = [ligne for ligne in contenu.splitlines() if debut in ligne]
+        assert any("annoncer" in ligne for ligne in lignes), debut
+        assert not any("echo" in ligne for ligne in lignes), debut
+
+
+def test_tamponne_bat_n_ouvre_qu_une_console_a_la_fois() -> None:
+    """La console garde `data\\.lancement.verrou` ouvert en écriture : un
+    second double-clic ne peut pas l'ouvrir et prévient au lieu de relancer
+    l'installation. Le verrou entoure tout, avant l'installation de uv."""
+    bat = (RACINE / "Tamponne.bat").read_bytes().decode("utf-8")
+    lignes = bat.splitlines()
+    verrou = lignes.index('9>"data\\.lancement.verrou" (')
+    assert lignes[verrou - 1] == "2>nul ("
+    assert verrou < next(i for i, ligne in enumerate(lignes) if "uv sync" in ligne)
+    assert verrou < next(i for i, ligne in enumerate(lignes) if "install.ps1" in ligne)
+    assert ") || (" in lignes
+    refus = lignes.index(") || (")
+    assert "déjà ouvert" in lignes[refus + 1]
+    assert lignes[-2:] == ["exit /b", ")"]
+
+
+def test_tamponne_bat_met_les_messages_en_valeur() -> None:
+    """Les messages explicatifs passent par un bandeau PowerShell bleu,
+    jamais par un simple `echo` noyé dans les sorties de uv."""
+    bat = (RACINE / "Tamponne.bat").read_bytes().decode("utf-8")
+    lignes = bat.splitlines()
+    for debut in (
+        "Installation de uv",
+        "Premier lancement",
+        "Mise à jour de uv",
+        "Installation terminée",
+        "Tamponné est déjà ouvert",
+    ):
+        concernees = [
+            ligne for ligne in lignes if debut in ligne and not ligne.startswith("rem ")
+        ]
+        assert concernees, debut
+        for ligne in concernees:
+            assert "TAMPONNE_ANNONCE" in ligne and "BackgroundColor" in ligne, debut
+            assert "echo" not in ligne.split("powershell")[0], debut
