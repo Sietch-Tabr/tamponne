@@ -3,7 +3,9 @@ lancement en arrière-plan, registre des offres et actions sur une offre."""
 
 import logging
 import threading
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, cast
 
@@ -42,7 +44,7 @@ from src.filtres import (
 from src.gui.modeles.offres import ProxyOffres
 from src.gui.modeles.registre import ModeleRegistre
 from src.gui.presentation import contenu_detail, libelle_selection, resume_registre
-from src.gui.travailleurs import TacheReseau, TravailleurRecherche
+from src.gui.travailleurs import MESSAGE_INATTENDU, TacheReseau, TravailleurRecherche
 from src.recherche.export import exporter_html
 from src.recherche.orchestration import post_traiter_resultats
 from src.sources.choisirleservicepublic import MAX_PAGES
@@ -103,6 +105,17 @@ def _etat_initial() -> dict[str, Any]:
     }
 
 
+ENREGISTREMENT_DETAILS_PAR_LOT = 10
+"""Fiches de poste lues entre deux écritures du cache sur le disque : le
+fichier est réécrit en entier, l'écrire à chaque fiche gênerait la navigation."""
+
+
+@dataclass
+class _VerrouUrl:
+    verrou: threading.Lock = field(default_factory=threading.Lock)
+    utilisateurs: int = 0
+
+
 class ControleurRecherche(QObject):
     """Actions et états de l'écran Recherche (objet `pont.recherche`)."""
 
@@ -159,7 +172,9 @@ class ControleurRecherche(QObject):
         self._chargement_organisations = False
         self._cache_details: CacheDetailsDisque | None = None
         self._verrou_details = threading.Lock()
-        self._verrous_url: dict[str, threading.Lock] = {}
+        self._verrous_url: dict[str, _VerrouUrl] = {}
+        self._details_non_enregistres = 0
+        self._silencieuses: set[int] = set()
 
     # --- Propriétés exposées au QML ---
 
@@ -517,6 +532,7 @@ class ControleurRecherche(QObject):
         self._travailleur.fiches.connect(self._on_fiches)
         self._travailleur.offres_source.connect(self._on_offres_source)
         self._travailleur.avertissement.connect(self._on_avertissement)
+        self._travailleur.echec_source.connect(self._on_echec_source)
         self._travailleur.resultat.connect(self._on_resultat)
         self._travailleur.erreur.connect(self._on_erreur)
         self._travailleur.resultat.connect(self._thread.quit)
@@ -548,12 +564,22 @@ class ControleurRecherche(QObject):
 
     def _on_avertissement(self, message: str) -> None:
         self._avertissements.append(message)
-        nom = message.split(" indisponible", 1)[0]
-        if nom in self._sources:
-            self._sources[nom] = "indisponible"
         self._tout_change()
 
+    def _on_echec_source(self, nom: str) -> None:
+        self._sources[nom] = "indisponible"
+        self.progression_change.emit()
+
     def _on_resultat(
+        self, offres: list[Offre], nb_pages: int, arret_anticipe: bool
+    ) -> None:
+        try:
+            self._afficher_resultat(offres, nb_pages, arret_anticipe)
+        except Exception:  # noqa: BLE001 - l'écran ne doit pas rester « en cours »
+            journal.exception("Affichage des résultats impossible")
+            self._on_erreur(MESSAGE_INATTENDU)
+
+    def _afficher_resultat(
         self, offres: list[Offre], nb_pages: int, arret_anticipe: bool
     ) -> None:
         profil = self._profil_lance
@@ -569,7 +595,8 @@ class ControleurRecherche(QObject):
             self._avertissements.append(f"Arrêt à la page {nb_pages} (page vide)")
         elif nb_pages > MAX_PAGES:
             self._avertissements.append(
-                f"{nb_pages} pages au total\u00a0: seules les {MAX_PAGES} premières chargées."
+                f"{nb_pages} pages au total\u00a0: "
+                f"seules les {MAX_PAGES} premières chargées."
             )
         self._resume = resume_registre(
             len(resultat["offres"]),
@@ -612,6 +639,8 @@ class ControleurRecherche(QObject):
             if thread.isRunning():
                 thread.quit()
                 thread.wait()
+        if self._cache_details is not None:
+            self._cache_details.enregistrer()
 
     # --- Registre ---
 
@@ -674,8 +703,14 @@ class ControleurRecherche(QObject):
         self.consulter()
 
     def _lancer_tache(
-        self, fonction: Callable[[], object], suite: Callable[[object], None]
+        self,
+        fonction: Callable[[], object],
+        suite: Callable[[object], None],
+        silencieuse: bool = False,
     ) -> None:
+        """Exécute `fonction` dans un thread puis appelle `suite` avec son
+        résultat. Un échec s'affiche à l'utilisateur, sauf pour une tâche
+        `silencieuse` (préchargement) qui n'écrit que dans le journal."""
         thread = QThread()
         tache = TacheReseau(fonction)
         tache.moveToThread(thread)
@@ -686,22 +721,44 @@ class ControleurRecherche(QObject):
         tache.echec.connect(thread.quit)
         thread.finished.connect(self._on_thread_tache_fini)
         self._suites[id(tache)] = suite
+        if silencieuse:
+            self._silencieuses.add(id(tache))
         self._taches.append((thread, tache))
         thread.start()
 
     def _on_tache_terminee(self, resultat: object) -> None:
         tache = self.sender()
+        self._silencieuses.discard(id(tache))
         suite = self._suites.pop(id(tache), None)
         if suite is not None:
             suite(resultat)
 
     def _on_tache_echouee(self, message: str) -> None:
         journal.warning("Fiche ou suivi impossible\u00a0: %s", message)
-        self._suites.pop(id(self.sender()), None)
+        identifiant = id(self.sender())
+        self._suites.pop(identifiant, None)
+        if identifiant in self._silencieuses:
+            self._silencieuses.discard(identifiant)
+            return
         self.action_echouee.emit(f"Opération impossible\u00a0: {message}")
 
     def _on_thread_tache_fini(self) -> None:
         self._taches = [(t, tache) for t, tache in self._taches if t.isRunning()]
+
+    @contextmanager
+    def _verrou_pour(self, url: str) -> Iterator[None]:
+        """Verrou propre à `url`, retiré dès que plus personne ne l'utilise."""
+        with self._verrou_details:
+            entree = self._verrous_url.setdefault(url, _VerrouUrl())
+            entree.utilisateurs += 1
+        try:
+            with entree.verrou:
+                yield
+        finally:
+            with self._verrou_details:
+                entree.utilisateurs -= 1
+                if entree.utilisateurs == 0:
+                    self._verrous_url.pop(url, None)
 
     def _lire_detail(self, url: str) -> DetailOffre:
         """Fiche de poste de `url`, lue sur le disque si elle y est, sinon sur
@@ -710,17 +767,28 @@ class ControleurRecherche(QObject):
         with self._verrou_details:
             if self._cache_details is None:
                 self._cache_details = CacheDetailsDisque()
-            verrou = self._verrous_url.setdefault(url, threading.Lock())
-        with verrou:
-            if (connu := self._cache_details.lire(url)) is not None:
+            cache_details = self._cache_details
+        with self._verrou_pour(url):
+            if (connu := cache_details.lire(url)) is not None:
                 return connu
             detail = recuperer_detail_offre(url)
             # Une fiche sans description est un échec de lecture ou une offre
             # dépubliée : à relire, jamais à garder.
             if detail["page_html"] and detail["description"]:
-                self._cache_details.ecrire(url, detail)
-                self._cache_details.enregistrer()
+                cache_details.ecrire(url, detail)
+                self._noter_detail_ecrit(cache_details)
             return detail
+
+    def _noter_detail_ecrit(self, cache_details: CacheDetailsDisque) -> None:
+        with self._verrou_details:
+            self._details_non_enregistres += 1
+            a_enregistrer = (
+                self._details_non_enregistres >= ENREGISTREMENT_DETAILS_PAR_LOT
+            )
+            if a_enregistrer:
+                self._details_non_enregistres = 0
+        if a_enregistrer:
+            cache_details.enregistrer()
 
     @Slot()
     def precharger_selection(self) -> None:
@@ -730,7 +798,9 @@ class ControleurRecherche(QObject):
         if offre is None or not offre["url"].startswith("https://"):
             return
         url = offre["url"]
-        self._lancer_tache(lambda: self._lire_detail(url), lambda _detail: None)
+        self._lancer_tache(
+            lambda: self._lire_detail(url), lambda _detail: None, silencieuse=True
+        )
 
     @Slot()
     def consulter(self) -> None:

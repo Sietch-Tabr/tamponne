@@ -264,3 +264,99 @@ def test_verificateur_maj_emet_none_si_a_jour_ou_hors_ligne(
 
     assert resultats == [None]
     assert marqueurs_ecrits == []
+
+
+# --- exceptions inattendues : le thread doit toujours se terminer ---
+
+
+def test_recherche_exception_inattendue_emet_une_erreur(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from src.gui import travailleurs as travailleurs_module
+
+    def casse(*_args: object, **_kwargs: object) -> None:
+        raise KeyError("imprévu")
+
+    monkeypatch.setattr(travailleurs_module, "rechercher_toutes_sources", casse)
+    erreurs: list[str] = []
+    travailleur = TravailleurRecherche({}, {})
+    travailleur.erreur.connect(erreurs.append)
+    travailleur.executer()
+
+    assert erreurs == [travailleurs_module.MESSAGE_INATTENDU]
+
+
+def test_verificateur_disponibilite_une_offre_inattendue_ne_bloque_pas_les_autres(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from src.gui import travailleurs as travailleurs_module
+
+    def verifier(url: str) -> bool:
+        if url.endswith("/mauvaise"):
+            raise ValueError("adresse invalide")
+        return True
+
+    monkeypatch.setattr(travailleurs_module, "verifier_disponibilite", verifier)
+    candidatures = {
+        "A": {"offre_url": "https://exemple.test/bonne"},
+        "B": {"offre_url": "https://exemple.test/mauvaise"},
+    }
+    resultats: list[tuple[dict[str, bool], dict[str, str]]] = []
+    verificateur = travailleurs_module.VerificateurDisponibilite(
+        candidatures  # type: ignore[arg-type]
+    )
+    verificateur.resultat.connect(lambda ok, ko: resultats.append((ok, ko)))
+    verificateur.executer()
+
+    assert resultats == [({"A": True}, {"B": "ValueError"})]
+
+
+def test_verificateur_maj_exception_inattendue_emet_un_echec(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from src.gui import travailleurs as travailleurs_module
+
+    def casse() -> None:
+        raise TypeError("imprévu")
+
+    monkeypatch.setattr(travailleurs_module, "verifier_derniere_publication", casse)
+    echecs: list[str] = []
+    verificateur = VerificateurMiseAJour()
+    verificateur.echec.connect(echecs.append)
+    verificateur.executer()
+
+    assert echecs == [travailleurs_module.MESSAGE_INATTENDU]
+
+
+def test_verificateur_maj_marqueur_non_ecrit_n_empeche_pas_l_annonce(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from src.gui import travailleurs as travailleurs_module
+
+    def refuse(_info: InfoMaj) -> None:
+        raise PermissionError("fichier tenu")
+
+    monkeypatch.setattr(
+        travailleurs_module, "verifier_derniere_publication", lambda: _INFO_MAJ_TEST
+    )
+    monkeypatch.setattr(travailleurs_module, "ecrire_maj_disponible", refuse)
+    resultats: list[InfoMaj | None] = []
+    verificateur = VerificateurMiseAJour()
+    verificateur.resultat.connect(resultats.append)
+    verificateur.executer()
+
+    assert resultats == [_INFO_MAJ_TEST]
+
+
+def test_tache_reseau_exception_inattendue_emet_un_echec() -> None:
+    from src.gui import travailleurs as travailleurs_module
+
+    def casse() -> None:
+        raise AttributeError("imprévu")
+
+    echecs: list[str] = []
+    tache = travailleurs_module.TacheReseau(casse)
+    tache.echec.connect(echecs.append)
+    tache.executer()
+
+    assert echecs == [travailleurs_module.MESSAGE_INATTENDU]

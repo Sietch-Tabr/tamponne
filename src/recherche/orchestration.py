@@ -8,6 +8,7 @@ signaux Qt.
 import logging
 from collections.abc import Callable, Mapping
 from concurrent.futures import Future, ThreadPoolExecutor
+from dataclasses import dataclass
 from typing import Final
 
 from src.donnees.cache import CacheFichesDisque, maj_cache_offres
@@ -139,6 +140,85 @@ def _ignorer(*_args: object) -> None:
     return None
 
 
+type _Resultat = tuple[list[Offre], int, bool]
+
+
+@dataclass(frozen=True)
+class _Rappels:
+    """Rappels appelés depuis les threads du pool, un par source."""
+
+    progression: Callable[[str, int, int], None]
+    fiches: Callable[[str, int, int], None]
+    source_terminee: Callable[[str], None]
+    offres_source: Callable[[str, int], None]
+
+
+def _interroger_source(
+    cle: str,
+    nom_affiche: str,
+    source: SourceOffres,
+    filtres: FiltresRecherche,
+    rappels: _Rappels,
+) -> _Resultat:
+    """Interroge une source ; une source sans offre est contrôlée (accueil du
+    site) pour distinguer une recherche vide d'un site en panne."""
+
+    def _on_page(page: int, total: int) -> None:
+        rappels.progression(nom_affiche, page, total)
+
+    def _on_fiche(lues: int, total: int) -> None:
+        rappels.fiches(nom_affiche, lues, total)
+
+    try:
+        resultat = source.rechercher(filtres, on_page=_on_page, on_fiche=_on_fiche)
+        if not resultat[0]:
+            controler_site(SITES[cle])
+        rappels.offres_source(nom_affiche, len(resultat[0]))
+        return resultat
+    finally:
+        rappels.source_terminee(nom_affiche)
+
+
+def _resultat_ou_echec(
+    futur: Future[_Resultat],
+    nom_affiche: str,
+    on_avertissement: Callable[[str], None],
+    on_echec_source: Callable[[str], None],
+) -> _Resultat | None:
+    """Résultat d'une source, ou `None` si elle a échoué (l'échec est alors
+    signalé et journalisé, les autres sources restent affichées)."""
+    try:
+        return futur.result()
+    except RuntimeError as erreur:
+        journal.warning("%s indisponible\u00a0: %s", nom_affiche, erreur)
+        on_avertissement(f"{nom_affiche} indisponible\u00a0: {erreur}")
+    # Page au format imprévu (site modifié) : cette source seule est perdue.
+    except Exception as erreur:  # noqa: BLE001
+        journal.exception("%s\u00a0: réponse inattendue du site", nom_affiche)
+        on_avertissement(
+            f"{nom_affiche} indisponible\u00a0: réponse inattendue du site "
+            f"({type(erreur).__name__}\u00a0: {erreur})"
+        )
+    on_echec_source(nom_affiche)
+    return None
+
+
+def _regles_de_fusion(
+    cle: str,
+    offres: list[Offre],
+    filtres: FiltresRecherche,
+    deja_trouvees: list[Offre],
+) -> list[Offre]:
+    """Offres d'une source à ajouter aux résultats : fenêtre de publication
+    pour les sources qui ne la filtrent pas, doublons FHF écartés."""
+    fenetre = filtres.get("date_publication")
+    if fenetre and cle not in _SOURCES_AVEC_DATE:
+        offres = [o for o in offres if date_dans_fenetre(o["date"], fenetre)]
+    if cle == "fhf":
+        offres = filtrer_doublons_fhf(offres, deja_trouvees)
+    return offres
+
+
 def rechercher_toutes_sources(
     filtres: FiltresRecherche,
     orgas_cache: Organisations,
@@ -148,6 +228,7 @@ def rechercher_toutes_sources(
     on_fiches: Callable[[str, int, int], None] = _ignorer,
     on_source_terminee: Callable[[str], None] = _ignorer,
     on_avertissement: Callable[[str], None] = _ignorer,
+    on_echec_source: Callable[[str], None] = _ignorer,
     on_offres_source: Callable[[str, int], None] = _ignorer,
 ) -> tuple[list[Offre], int, bool]:
     """Interroge les sources actives en parallèle, puis fusionne et
@@ -172,6 +253,8 @@ def rechercher_toutes_sources(
             échec) — depuis les threads du pool.
         on_avertissement: Appelé pour chaque source en échec, sans
             interrompre les autres.
+        on_echec_source: Appelé avec le nom affiché de chaque source en
+            échec (en plus de `on_avertissement`).
         on_offres_source: Appelé avec (nom affiché, nombre d'offres
             trouvées avant dédoublonnage) quand une source réussit —
             depuis les threads du pool.
@@ -197,64 +280,34 @@ def rechercher_toutes_sources(
                 "ses offres ne sont pas triées sur ce critère."
             )
 
-    def _interroger(
-        cle: str, nom_affiche: str, source: SourceOffres
-    ) -> tuple[list[Offre], int, bool]:
-        def _on_page(page: int, total: int) -> None:
-            on_progression(nom_affiche, page, total)
-
-        def _on_fiche(lues: int, total: int) -> None:
-            on_fiches(nom_affiche, lues, total)
-
-        try:
-            resultat = source.rechercher(filtres, on_page=_on_page, on_fiche=_on_fiche)
-            if not resultat[0]:
-                # Aucune offre : recherche vide, ou site en panne qui répond
-                # par une page sans offres. L'accueil tranche.
-                controler_site(SITES[cle])
-            on_offres_source(nom_affiche, len(resultat[0]))
-            return resultat
-        finally:
-            on_source_terminee(nom_affiche)
-
+    rappels = _Rappels(on_progression, on_fiches, on_source_terminee, on_offres_source)
+    toutes_offres: list[Offre] = []
+    nb_pages_reference = 1
+    arret_anticipe_reference = False
+    nb_echecs = 0
     with ThreadPoolExecutor(max_workers=len(sources)) as pool:
-        futurs: list[tuple[str, str, Future[tuple[list[Offre], int, bool]]]] = []
+        futurs: list[tuple[str, str, Future[_Resultat]]] = []
         for cle, nom_affiche, source in sources:
             on_source_en_cours(nom_affiche)
             futurs.append(
-                (cle, nom_affiche, pool.submit(_interroger, cle, nom_affiche, source))
+                (
+                    cle,
+                    nom_affiche,
+                    pool.submit(
+                        _interroger_source, cle, nom_affiche, source, filtres, rappels
+                    ),
+                )
             )
 
-        toutes_offres: list[Offre] = []
-        nb_pages_reference = 1
-        arret_anticipe_reference = False
-        nb_echecs = 0
         for cle, nom_affiche, futur in futurs:
-            try:
-                offres, nb_pages, arret_anticipe = futur.result()
-            except RuntimeError as erreur:
+            resultat = _resultat_ou_echec(
+                futur, nom_affiche, on_avertissement, on_echec_source
+            )
+            if resultat is None:
                 nb_echecs += 1
-                journal.warning("%s indisponible\u00a0: %s", nom_affiche, erreur)
-                on_avertissement(f"{nom_affiche} indisponible\u00a0: {erreur}")
                 continue
-            # Page au format imprévu (site modifié) : cette source seule est
-            # perdue, les autres restent affichées.
-            except Exception as erreur:  # noqa: BLE001
-                nb_echecs += 1
-                journal.exception("%s\u00a0: réponse inattendue du site", nom_affiche)
-                on_avertissement(
-                    f"{nom_affiche} indisponible\u00a0: réponse inattendue du site "
-                    f"({type(erreur).__name__}\u00a0: {erreur})"
-                )
-                continue
-            if fenetre := filtres.get("date_publication"):
-                if cle not in _SOURCES_AVEC_DATE:
-                    offres = [
-                        o for o in offres if date_dans_fenetre(o["date"], fenetre)
-                    ]
-            if cle == "fhf":
-                offres = filtrer_doublons_fhf(offres, toutes_offres)
-            toutes_offres.extend(offres)
+            offres, nb_pages, arret_anticipe = resultat
+            toutes_offres.extend(_regles_de_fusion(cle, offres, filtres, toutes_offres))
             if cle == "choisirleservicepublic":
                 nb_pages_reference = nb_pages
                 arret_anticipe_reference = arret_anticipe
@@ -300,7 +353,12 @@ def post_traiter_resultats(
     nouvelles: set[str] = set()
     if nom_profil:
         nouvelles = maj_cache_offres(nom_profil, offres_filtrees)
-        noter_lancement(nom_profil)
+        try:
+            noter_lancement(nom_profil)
+        except OSError as erreur:
+            journal.warning(
+                "Date de lancement de la fiche non enregistrée\u00a0: %s", erreur
+            )
 
     return {"offres": offres_filtrees, "nb_exclus": nb_exclus, "nouvelles": nouvelles}
 

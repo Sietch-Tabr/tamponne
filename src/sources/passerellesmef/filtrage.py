@@ -92,27 +92,49 @@ def _organisation_correspond(direction: str, sous_organisations: list[str]) -> b
     )
 
 
+def _categorie_acceptee(fiche: FicheFiltrage, filtres: FiltresRecherche) -> bool:
+    categories = [c for c in filtres.get("categories", []) if c in CATEGORIES]
+    return not (
+        categories and fiche["categorie"] and fiche["categorie"] not in categories
+    )
+
+
+def _domaine_accepte(fiche: FicheFiltrage, filtres: FiltresRecherche) -> bool:
+    domaines = filtres.get("domaines")
+    return not (
+        domaines
+        and fiche["secteur"]
+        and not _domaine_correspond(fiche["secteur"], domaines)
+    )
+
+
+def _organisation_acceptee(fiche: FicheFiltrage, filtres: FiltresRecherche) -> bool:
+    organisations = organisations_de_bercy(filtres.get("organisations", []))
+    return not (
+        organisations
+        and fiche["direction"]
+        and not _organisation_correspond(fiche["direction"], organisations)
+    )
+
+
+def _experience_acceptee(fiche: FicheFiltrage, filtres: FiltresRecherche) -> bool:
+    experience = filtres.get("experience") or ""
+    return not (
+        experience in EXPERIENCES
+        and fiche["experience"]
+        and normaliser(fiche["experience"]) != normaliser(experience)
+    )
+
+
 def fiche_correspond(fiche: FicheFiltrage, filtres: FiltresRecherche) -> bool:
     """Vrai si la fiche respecte catégories, domaines, organisations,
     expérience, management et télétravail. Une information absente de la
     fiche n'écarte pas l'offre."""
-    if categories := [c for c in filtres.get("categories", []) if c in CATEGORIES]:
-        if fiche["categorie"] and fiche["categorie"] not in categories:
-            return False
-    if domaines := filtres.get("domaines"):
-        if fiche["secteur"] and not _domaine_correspond(fiche["secteur"], domaines):
-            return False
-    if organisations := organisations_de_bercy(filtres.get("organisations", [])):
-        if fiche["direction"] and not _organisation_correspond(
-            fiche["direction"], organisations
-        ):
-            return False
-    experience = filtres.get("experience") or ""
-    if experience in EXPERIENCES and fiche["experience"]:
-        if normaliser(fiche["experience"]) != normaliser(experience):
-            return False
-    if filtres.get("management") and not fiche["management"]:
-        return False
-    if filtres.get("teletravail") and not fiche["teletravail"]:
-        return False
-    return True
+    return (
+        _categorie_acceptee(fiche, filtres)
+        and _domaine_accepte(fiche, filtres)
+        and _organisation_acceptee(fiche, filtres)
+        and _experience_acceptee(fiche, filtres)
+        and (not filtres.get("management") or fiche["management"])
+        and (not filtres.get("teletravail") or fiche["teletravail"])
+    )

@@ -290,14 +290,6 @@ def dernier_evenement(candidature: Candidature) -> EvenementCandidature | None:
     return sorted(historique, key=lambda e: e["date"])[-1]
 
 
-def statut_libelle(candidature: Candidature) -> str:
-    """Libellé lisible du statut courant, dérivé du dernier événement."""
-    dernier = dernier_evenement(candidature)
-    if dernier is None:
-        return "Aucun événement"
-    return TYPES_EVENEMENT.get(dernier["type"], dernier["type"])
-
-
 def marquer_disponibilite(reference: str, disponible: bool) -> None:
     """Persiste le résultat d'une vérification de disponibilité. La date de
     dépublication est celle de la première vérification qui la constate."""

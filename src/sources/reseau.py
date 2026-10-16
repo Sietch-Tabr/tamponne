@@ -21,6 +21,9 @@ lazy import urllib3
 
 DELAI = 30
 """Secondes d'attente pour se connecter, puis pour chaque lecture."""
+TAILLE_MAX_REPONSE = 32 * 1024 * 1024
+"""Octets lus au plus par réponse, décompressés (une page de Choisir le service
+public en pèse 4,4 millions) : un site défaillant ne doit pas remplir la mémoire."""
 LECTEURS_MAX = 8
 """Connexions gardées ouvertes par site ; au-delà elles sont fermées après usage."""
 _REDIRECTIONS_MAX = 8
@@ -97,17 +100,43 @@ def _gestionnaire(url: str) -> Any:
 
 def _cookie_expire(cookie: str) -> bool:
     """Vrai si l'en-tête `Set-Cookie` supprime le cookie (durée nulle ou date
-    passée), comme le fait le site pour effacer un cookie."""
+    passée), comme le fait le site pour effacer un cookie. `Max-Age` l'emporte
+    sur `Expires`, quel que soit leur ordre."""
+    attributs = {}
     for attribut in cookie.split(";")[1:]:
         nom, _, valeur = attribut.strip().partition("=")
-        if nom.lower() == "max-age":
-            return valeur.strip().lstrip("-").isdigit() and int(valeur) <= 0
-        if nom.lower() == "expires":
-            try:
-                return parsedate_to_datetime(valeur) < datetime.now(UTC)
-            except TypeError, ValueError:
-                return False
+        attributs[nom.lower()] = valeur.strip()
+    if "max-age" in attributs:
+        duree = attributs["max-age"]
+        return duree.lstrip("-").isdigit() and int(duree) <= 0
+    if "expires" in attributs:
+        try:
+            return parsedate_to_datetime(attributs["expires"]) < datetime.now(UTC)
+        except TypeError, ValueError:
+            return False
     return False
+
+
+def _lire_corps(reponse: Any, url: str) -> bytes:
+    """Corps décompressé de `reponse`, par morceaux, sans dépasser
+    `TAILLE_MAX_REPONSE`. La connexion est rendue à la réserve, ou fermée si
+    la réponse est abandonnée.
+
+    Raises:
+        RuntimeError: Réponse plus grosse que la limite.
+    """
+    morceaux: list[bytes] = []
+    total = 0
+    try:
+        for morceau in reponse.stream(65536, decode_content=True):
+            total += len(morceau)
+            if total > TAILLE_MAX_REPONSE:
+                reponse.close()
+                raise RuntimeError(f"Réponse trop volumineuse pour {url}")
+            morceaux.append(morceau)
+    finally:
+        reponse.release_conn()
+    return b"".join(morceaux)
 
 
 class Session:
@@ -169,9 +198,11 @@ class Session:
                     body=corps,
                     headers=entetes,
                     redirect=False,
-                    preload_content=True,
+                    preload_content=False,
                 )
-            except (urllib3.exceptions.HTTPError, OSError) as erreur:
+                contenu = _lire_corps(reponse, url)
+            # Les adresses de redirection invalides lèvent des `ValueError`.
+            except (urllib3.exceptions.HTTPError, OSError, ValueError) as erreur:
                 raise RuntimeError(
                     f"Erreur réseau lors du chargement de {url} : "
                     f"{getattr(erreur, 'reason', erreur)}"
@@ -185,5 +216,5 @@ class Session:
                 continue
             if reponse.status >= 400:
                 raise ErreurHttp(reponse.status, url)
-            return Reponse(courante, reponse.status, reponse.data)
+            return Reponse(courante, reponse.status, contenu)
         raise RuntimeError(f"Trop de redirections lors du chargement de {url}")

@@ -3,6 +3,7 @@
 import io
 import json
 import shutil
+import tempfile
 import urllib.request
 import zipfile
 from collections.abc import Callable
@@ -450,17 +451,122 @@ def test_appliquer_maj_refuse_une_archive_hors_du_depot() -> None:
         maj.appliquer_maj(info)
 
 
+class _ReponseTelechargee(io.BytesIO):
+    """Réponse de `urlopen` : lisible, avec l'adresse finale après redirection."""
+
+    def __init__(self, contenu: bytes, url: str) -> None:
+        super().__init__(contenu)
+        self._url = url
+
+    def geturl(self) -> str:
+        return self._url
+
+
 def test_telecharger_enregistre_la_reponse_avec_un_delai(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     delais: list[float] = []
 
-    def urlopen(url: str, timeout: float) -> io.BytesIO:
+    def urlopen(url: str, timeout: float) -> _ReponseTelechargee:
         delais.append(timeout)
-        return io.BytesIO(b"archive")
+        return _ReponseTelechargee(b"archive", url)
 
     monkeypatch.setattr(urllib.request, "urlopen", urlopen)
     destination = tmp_path / "maj.zip"
     maj._telecharger("https://codeberg.org/Kwaite/tamponne/archive/v1.zip", destination)
     assert destination.read_bytes() == b"archive"
     assert delais == [maj._TIMEOUT_TELECHARGEMENT]
+
+
+def test_telecharger_refuse_une_redirection_hors_de_codeberg(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        urllib.request,
+        "urlopen",
+        lambda url, timeout: _ReponseTelechargee(b"x", "https://evil.example/a.zip"),
+    )
+    with pytest.raises(RuntimeError, match="hors de Codeberg"):
+        maj._telecharger(
+            "https://codeberg.org/Kwaite/tamponne/archive/v1.zip", tmp_path / "m.zip"
+        )
+
+
+def test_telecharger_abandonne_une_archive_trop_volumineuse(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(maj, "TAILLE_MAX_ARCHIVE", 10)
+    monkeypatch.setattr(
+        urllib.request,
+        "urlopen",
+        lambda url, timeout: _ReponseTelechargee(b"x" * 100, url),
+    )
+    with pytest.raises(RuntimeError, match="trop volumineuse"):
+        maj._telecharger(
+            "https://codeberg.org/Kwaite/tamponne/archive/v1.zip", tmp_path / "m.zip"
+        )
+
+
+def test_marqueur_incomplet_est_complete_par_des_valeurs_vides() -> None:
+    maj.CHEMIN_MARQUEUR.write_text('{"version": "1.1.0"}', encoding="utf-8")
+    assert maj.lire_maj_disponible() == {
+        "version": "1.1.0",
+        "notes": "",
+        "url_zip": "",
+        "url_publication": "",
+    }
+
+
+def test_marqueur_de_mauvais_type_est_ignore() -> None:
+    maj.CHEMIN_MARQUEUR.write_text("[1, 2]", encoding="utf-8")
+    assert maj.lire_maj_disponible() is None
+    maj.CHEMIN_MARQUEUR.write_text(
+        '{"version": 1, "notes": "", "url_zip": "", "url_publication": ""}',
+        encoding="utf-8",
+    )
+    assert maj.lire_maj_disponible() is None
+
+
+def test_installer_archive_ne_purge_pas_src_si_la_publication_n_en_a_pas(
+    tmp_path: Path,
+) -> None:
+    racine = tmp_path / "installation"
+    (racine / "src").mkdir(parents=True)
+    (racine / "src" / "ancien.py").write_text("# à garder\n", encoding="utf-8")
+    extrait = tmp_path / "extrait"
+    extrait.mkdir()
+    (extrait / "pyproject.toml").write_text("[project]\n", encoding="utf-8")
+
+    maj.installer_archive(extrait, racine)
+
+    assert (racine / "src" / "ancien.py").exists()
+
+
+def test_appliquer_maj_chmod_ignore_un_nom_d_archive_hors_du_dossier(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Le dossier d'extraction vit dans le dossier temporaire du système : un
+    # nom d'archive en `../../` y atteint ce fichier-ci.
+    with tempfile.NamedTemporaryFile(delete=False) as victime:
+        chemin_victime = Path(victime.name)
+    try:
+        chemin_victime.chmod(0o600)
+        chemin_zip = tmp_path / "piege.zip"
+        with zipfile.ZipFile(chemin_zip, "w") as archive:
+            info = zipfile.ZipInfo("tamponne-abc123/pyproject.toml")
+            info.external_attr = 0o100644 << 16
+            archive.writestr(info, '[project]\nversion = "1.1.0"\n')
+            piege = zipfile.ZipInfo(f"tamponne-abc123/../../{chemin_victime.name}")
+            piege.external_attr = 0o100777 << 16
+            archive.writestr(piege, "x")
+        monkeypatch.setattr(
+            maj,
+            "_telecharger",
+            lambda url, destination: shutil.copy(chemin_zip, destination),
+        )
+
+        maj.appliquer_maj(_info())
+
+        assert (chemin_victime.stat().st_mode & 0o777) == 0o600
+    finally:
+        chemin_victime.unlink(missing_ok=True)

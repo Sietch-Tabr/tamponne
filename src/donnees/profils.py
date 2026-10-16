@@ -6,7 +6,7 @@ from datetime import date
 from typing import Any, cast
 
 from src.chemins import DATA
-from src.filtres import categorie_normalisee, resumer_filtres
+from src.filtres import categorie_normalisee
 from src.types import FiltresRecherche, Profil
 from src.utils import ecriture_atomique
 
@@ -116,13 +116,3 @@ def versants_compatibles(profil: FiltresRecherche) -> list[str]:
     if ancien == "__tous__":
         return []
     return [str(ancien)]
-
-
-def resume_profil(profil: Profil) -> str:
-    """Retourne une ligne de résumé lisible pour l'affichage dans les menus.
-
-    `Profil` étend `FiltresRecherche` : délègue à `resumer_filtres`,
-    seule implémentation (avant, une copie légèrement divergente
-    existait ici — sans le versant notamment).
-    """
-    return resumer_filtres(profil)

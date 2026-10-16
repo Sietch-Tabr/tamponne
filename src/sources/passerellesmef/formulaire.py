@@ -73,6 +73,36 @@ def _sans_effectif(libelle: str) -> str:
     return _RE_EFFECTIF.sub("", libelle).strip()
 
 
+def _lire_champ(formulaire: Formulaire, champ: Tag) -> None:
+    """Range un `<input>` de la page dans `formulaire`."""
+    nom = str(champ.get("name", ""))
+    type_champ = str(champ.get("type", "text")).lower()
+    if type_champ == "hidden" and nom:
+        formulaire.caches[nom] = str(champ.get("value", ""))
+    elif type_champ == "submit" and nom.endswith("BT_recherche"):
+        formulaire.bouton = (nom, str(champ.get("value", "")))
+    elif nom.endswith("OfferCriteria_Keywords"):
+        formulaire.mots_cles = nom
+    elif type_champ == "checkbox" and nom:
+        _ranger_case(formulaire, champ, nom)
+
+
+def _ranger_case(formulaire: Formulaire, champ: Tag, nom: str) -> None:
+    """Case à cocher de région, de domaine (premier niveau) ou d'organisme."""
+    case = Case(
+        _sans_effectif(str(champ.get("aria-label", ""))),
+        nom,
+        str(champ.get("value", "")),
+    )
+    niveaux = len(str(champ.get("aria-labelledby", "")).split())
+    if "GeographicalAreaCollection" in nom:
+        formulaire.regions.append(case)
+    elif "PrimaryProfile" in nom and niveaux == 1:
+        formulaire.domaines.append(case)
+    elif "Entity" in nom:
+        formulaire.organismes.append(case)
+
+
 def analyser_formulaire(html: str) -> Formulaire:
     """Formulaire de recherche de la page `html` (vide si elle n'en a pas)."""
     soup = BeautifulSoup(html, "html.parser")
@@ -82,28 +112,7 @@ def analyser_formulaire(html: str) -> Formulaire:
         return formulaire
 
     for champ in page.find_all("input"):
-        nom = str(champ.get("name", ""))
-        type_champ = str(champ.get("type", "text")).lower()
-        if type_champ == "hidden" and nom:
-            formulaire.caches[nom] = str(champ.get("value", ""))
-        elif type_champ == "submit" and nom.endswith("BT_recherche"):
-            formulaire.bouton = (nom, str(champ.get("value", "")))
-        elif nom.endswith("OfferCriteria_Keywords"):
-            formulaire.mots_cles = nom
-        elif type_champ == "checkbox" and nom:
-            case = Case(
-                _sans_effectif(str(champ.get("aria-label", ""))),
-                nom,
-                str(champ.get("value", "")),
-            )
-            niveaux = len(str(champ.get("aria-labelledby", "")).split())
-            if "GeographicalAreaCollection" in nom:
-                formulaire.regions.append(case)
-            elif "PrimaryProfile" in nom and niveaux == 1:
-                formulaire.domaines.append(case)
-            elif "Entity" in nom:
-                formulaire.organismes.append(case)
-
+        _lire_champ(formulaire, champ)
     for liste in page.find_all("select"):
         options = {
             cle: str(option.get("value", ""))
@@ -209,19 +218,24 @@ def construire_recherche(
         champs[formulaire.champ_categorie] = formulaire.categories[categories[0]]
         appliques.add("categories")
 
-    if domaines := filtres.get("domaines"):
-        if (cases := _cocher_domaines(formulaire, domaines)) is not None:
-            champs.update({c.nom: c.valeur for c in cases})
-            appliques.add("domaines")
+    domaines = filtres.get("domaines")
+    if domaines and (cases := _cocher_domaines(formulaire, domaines)) is not None:
+        champs.update({c.nom: c.valeur for c in cases})
+        appliques.add("domaines")
 
-    if sous_organisations:
-        if (cases := _cocher_organismes(formulaire, sous_organisations)) is not None:
-            champs.update({c.nom: c.valeur for c in cases})
-            appliques.add("organisations")
+    if (
+        sous_organisations
+        and (cases := _cocher_organismes(formulaire, sous_organisations)) is not None
+    ):
+        champs.update({c.nom: c.valeur for c in cases})
+        appliques.add("organisations")
 
-    if localisations := filtres.get("localisations"):
-        if (cases := _cocher_regions(formulaire, localisations)) is not None:
-            champs.update({c.nom: c.valeur for c in cases})
+    localisations = filtres.get("localisations")
+    if (
+        localisations
+        and (cases := _cocher_regions(formulaire, localisations)) is not None
+    ):
+        champs.update({c.nom: c.valeur for c in cases})
 
     if not champs:
         return {}, frozenset()

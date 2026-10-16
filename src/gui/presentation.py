@@ -15,7 +15,7 @@ from src.donnees.candidatures import (
     dernier_evenement,
     relance_suggeree,
 )
-from src.filtres import LIBELLES_CATEGORIES, categorie_normalisee
+from src.filtres import LIBELLES_CATEGORIES, categorie_normalisee, premier_et_reste
 from src.types import Candidature, DetailOffre, Profil
 
 LIBELLES_TAMPON: Final[Mapping[str, str]] = {
@@ -91,7 +91,8 @@ def _phrase_statut(candidature: Candidature, archive_presente: bool) -> str:
         phrase = "aucun événement"
     else:
         libelle = TYPES_EVENEMENT.get(dernier["type"], dernier["type"])
-        phrase = f"{libelle[:1].lower()}{libelle[1:]} le {reformater_date_iso(dernier['date'])}"
+        quand = reformater_date_iso(dernier["date"])
+        phrase = f"{libelle[:1].lower()}{libelle[1:]} le {quand}"
         if dernier.get("note"):
             phrase += f" ({dernier['note']})"
     if not candidature.get("disponible", True):
@@ -259,9 +260,28 @@ _VERSANTS_FICHE: Final[Mapping[str, str]] = {
 }
 
 
-def _premier_et_reste(valeurs: list[str]) -> str:
-    """« Premier +N » : la fiche n'a la place que pour le premier élément."""
-    return valeurs[0] + (f" +{len(valeurs) - 1}" if len(valeurs) > 1 else "")
+def _autres_criteres(profil: Profil, categories: list[str]) -> list[str]:
+    """Domaines, organisations, grades, expérience, date de publication,
+    mot-clé et grades supérieurs d'un profil, dans l'ordre de la fiche."""
+    autres: list[str] = []
+    if domaines := profil.get("domaines"):
+        autres.append(premier_et_reste(domaines))
+    if organisations := profil.get("organisations"):
+        autres.append(premier_et_reste([o.split(" - ")[-1] for o in organisations]))
+    if grades := profil.get("grades"):
+        autres.append(premier_et_reste(grades))
+    autres.extend(
+        valeur.lower()
+        for valeur in (profil.get("experience"), profil.get("date_publication"))
+        if valeur
+    )
+    if mot_cle := profil.get("query"):
+        autres.append(f"mot-clé «\u00a0{mot_cle}\u00a0»")
+    # Les grades supérieurs (IDIV, IP, AFIPA) ne concernent que la catégorie A+.
+    if not categories or any(c.startswith("A+") for c in categories):
+        inclus = profil.get("grades_superieurs")
+        autres.append(f"grades supérieurs {'inclus' if inclus else 'exclus'}")
+    return autres
 
 
 def lignes_fiche(profil: Profil) -> list[str]:
@@ -291,32 +311,14 @@ def lignes_fiche(profil: Profil) -> list[str]:
     )
 
     localisations = profil.get("localisations") or []
-    lieu = [_premier_et_reste(localisations) if localisations else "Toute la France"]
+    lieu = [premier_et_reste(localisations) if localisations else "Toute la France"]
     if profil.get("teletravail"):
         lieu.append("télétravail")
     if profil.get("management"):
         lieu.append("management")
 
-    autres: list[str] = []
-    if domaines := profil.get("domaines"):
-        autres.append(_premier_et_reste(domaines))
-    if organisations := profil.get("organisations"):
-        autres.append(_premier_et_reste([o.split(" - ")[-1] for o in organisations]))
-    if grades := profil.get("grades"):
-        autres.append(_premier_et_reste(grades))
-    if experience := profil.get("experience"):
-        autres.append(experience.lower())
-    if date_publication := profil.get("date_publication"):
-        autres.append(date_publication.lower())
-    if mot_cle := profil.get("query"):
-        autres.append(f"mot-clé «\u00a0{mot_cle}\u00a0»")
-    # Les grades supérieurs (IDIV, IP, AFIPA) ne concernent que la catégorie A+.
-    if not categories or any(c.startswith("A+") for c in categories):
-        inclus = profil.get("grades_superieurs")
-        autres.append(f"grades supérieurs {'inclus' if inclus else 'exclus'}")
-
     lignes = [ligne_statut, " · ".join(lieu)]
-    if autres:
+    if autres := _autres_criteres(profil, categories):
         lignes.append(" · ".join(autres))
     return lignes
 
@@ -411,6 +413,57 @@ def _marges(blocs: list[str]) -> str:
     return f' style="margin-top:{haut}px;margin-bottom:0"'
 
 
+class _NotesHtml:
+    """Construit le HTML des notes de version ligne à ligne : un paragraphe ou
+    une liste à puces en cours est clos par la ligne suivante qui n'en est pas."""
+
+    def __init__(self) -> None:
+        self.blocs: list[str] = []
+        self.paragraphe: list[str] = []
+        self.puces: list[str] = []
+
+    def fermer(self) -> None:
+        if self.paragraphe:
+            texte = _en_ligne(" ".join(self.paragraphe))
+            self.blocs.append(f"<p{_marges(self.blocs)}>{texte}</p>")
+            self.paragraphe.clear()
+        if self.puces:
+            elements = "".join(f"<li>{_en_ligne(p)}</li>" for p in self.puces)
+            self.blocs.append(
+                f'<ul style="margin-top:4px;margin-bottom:0">{elements}</ul>'
+            )
+            self.puces.clear()
+
+    def titre(self, brute: str) -> None:
+        self.fermer()
+        texte = _en_ligne(brute.lstrip("#").strip())
+        self.blocs.append(f"<p{_marges(self.blocs)}><b>{texte}</b></p>")
+
+    def puce(self, brute: str) -> None:
+        if self.paragraphe:
+            self.fermer()
+        self.puces.append(_PUCE.sub("", brute))
+
+    def texte(self, ligne: str, brute: str) -> None:
+        if self.puces and ligne[:1].isspace():
+            self.puces[-1] += " " + brute  # suite d'une puce, indentée
+            return
+        if self.puces:
+            self.fermer()
+        self.paragraphe.append(brute)
+
+    def ligne(self, ligne: str) -> None:
+        brute = ligne.strip()
+        if not brute:
+            self.fermer()
+        elif brute.startswith("#"):
+            self.titre(brute)
+        elif _PUCE.match(brute):
+            self.puce(brute)
+        else:
+            self.texte(ligne, brute)
+
+
 def notes_en_html(markdown: str) -> str:
     """Notes de version Codeberg (Markdown) en HTML au style maîtrisé.
 
@@ -425,39 +478,11 @@ def notes_en_html(markdown: str) -> str:
     Returns:
         Fragment HTML pour un `Text` QML en `RichText`.
     """
-    blocs: list[str] = []
-    paragraphe: list[str] = []
-    puces: list[str] = []
-
-    def fermer() -> None:
-        if paragraphe:
-            blocs.append(f"<p{_marges(blocs)}>{_en_ligne(' '.join(paragraphe))}</p>")
-            paragraphe.clear()
-        if puces:
-            elements = "".join(f"<li>{_en_ligne(p)}</li>" for p in puces)
-            blocs.append(f'<ul style="margin-top:4px;margin-bottom:0">{elements}</ul>')
-            puces.clear()
-
+    notes = _NotesHtml()
     for ligne in markdown.replace("\r\n", "\n").split("\n"):
-        brute = ligne.strip()
-        if not brute:
-            fermer()
-        elif brute.startswith("#"):
-            fermer()
-            titre = _en_ligne(brute.lstrip("#").strip())
-            blocs.append(f"<p{_marges(blocs)}><b>{titre}</b></p>")
-        elif _PUCE.match(brute):
-            if paragraphe:
-                fermer()
-            puces.append(_PUCE.sub("", brute))
-        elif puces and ligne[:1].isspace():
-            puces[-1] += " " + brute
-        else:
-            if puces:
-                fermer()
-            paragraphe.append(brute)
-    fermer()
-    return "".join(blocs)
+        notes.ligne(ligne)
+    notes.fermer()
+    return "".join(notes.blocs)
 
 
 TEXTES_RACCOURCI: Final[Mapping[str, str]] = {

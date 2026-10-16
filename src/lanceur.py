@@ -25,6 +25,7 @@ s'arrête au lieu d'ouvrir une deuxième fenêtre ou de relancer l'installation.
 Sans dépendance à Qt : l'interface n'est importée que par le sous-processus.
 """
 
+import contextlib
 import ctypes
 import os
 import platform
@@ -216,8 +217,10 @@ def anonymiser(texte: str) -> str:
     journal est joint aux signalements publics, le nom de la session n'a
     pas à y figurer."""
     personnel = Path.home()
+    # Windows ne distingue pas les majuscules dans un chemin.
+    casse = re.IGNORECASE if sys.platform == "win32" else 0
     for forme in {str(personnel), personnel.as_posix()}:
-        texte = texte.replace(forme, "~")
+        texte = re.sub(re.escape(forme), "~", texte, flags=casse)
     return texte
 
 
@@ -226,10 +229,8 @@ def ouvrir_journal() -> None:
     `TAILLE_MAX_JOURNAL` (une seule archive, `CHEMIN_JOURNAL_ARCHIVE`), puis
     écrit l'en-tête daté avec les versions de Tamponné, du système et de
     Python. Retire au passage l'ancien journal (`NOM_ANCIEN_JOURNAL`)."""
-    try:
+    with contextlib.suppress(OSError):
         (CHEMIN_JOURNAL.parent / NOM_ANCIEN_JOURNAL).unlink(missing_ok=True)
-    except OSError:
-        pass
     try:
         if CHEMIN_JOURNAL.stat().st_size > TAILLE_MAX_JOURNAL:
             CHEMIN_JOURNAL.replace(CHEMIN_JOURNAL_ARCHIVE)
@@ -270,6 +271,10 @@ def _ctrl_c_laisse_a_l_enfant() -> Iterator[None]:
         signal.signal(signal.SIGINT, precedent)
 
 
+CODE_LANCEMENT_IMPOSSIBLE = 127
+"""Code rendu quand la commande n'a pas pu démarrer (convention du shell)."""
+
+
 def _executer(commande: Sequence[str]) -> int:
     """Lance `commande` depuis la racine de l'installation et attend sa fin.
     Ses sorties s'affichent au fil de l'eau (`_afficher`) et sont ajoutées à
@@ -282,16 +287,24 @@ def _executer(commande: Sequence[str]) -> int:
         if sys.platform == "win32":
             drapeaux = subprocess.CREATE_NO_WINDOW
         with _ctrl_c_laisse_a_l_enfant():
-            processus = subprocess.Popen(
-                commande,
-                cwd=CHEMIN_RACINE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                encoding="utf-8",
-                errors="replace",
-                creationflags=drapeaux,
-            )
-            assert processus.stdout is not None
+            try:
+                processus = subprocess.Popen(
+                    commande,
+                    cwd=CHEMIN_RACINE,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    encoding="utf-8",
+                    errors="replace",
+                    creationflags=drapeaux,
+                )
+            except OSError as erreur:
+                # Programme introuvable ou refusé : un code d'échec, pas une trace.
+                message = f"Impossible de lancer {commande[0]}\u00a0: {erreur}\n"
+                journal.write(anonymiser(message))
+                _afficher(anonymiser(message))
+                return CODE_LANCEMENT_IMPOSSIBLE
+            if processus.stdout is None:
+                return processus.wait()
             for ligne in processus.stdout:
                 journal.write(anonymiser(ligne))
                 journal.flush()

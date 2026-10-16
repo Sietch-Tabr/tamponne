@@ -5,7 +5,7 @@ import logging
 import threading
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 lazy from bs4 import BeautifulSoup, Tag
 
@@ -27,19 +27,26 @@ TTL_DETAILS = 24 * 3600  # 1 jour : une offre pourvue est dépubliée
 MAXIMUM_DETAILS = 300
 
 
-def _charger_cache() -> dict[str, Any]:
-    """Charge le cache JSON depuis le disque."""
-    if not CHEMIN_CACHE.exists():
+def _lire_json_dict(chemin: Path) -> dict[str, Any]:
+    """Objet JSON de `chemin`, `{}` s'il est absent, illisible ou d'un autre
+    type (liste, `null`) : un cache abîmé se reconstruit, il ne fait pas échouer."""
+    if not chemin.exists():
         return {}
     try:
-        return json.loads(CHEMIN_CACHE.read_text(encoding="utf-8"))
+        donnees = json.loads(chemin.read_text(encoding="utf-8"))
     except json.JSONDecodeError, OSError:
+        donnees = None
+    if not isinstance(donnees, dict):
         # Journal plutôt qu'un message d'interface : ce module n'est lié à
         # aucune interface particulière.
-        journal.warning(
-            "%s illisible ou corrompu, cache réinitialisé.", CHEMIN_CACHE.name
-        )
+        journal.warning("%s illisible ou corrompu, cache réinitialisé.", chemin.name)
         return {}
+    return donnees
+
+
+def _charger_cache() -> dict[str, Any]:
+    """Charge le cache JSON depuis le disque."""
+    return _lire_json_dict(CHEMIN_CACHE)
 
 
 def _sauvegarder_cache(cache: dict[str, Any]) -> None:
@@ -50,7 +57,7 @@ def _sauvegarder_cache(cache: dict[str, Any]) -> None:
 def _organisations_expirees(cache: dict[str, Any]) -> bool:
     """Retourne True si le cache organisations est absent ou expiré."""
     entree = cache.get("organisations")
-    if not entree:
+    if not isinstance(entree, dict) or not isinstance(entree.get("data"), dict):
         return True
     try:
         cached_at = datetime.fromisoformat(entree["cached_at"])
@@ -138,20 +145,33 @@ def obtenir_organisations(forcer: bool = False) -> Organisations:
 
 def _charger_offres() -> dict[str, dict[str, OffreCache]]:
     """Charge le cache des offres depuis le disque."""
-    if not CHEMIN_OFFRES.exists():
-        return {}
-    try:
-        return json.loads(CHEMIN_OFFRES.read_text(encoding="utf-8"))
-    except json.JSONDecodeError, OSError:
-        journal.warning(
-            "%s illisible ou corrompu, cache réinitialisé.", CHEMIN_OFFRES.name
-        )
-        return {}
+    return cast(dict[str, dict[str, OffreCache]], _lire_json_dict(CHEMIN_OFFRES))
 
 
 def _sauvegarder_offres(offres: dict[str, dict[str, OffreCache]]) -> None:
     """Écrit le cache des offres sur le disque."""
     ecriture_atomique(CHEMIN_OFFRES, offres)
+
+
+def _purger_offres_absentes(
+    cache_profil: dict[str, OffreCache], refs_fraiches: set[str], maintenant: datetime
+) -> None:
+    """Retire du cache d'un profil les offres absentes de la dernière recherche
+    depuis plus de `TTL_OFFRES` (ou dont la date de dernière vue est illisible)."""
+    a_purger = []
+    for ref, donnees in cache_profil.items():
+        if ref in refs_fraiches:
+            continue
+        try:
+            derniere = datetime.fromisoformat(
+                donnees.get("derniere_vue", maintenant.isoformat())
+            )
+            if (maintenant - derniere).total_seconds() > TTL_OFFRES:
+                a_purger.append(ref)
+        except ValueError, TypeError:
+            a_purger.append(ref)
+    for ref in a_purger:
+        del cache_profil[ref]
 
 
 def maj_cache_offres(nom_profil: str, offres_fraiches: list[Offre]) -> set[str]:
@@ -175,7 +195,9 @@ def maj_cache_offres(nom_profil: str, offres_fraiches: list[Offre]) -> set[str]:
     maintenant = datetime.now(UTC)
     maintenant_iso = maintenant.isoformat()
     toutes = _charger_offres()
-    cache_profil = toutes.get(nom_profil, {})
+    cache_profil = toutes.get(nom_profil)
+    if not isinstance(cache_profil, dict):
+        cache_profil = {}
 
     refs_fraiches = {o["reference"] for o in offres_fraiches if o.get("reference")}
     nouvelles: set[str] = set()
@@ -194,30 +216,15 @@ def maj_cache_offres(nom_profil: str, offres_fraiches: list[Offre]) -> set[str]:
         else:
             cache_profil[ref].update({**offre, "derniere_vue": maintenant_iso})
 
-    # Purge des offres absentes depuis plus de TTL_OFFRES
-    a_purger = []
-    for ref, donnees in cache_profil.items():
-        if ref not in refs_fraiches:
-            try:
-                derniere = datetime.fromisoformat(
-                    donnees.get("derniere_vue", maintenant_iso)
-                )
-                age = (maintenant - derniere).total_seconds()
-                if age > TTL_OFFRES:
-                    a_purger.append(ref)
-            except ValueError, TypeError:
-                a_purger.append(ref)
-    for ref in a_purger:
-        del cache_profil[ref]
+    _purger_offres_absentes(cache_profil, refs_fraiches, maintenant)
 
     toutes[nom_profil] = cache_profil
-    _sauvegarder_offres(toutes)
+    try:
+        _sauvegarder_offres(toutes)
+    except OSError as erreur:
+        # Les offres s'affichent quand même ; elles seront de nouveau « nouvelles ».
+        journal.warning("%s non enregistré\u00a0: %s", CHEMIN_OFFRES.name, erreur)
     return nouvelles
-
-
-def obtenir_offres_cachetees(nom_profil: str) -> dict[str, OffreCache]:
-    """Retourne les offres en cache pour un profil (référence → données)."""
-    return _charger_offres().get(nom_profil, {})
 
 
 # --- Cache des organisations ---
@@ -316,7 +323,15 @@ class _CacheTemporel:
             valides = [(u, e) for u, e in self._entrees.items() if self._valide(e)]
             valides.sort(key=lambda couple: couple[1]["lu_le"])
             self._entrees = dict(valides[-self._maximum :])
-            ecriture_atomique(self._chemin(), self._entrees)
+            try:
+                ecriture_atomique(self._chemin(), self._entrees)
+            except OSError as erreur:
+                # Un cache non écrit ne gâche ni une recherche ni une consultation :
+                # il sera réécrit à la prochaine occasion.
+                journal.warning(
+                    "%s non enregistré\u00a0: %s", self._chemin().name, erreur
+                )
+                return
             self._modifie = False
 
 

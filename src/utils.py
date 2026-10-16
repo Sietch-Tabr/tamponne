@@ -1,10 +1,29 @@
 """Utilitaires partagés entre les modules du projet."""
 
+import contextlib
 import json
 import os
 import tempfile
+import time
 from pathlib import Path
 from typing import Any
+
+ESSAIS_REMPLACEMENT = 4
+DELAI_REMPLACEMENT = 0.1
+"""Secondes d'attente avant le deuxième essai, doublées ensuite."""
+
+
+def _remplacer(source: str, destination: Path) -> None:
+    """`os.replace`, retenté si le fichier est tenu un instant par un autre
+    processus (antivirus, indexation) : `PermissionError` sous Windows."""
+    for essai in range(ESSAIS_REMPLACEMENT):
+        try:
+            os.replace(source, destination)
+            return
+        except PermissionError:
+            if essai == ESSAIS_REMPLACEMENT - 1:
+                raise
+            time.sleep(DELAI_REMPLACEMENT * 2**essai)
 
 
 def ecriture_atomique(chemin: Path, donnees: dict[str, Any]) -> None:
@@ -24,12 +43,10 @@ def ecriture_atomique(chemin: Path, donnees: dict[str, Any]) -> None:
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             f.write(contenu)
-        os.replace(chemin_tmp, chemin)
+        _remplacer(chemin_tmp, chemin)
     except (
         Exception
     ):  # générique intentionnel : nettoyage du temporaire quelle que soit l'erreur
-        try:
+        with contextlib.suppress(OSError):
             os.unlink(chemin_tmp)
-        except OSError:
-            pass
         raise

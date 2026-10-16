@@ -60,10 +60,8 @@ def construire_url_recherche(
         params.append(("search-filiere", filiere))
     if query:
         params.append(("search_offre_form[advsearch]", query))
-    for departement in departements or []:
-        params.append(("search_offre_form[searchdept][]", departement))
-    for categorie in categories or []:
-        params.append(("search_offre_form[searchcat][]", categorie))
+    params.extend(("search_offre_form[searchdept][]", d) for d in departements or [])
+    params.extend(("search_offre_form[searchcat][]", c) for c in categories or [])
     if experience:
         params.append(("search_offre_form[experience][]", experience))
     if management:

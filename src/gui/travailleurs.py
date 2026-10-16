@@ -24,6 +24,10 @@ from src.types import Candidature, FiltresRecherche, Organisations
 
 journal = logging.getLogger(__name__)
 
+MESSAGE_INATTENDU = "Erreur inattendue, le détail est dans le journal de Tamponné."
+"""Montré quand un traitement d'arrière-plan échoue autrement que prévu : sans
+cela le thread ne se terminerait pas et l'écran resterait « en cours »."""
+
 
 class TravailleurRecherche(QObject):
     """Adaptateur Qt de `src.recherche.orchestration.rechercher_toutes_sources` (sources
@@ -43,6 +47,8 @@ class TravailleurRecherche(QObject):
     erreur = Signal(str)
     avertissement = Signal(str)
     """Émis pour chaque source active en échec, sans interrompre les autres."""
+    echec_source = Signal(str)
+    """Nom affiché d'une source en échec (en plus de son avertissement)."""
     source_en_cours = Signal(str)
     """Nom affiché d'une source dont l'interrogation démarre."""
     source_terminee = Signal(str)
@@ -68,11 +74,16 @@ class TravailleurRecherche(QObject):
                 on_fiches=self.fiches.emit,
                 on_source_terminee=self.source_terminee.emit,
                 on_avertissement=self.avertissement.emit,
+                on_echec_source=self.echec_source.emit,
                 on_offres_source=self.offres_source.emit,
             )
         except RechercheImpossible as erreur:
             journal.error("Recherche impossible\u00a0: %s", erreur)
             self.erreur.emit(str(erreur))
+            return
+        except Exception:  # noqa: BLE001 - tout échec doit terminer le thread
+            journal.exception("Recherche interrompue par une erreur inattendue")
+            self.erreur.emit(MESSAGE_INATTENDU)
             return
         self.resultat.emit(offres, nb_pages, arret_anticipe)
 
@@ -105,6 +116,12 @@ class VerificateurDisponibilite(QObject):
             except RuntimeError as erreur:
                 journal.warning("Offre %s non vérifiée\u00a0: %s", reference, erreur)
                 echecs[reference] = str(erreur)
+            # Une offre en erreur ne bloque pas les autres.
+            except Exception as erreur:  # noqa: BLE001
+                journal.exception(
+                    "Offre %s non vérifiée (erreur inattendue)", reference
+                )
+                echecs[reference] = type(erreur).__name__
             self.progression.emit(i, total)
         self.resultat.emit(resultats, echecs)
 
@@ -132,8 +149,16 @@ class VerificateurMiseAJour(QObject):
             journal.warning("Vérification de mise à jour impossible\u00a0: %s", erreur)
             self.echec.emit(str(erreur))
             return
+        except Exception:  # noqa: BLE001 - tout échec doit terminer le thread
+            journal.exception("Vérification de mise à jour : erreur inattendue")
+            self.echec.emit(MESSAGE_INATTENDU)
+            return
         if info is not None and not maj_en_echec(info["version"]):
-            ecrire_maj_disponible(info)
+            try:
+                ecrire_maj_disponible(info)
+            except OSError as erreur:
+                # La publication reste annoncée à l'utilisateur, qui peut l'installer.
+                journal.warning("Marqueur de mise à jour non écrit\u00a0: %s", erreur)
         self.resultat.emit(info)
 
 
@@ -156,5 +181,9 @@ class TacheReseau(QObject):
             resultat = self._fonction()
         except (RuntimeError, OSError) as erreur:
             self.echec.emit(str(erreur))
+            return
+        except Exception:  # noqa: BLE001 - tout échec doit terminer le thread
+            journal.exception("Tâche réseau : erreur inattendue")
+            self.echec.emit(MESSAGE_INATTENDU)
             return
         self.termine.emit(resultat)

@@ -1,6 +1,7 @@
 """Écran Suivi côté Python : dossiers de candidature exposés au QML,
 vérification des offres en arrière-plan et actions sur un dossier."""
 
+import contextlib
 from collections.abc import Mapping
 from datetime import date
 from typing import Any, Final
@@ -76,7 +77,8 @@ def titre_ecran(total: int) -> str:
 
 def nombre_dossiers(total: int) -> str:
     """Texte du compteur sous le titre « Dossiers en cours »."""
-    return f"{total} candidature{'s' if total > 1 else ''} suivie{'s' if total > 1 else ''}"
+    pluriel = "s" if total > 1 else ""
+    return f"{total} candidature{pluriel} suivie{pluriel}"
 
 
 class ModeleDossiers(QAbstractListModel):
@@ -92,7 +94,7 @@ class ModeleDossiers(QAbstractListModel):
         self._dossiers = dossiers
         self.endResetModel()
 
-    def rowCount(self, parent: _Index = QModelIndex()) -> int:
+    def rowCount(self, parent: _Index = QModelIndex()) -> int:  # noqa: B008
         return 0 if parent.isValid() else len(self._dossiers)
 
     def roleNames(self) -> dict[int, QByteArray]:
@@ -382,8 +384,9 @@ class ControleurSuivi(QObject):
         if type_evenement not in TYPES_EVENEMENT:
             return "Type d'événement inconnu."
         if evenement_en_double(candidature, type_evenement, date_iso, sauf):
+            libelle = TYPES_EVENEMENT[type_evenement]
             return (
-                f"Déjà tamponné\u00a0: un événement «\u00a0{TYPES_EVENEMENT[type_evenement]}\u00a0»"
+                f"Déjà tamponné\u00a0: un événement «\u00a0{libelle}\u00a0»"
                 " existe à cette date."
             )
         return ""
@@ -429,10 +432,8 @@ class ControleurSuivi(QObject):
     def supprimer_evenement(self, reference: str, indice: int) -> None:
         """Retire l'événement `indice` de l'historique du dossier."""
         if reference in charger_candidatures():
-            try:
+            with contextlib.suppress(IndexError):
                 supprimer_evenement(reference, indice)
-            except IndexError:
-                pass
         self.rafraichir()
 
     @Slot(str)

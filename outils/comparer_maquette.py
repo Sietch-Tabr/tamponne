@@ -90,10 +90,18 @@ action « objectName:fonction:argument » appelée dans le QML avant la
 capture, « registre » pour remplir la recherche de démonstration, « avis »
 pour l'avis de mise à jour de démonstration, vide si aucune)."""
 
+
+def _police(fichier: str) -> str:
+    return (DOSSIER_POLICES / fichier).as_uri()
+
+
 _POLICES_LOCALES = f"""<style>
-@font-face{{font-family:'Archivo';src:url('{(DOSSIER_POLICES / "Archivo-Variable.ttf").as_uri()}');font-weight:100 900;font-stretch:62% 125%}}
-@font-face{{font-family:'IBM Plex Mono';src:url('{(DOSSIER_POLICES / "IBMPlexMono-Regular.ttf").as_uri()}');font-weight:400}}
-@font-face{{font-family:'IBM Plex Mono';src:url('{(DOSSIER_POLICES / "IBMPlexMono-SemiBold.ttf").as_uri()}');font-weight:600}}
+@font-face{{font-family:'Archivo';src:url('{_police("Archivo-Variable.ttf")}');
+  font-weight:100 900;font-stretch:62% 125%}}
+@font-face{{font-family:'IBM Plex Mono';
+  src:url('{_police("IBMPlexMono-Regular.ttf")}');font-weight:400}}
+@font-face{{font-family:'IBM Plex Mono';
+  src:url('{_police("IBMPlexMono-SemiBold.ttf")}');font-weight:600}}
 html{{scrollbar-width:none}}
 </style>"""
 

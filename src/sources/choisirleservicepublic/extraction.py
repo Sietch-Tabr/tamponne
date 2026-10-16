@@ -66,6 +66,37 @@ def _depuis_la_premiere_carte(html: str) -> str:
     return html[max(html.rfind("<div", 0, marque), 0) :]
 
 
+_PICTOS_CARTE: dict[str, str] = {
+    "fr-icon-map-pin-2-line": "localisation",
+    "fr-icon-file-line": "versant",
+    "fr-icon-user-line": "employeur",
+    "fr-icon-calendar-line": "date",
+}
+"""Classe du pictogramme d'une ligne de la carte → information qu'elle porte."""
+
+
+def _informations_carte(carte: Tag) -> dict[str, str]:
+    """Localisation, versant, employeur et date de la carte d'une offre
+    (chaîne vide pour ce que la carte n'indique pas)."""
+    infos = dict.fromkeys(_PICTOS_CARTE.values(), "")
+    for li in carte.find_all("li"):
+        classes = set(li.get_attribute_list("class"))
+        if "fr-icon--sm" not in classes:
+            continue
+        for sr in li.find_all("span", class_="sr-only"):
+            sr.decompose()
+        texte = _RE_ESPACES.sub(" ", li.get_text()).strip()
+        for classe, nom in _PICTOS_CARTE.items():
+            if classe in classes:
+                infos[nom] = texte
+                break
+    infos["localisation"] = _RE_PARENTHESE.sub(" (", infos["localisation"])
+    infos["date"] = (
+        infos["date"].replace("En ligne depuis le ", "").replace("En ligne depuis ", "")
+    )
+    return infos
+
+
 def extraire_offres(html: str) -> list[Offre]:
     """Extrait toutes les offres du HTML (sans filtre de grade)."""
     soup = BeautifulSoup(_depuis_la_premiere_carte(html), "html.parser")
@@ -81,44 +112,21 @@ def extraire_offres(html: str) -> list[Offre]:
         url = _valider_url(href) if isinstance(href, str) else ""
         if not url:
             continue
-        titre = lien.get_text(strip=True)
 
         ref_m = _RE_REFERENCE.search(url)
         reference = ref_m.group(1) if ref_m else ""
-
         tag_domaine = carte.find("a", class_=_RE_FR_TAG)
-        domaine = tag_domaine.get_text(strip=True) if tag_domaine else ""
-
-        localisation = versant = employeur = date = ""
-        for li in carte.find_all("li"):
-            classes = set(li.get_attribute_list("class"))
-            if "fr-icon--sm" not in classes:
-                continue
-            for sr in li.find_all("span", class_="sr-only"):
-                sr.decompose()
-            texte = _RE_ESPACES.sub(" ", li.get_text()).strip()
-
-            if "fr-icon-map-pin-2-line" in classes:
-                localisation = _RE_PARENTHESE.sub(" (", texte)
-            elif "fr-icon-file-line" in classes:
-                versant = texte
-            elif "fr-icon-user-line" in classes:
-                employeur = texte
-            elif "fr-icon-calendar-line" in classes:
-                date = texte.replace("En ligne depuis le ", "").replace(
-                    "En ligne depuis ", ""
-                )
-
+        infos = _informations_carte(carte)
         offres.append(
             {
-                "titre": titre,
+                "titre": lien.get_text(strip=True),
                 "url": url,
                 "reference": reference,
-                "domaine": domaine,
-                "employeur": employeur,
-                "localisation": localisation,
-                "versant": versant,
-                "date": date,
+                "domaine": tag_domaine.get_text(strip=True) if tag_domaine else "",
+                "employeur": infos["employeur"],
+                "localisation": infos["localisation"],
+                "versant": infos["versant"],
+                "date": infos["date"],
                 "source": deriver_source(reference),
             }
         )

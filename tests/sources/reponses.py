@@ -1,7 +1,7 @@
 """Réseau simulé pour les tests des clients : un faux gestionnaire de
 connexions remplace celui de `src.sources.reseau`, sans toucher au réseau."""
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterator, Mapping
 from typing import Any
 
 import pytest
@@ -40,6 +40,19 @@ class ReponseHttp:
         self.data = corps.encode() if isinstance(corps, str) else corps
         self.status = statut
         self.headers = EnTetes(entetes)
+        self.fermee = False
+        self.rendue = False
+
+    def stream(self, amt: int, decode_content: bool = True) -> Iterator[bytes]:
+        """Corps par morceaux de `amt` octets, comme `urllib3.HTTPResponse`."""
+        for debut in range(0, len(self.data), amt):
+            yield self.data[debut : debut + amt]
+
+    def close(self) -> None:
+        self.fermee = True
+
+    def release_conn(self) -> None:
+        self.rendue = True
 
 
 type Comportement = Callable[[str, str, Any, dict[str, str]], ReponseHttp]

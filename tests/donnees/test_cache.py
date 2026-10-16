@@ -133,7 +133,7 @@ def test_maj_cache_offres_purge_offre_disparue_depuis_longtemps() -> None:
     }
     cache._sauvegarder_offres(toutes)
     cache.maj_cache_offres("mon-profil", [])
-    assert cache.obtenir_offres_cachetees("mon-profil") == {}
+    assert cache._charger_offres().get("mon-profil") == {}
 
 
 def test_maj_cache_offres_conserve_offre_disparue_recemment() -> None:
@@ -148,7 +148,7 @@ def test_maj_cache_offres_conserve_offre_disparue_recemment() -> None:
     }
     cache._sauvegarder_offres(toutes)
     cache.maj_cache_offres("mon-profil", [])
-    assert "REF1" in cache.obtenir_offres_cachetees("mon-profil")
+    assert "REF1" in cache._charger_offres().get("mon-profil", {})
 
 
 def test_maj_cache_offres_purge_immediate_si_derniere_vue_non_parsable() -> None:
@@ -163,7 +163,7 @@ def test_maj_cache_offres_purge_immediate_si_derniere_vue_non_parsable() -> None
     }
     cache._sauvegarder_offres(toutes)
     cache.maj_cache_offres("mon-profil", [])
-    assert cache.obtenir_offres_cachetees("mon-profil") == {}
+    assert cache._charger_offres().get("mon-profil") == {}
 
 
 def test_maj_cache_offres_ignore_offres_sans_reference() -> None:
@@ -171,7 +171,7 @@ def test_maj_cache_offres_ignore_offres_sans_reference() -> None:
     offre_sans_ref["reference"] = ""
     nouvelles = cache.maj_cache_offres("mon-profil", [offre_sans_ref])
     assert nouvelles == set()
-    assert cache.obtenir_offres_cachetees("mon-profil") == {}
+    assert cache._charger_offres().get("mon-profil") == {}
 
 
 # --- organisations_en_cache ---
@@ -325,3 +325,70 @@ def test_cache_details_entree_au_format_inattendu_est_ignoree() -> None:
         encoding="utf-8",
     )
     assert cache.CacheDetailsDisque().lire("https://x/1") is None
+
+
+def test_cache_details_non_enregistre_sans_lever_si_le_fichier_est_tenu(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def refuse(_chemin: Path, _donnees: dict[str, Any]) -> None:
+        raise PermissionError("tenu par l'antivirus")
+
+    monkeypatch.setattr(cache, "ecriture_atomique", refuse)
+    cache_details = cache.CacheDetailsDisque()
+    cache_details.ecrire("https://x/1", _detail())
+    cache_details.enregistrer()  # ne lève pas
+    assert not cache.CHEMIN_DETAILS.exists()
+
+    monkeypatch.undo()
+    cache_details.enregistrer()  # réessayé à l'occasion suivante
+    assert cache.CHEMIN_DETAILS.exists()
+
+
+def test_cache_fiches_non_enregistre_sans_lever_si_le_fichier_est_tenu(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def refuse(_chemin: Path, _donnees: dict[str, Any]) -> None:
+        raise PermissionError("tenu")
+
+    monkeypatch.setattr(cache, "ecriture_atomique", refuse)
+    cache_fiches = cache.CacheFichesDisque()
+    cache_fiches.ecrire("https://x/1", _fiche())
+    cache_fiches.enregistrer()  # ne lève pas
+
+
+def test_maj_cache_offres_rend_les_nouvelles_meme_si_l_ecriture_echoue(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def refuse(_offres: object) -> None:
+        raise PermissionError("tenu")
+
+    monkeypatch.setattr(cache, "_sauvegarder_offres", refuse)
+    assert cache.maj_cache_offres("mon-profil", [_offre("REF1")]) == {"REF1"}
+
+
+@pytest.mark.parametrize("contenu", ["[1, 2]", "null", '"texte"', "pas du json"])
+def test_caches_json_d_un_autre_type_repartent_de_zero(contenu: str) -> None:
+    cache.CHEMIN_CACHE.write_text(contenu, encoding="utf-8")
+    cache.CHEMIN_OFFRES.write_text(contenu, encoding="utf-8")
+
+    assert cache.organisations_en_cache() == ({}, True)
+    assert cache.date_cache_organisations() is None
+    assert cache.maj_cache_offres("mon-profil", [_offre("REF1")]) == {"REF1"}
+
+
+def test_organisations_sans_donnees_sont_relues_sur_le_site(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cache.CHEMIN_CACHE.write_text(
+        json.dumps({"organisations": {"cached_at": _iso_il_y_a(5)}}), encoding="utf-8"
+    )
+    monkeypatch.setattr(
+        cache, "_scraper_organisations", lambda: {"Ministère": {"A": 1}}
+    )
+
+    assert cache.obtenir_organisations() == {"Ministère": {"A": 1}}
+
+
+def test_profil_du_cache_des_offres_au_mauvais_format_est_remplace() -> None:
+    cache.CHEMIN_OFFRES.write_text(json.dumps({"mon-profil": [1, 2]}), encoding="utf-8")
+    assert cache.maj_cache_offres("mon-profil", [_offre("REF1")]) == {"REF1"}

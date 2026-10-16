@@ -99,7 +99,7 @@ class Fhf:
         with ThreadPoolExecutor(max_workers=LECTEURS) as pool:
             for debut in range(0, max_pages, LECTEURS):
                 lot = range(debut, min(debut + LECTEURS, max_pages))
-                for numero, offres_page in zip(lot, pool.map(_page, lot)):
+                for numero, offres_page in zip(lot, pool.map(_page, lot), strict=True):
                     if not offres_page:
                         if on_page:
                             on_page(lues + 1, lues + 1)
