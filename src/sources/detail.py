@@ -8,7 +8,12 @@ from collections.abc import Callable
 from urllib.parse import urlparse
 
 from src.sources import choisirleservicepublic, emploiterritorial, fhf, passerellesmef
-from src.sources.base import PageIntrouvable, consulter_page, sur_domaine
+from src.sources.base import (
+    PageIntrouvable,
+    consulter_page,
+    controler_site,
+    sur_domaine,
+)
 from src.sources.choisirleservicepublic.extraction import DETAIL_VIDE
 from src.sources.choisirleservicepublic.extraction import DOMAINE as DOMAINE_CSP
 from src.sources.emploiterritorial.extraction import DOMAINE as DOMAINE_TERRITORIAL
@@ -46,20 +51,24 @@ def recuperer_detail_offre(url: str) -> DetailOffre:
 def verifier_disponibilite(url: str) -> bool:
     """Vrai si l'offre `url` est toujours en ligne, faux si le site la dit
     retirée (404/410, page « Offre dépubliée », retour à l'accueil de
-    Passerelles).
+    Passerelles) alors que son accueil répond normalement.
 
     Raises:
-        RuntimeError: Site injoignable ou erreur inattendue : on ne sait
-            pas, le statut stocké ne doit pas être modifié.
+        RuntimeError: Site injoignable, en panne ou erreur inattendue : on ne
+            sait pas, le statut stocké ne doit pas être modifié.
     """
     try:
         url_finale, titre = consulter_page(url)
     except PageIntrouvable:
+        controler_site(url)
         return False
     if MARQUEUR_OFFRE_DEPUBLIEE in titre:
+        controler_site(url)
         return False
     chemin_final = urlparse(url_finale).path.lower()
-    return not (
-        sur_domaine(url, DOMAINE_PASSERELLES)
-        and chemin_final.endswith(PAGE_ACCUEIL_PASSERELLES)
-    )
+    if sur_domaine(url, DOMAINE_PASSERELLES) and chemin_final.endswith(
+        PAGE_ACCUEIL_PASSERELLES
+    ):
+        controler_site(url)
+        return False
+    return True

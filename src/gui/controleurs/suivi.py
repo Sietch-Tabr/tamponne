@@ -24,7 +24,10 @@ from src.donnees.candidatures import (
     TYPES_EVENEMENT,
     ajouter_evenement,
     charger_candidatures,
+    a_reverifier,
     chemin_archive_pdf,
+    depublication_a_signaler,
+    dossier_clos,
     evenement_en_double,
     marquer_disponibilite,
     modifier_evenement,
@@ -41,6 +44,7 @@ from src.gui.presentation import (
     texte_offres_non_verifiees,
 )
 from src.gui.travailleurs import VerificateurDisponibilite
+from src.types import Candidature
 
 type _Index = QModelIndex | QPersistentModelIndex
 
@@ -52,6 +56,8 @@ _ROLES: Final[Mapping[int, bytes]] = {
     Qt.ItemDataRole.UserRole + 5: b"tampons",
     Qt.ItemDataRole.UserRole + 6: b"joursSansNouvelles",
     Qt.ItemDataRole.UserRole + 7: b"disponible",
+    Qt.ItemDataRole.UserRole + 8: b"depublicationASignaler",
+    Qt.ItemDataRole.UserRole + 9: b"depublieeLe",
 }
 
 LIBELLE_VERIFIER = "Vérifier les offres"
@@ -106,6 +112,7 @@ class ModeleDossiers(QAbstractListModel):
                     "refus": t.refus,
                     "positif": t.positif,
                     "indice": t.indice,
+                    "information": t.information,
                 }
                 for t in dossier.tampons
             ]
@@ -121,6 +128,8 @@ class ModeleDossiers(QAbstractListModel):
             b"employeurLieu": dossier.employeur_lieu,
             b"statut": dossier.statut,
             b"disponible": dossier.disponible,
+            b"depublicationASignaler": dossier.depublication_a_signaler,
+            b"depublieeLe": dossier.depubliee_le,
         }[nom]
 
 
@@ -138,6 +147,7 @@ class ControleurSuivi(QObject):
         self._avertissement = ""
         self._thread: QThread | None = None
         self._verificateur: VerificateurDisponibilite | None = None
+        self._verifiee_le = ""
         self.rafraichir()
 
     def _lire_modele(self) -> QObject:
@@ -200,12 +210,42 @@ class ControleurSuivi(QObject):
     @Slot()
     def verifier_offres(self) -> None:
         """Vérifie en arrière-plan si les offres suivies sont toujours en
-        ligne ; sans effet si une vérification tourne déjà ou s'il n'y a
-        rien à vérifier."""
-        if self._thread is not None:
+        ligne, y compris celles des dossiers ouverts déjà marquées dépubliées
+        (un site en panne peut en avoir fait croire une retirée) ; sans effet
+        si une vérification tourne déjà ou s'il n'y a rien à vérifier."""
+        self._lancer_verification(
+            {
+                reference: candidature
+                for reference, candidature in charger_candidatures().items()
+                if candidature.get("disponible", True)
+                or depublication_a_signaler(candidature)
+            }
+        )
+
+    @Slot()
+    def verifier_si_necessaire(self) -> None:
+        """Vérification automatique, à l'ouverture de l'écran : une fois par
+        jour et par lancement, et seulement pour les dossiers encore ouverts
+        dont l'offre n'a pas déjà été vérifiée aujourd'hui, ou dépubliée
+        depuis peu (une offre retirée n'intéresse plus un dossier clos)."""
+        jour = date_du_jour()
+        aujourd_hui = jour.isoformat()
+        if self._verifiee_le == aujourd_hui:
             return
-        candidatures = charger_candidatures()
-        if not candidatures:
+        self._verifiee_le = aujourd_hui
+        a_verifier = {
+            reference: candidature
+            for reference, candidature in charger_candidatures().items()
+            if candidature.get("derniere_verification") != aujourd_hui
+            and (
+                (candidature.get("disponible", True) and not dossier_clos(candidature))
+                or a_reverifier(candidature, jour)
+            )
+        }
+        self._lancer_verification(a_verifier)
+
+    def _lancer_verification(self, candidatures: dict[str, Candidature]) -> None:
+        if self._thread is not None or not candidatures:
             return
         self._thread = QThread()
         self._verificateur = VerificateurDisponibilite(candidatures)

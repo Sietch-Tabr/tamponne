@@ -18,7 +18,16 @@ from src.donnees.parametres_sources import (
 )
 from src.donnees.profils import noter_lancement
 from src.filtres import date_dans_fenetre, filtrer_par_grades, resumer_filtres
-from src.sources.base import CacheFiches, SourceOffres, deduplique_offres
+from src.sources.base import (
+    CacheFiches,
+    SourceOffres,
+    controler_site,
+    deduplique_offres,
+)
+from src.sources.choisirleservicepublic.api import URL_SITE as SITE_CSP
+from src.sources.emploiterritorial.api import URL_SITE as SITE_TERRITORIAL
+from src.sources.fhf.api import URL_SITE as SITE_FHF
+from src.sources.passerellesmef.api import URL_SITE as SITE_PASSERELLES
 from src.sources.choisirleservicepublic import MAX_PAGES, ChoisirLeServicePublic
 from src.sources.choisirleservicepublic.extraction import filtrer_grades_superieurs
 from src.sources.emploiterritorial import EmploiTerritorial
@@ -87,7 +96,7 @@ def construire_source(
     if cle == "passerellesmef":
         return PasserellesMef(cache_fiches)
     if cle == "fhf":
-        return Fhf(cache_fiches)
+        return Fhf()
     return None
 
 
@@ -115,6 +124,15 @@ def sources_a_interroger(
         if source is not None:
             resultat.append((cle, nom_affiche, source))
     return resultat
+
+
+SITES: Final[Mapping[str, str]] = {
+    "choisirleservicepublic": SITE_CSP,
+    "emploiterritorial": SITE_TERRITORIAL,
+    "passerellesmef": SITE_PASSERELLES,
+    "fhf": SITE_FHF,
+}
+"""Adresse de l'accueil de chaque source (contrôle du site, voir `controler_site`)."""
 
 
 def _ignorer(*_args: object) -> None:
@@ -180,7 +198,7 @@ def rechercher_toutes_sources(
             )
 
     def _interroger(
-        nom_affiche: str, source: SourceOffres
+        cle: str, nom_affiche: str, source: SourceOffres
     ) -> tuple[list[Offre], int, bool]:
         def _on_page(page: int, total: int) -> None:
             on_progression(nom_affiche, page, total)
@@ -190,6 +208,10 @@ def rechercher_toutes_sources(
 
         try:
             resultat = source.rechercher(filtres, on_page=_on_page, on_fiche=_on_fiche)
+            if not resultat[0]:
+                # Aucune offre : recherche vide, ou site en panne qui répond
+                # par une page sans offres. L'accueil tranche.
+                controler_site(SITES[cle])
             on_offres_source(nom_affiche, len(resultat[0]))
             return resultat
         finally:
@@ -200,7 +222,7 @@ def rechercher_toutes_sources(
         for cle, nom_affiche, source in sources:
             on_source_en_cours(nom_affiche)
             futurs.append(
-                (cle, nom_affiche, pool.submit(_interroger, nom_affiche, source))
+                (cle, nom_affiche, pool.submit(_interroger, cle, nom_affiche, source))
             )
 
         toutes_offres: list[Offre] = []

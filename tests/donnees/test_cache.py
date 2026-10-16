@@ -8,7 +8,8 @@ from typing import Any, cast
 import pytest
 
 from src.donnees import cache
-from src.types import FicheFiltrage, Offre, OffreCache
+from src.sources.choisirleservicepublic.extraction import DETAIL_VIDE
+from src.types import DetailOffre, FicheFiltrage, Offre, OffreCache
 
 
 @pytest.fixture(autouse=True)
@@ -16,6 +17,8 @@ def _rediriger_cache_vers_tmp(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
     """Redirige les fichiers de cache vers un répertoire temporaire isolé."""
     monkeypatch.setattr(cache, "CHEMIN_CACHE", tmp_path / "cache.json")
     monkeypatch.setattr(cache, "CHEMIN_OFFRES", tmp_path / "offres.json")
+    monkeypatch.setattr(cache, "CHEMIN_FICHES", tmp_path / "fiches.json")
+    monkeypatch.setattr(cache, "CHEMIN_DETAILS", tmp_path / "details.json")
 
 
 def _iso_il_y_a(secondes: float) -> str:
@@ -265,3 +268,60 @@ def test_cache_fiches_entree_au_format_inattendu_est_ignoree() -> None:
         encoding="utf-8",
     )
     assert cache.CacheFichesDisque().lire("https://x/1") is None
+
+
+def _detail(description: str = "Missions.") -> DetailOffre:
+    return {
+        **DETAIL_VIDE,
+        "description": description,
+        "page_html": "<html>" + "x" * 1000,
+    }
+
+
+def test_cache_details_garde_le_texte_mais_pas_la_page() -> None:
+    cache_details = cache.CacheDetailsDisque()
+    cache_details.ecrire("https://x/1", _detail())
+    cache_details.enregistrer()
+
+    relu = cache.CacheDetailsDisque().lire("https://x/1")
+    assert relu is not None
+    assert relu["description"] == "Missions."
+    assert relu["page_html"] == ""
+
+
+def test_cache_details_ignore_un_detail_perime() -> None:
+    cache.CHEMIN_DETAILS.write_text(
+        json.dumps(
+            {
+                "https://x/vieux": {
+                    "lu_le": _iso_il_y_a(cache.TTL_DETAILS + 60),
+                    "detail": _detail(),
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    assert cache.CacheDetailsDisque().lire("https://x/vieux") is None
+
+
+def test_cache_details_ne_garde_que_les_plus_recents(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(cache.CacheDetailsDisque, "_maximum", 2)
+    cache_details = cache.CacheDetailsDisque()
+    for numero in (1, 2, 3):
+        cache_details.ecrire(f"https://x/{numero}", _detail(f"Poste {numero}"))
+    cache_details.enregistrer()
+
+    assert set(json.loads(cache.CHEMIN_DETAILS.read_text(encoding="utf-8"))) == {
+        "https://x/2",
+        "https://x/3",
+    }
+
+
+def test_cache_details_entree_au_format_inattendu_est_ignoree() -> None:
+    cache.CHEMIN_DETAILS.write_text(
+        json.dumps({"https://x/1": {"lu_le": _iso_il_y_a(5), "detail": {"a": 1}}}),
+        encoding="utf-8",
+    )
+    assert cache.CacheDetailsDisque().lire("https://x/1") is None

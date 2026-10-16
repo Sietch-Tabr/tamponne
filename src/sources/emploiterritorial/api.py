@@ -10,19 +10,16 @@ nécessaire pour passer.
 """
 
 import re
-lazy import urllib.error
 import urllib.parse
-lazy import urllib.request
-lazy from http.cookiejar import CookieJar
 
 from src.sources.emploiterritorial.filtres import VALEUR_OUI
+from src.sources.reseau import Session
 from src.types import PageAPI
 
 URL_SITE = "https://www.emploi-territorial.fr"
 URL_RECHERCHE = f"{URL_SITE}/rechercher"
 URL_PAGINATION = f"{URL_SITE}/recherche_emploi_mobilite/"
 
-_TIMEOUT = 30
 _HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
@@ -32,27 +29,10 @@ _HEADERS = {
 }
 
 
-def nouvelle_session() -> urllib.request.OpenerDirector:
+def nouvelle_session() -> Session:
     """Session dédiée à une recherche — à ne jamais partager entre deux
     recherches (le filtre est gardé côté session serveur)."""
-    jar = CookieJar()
-    return urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
-
-
-def _requete(
-    opener: urllib.request.OpenerDirector, url: str, donnees: bytes | None = None
-) -> str:
-    requete = urllib.request.Request(url, data=donnees, headers=_HEADERS)
-    try:
-        with opener.open(requete, timeout=_TIMEOUT) as reponse:
-            return reponse.read().decode("utf-8", errors="replace")
-    except urllib.error.HTTPError as e:
-        raise RuntimeError(f"Erreur HTTP {e.code} lors du chargement de {url}") from e
-    # Délai dépassé en pleine lecture : TimeoutError, pas URLError.
-    except OSError as e:
-        raise RuntimeError(
-            f"Erreur réseau lors du chargement de {url}\u00a0: {getattr(e, 'reason', e)}"
-        ) from e
+    return Session(_HEADERS)
 
 
 def construire_url_recherche(
@@ -97,20 +77,19 @@ def construire_url_recherche(
     return f"{URL_RECHERCHE}?{urllib.parse.urlencode(params)}"
 
 
-def obtenir_page_recherche(opener: urllib.request.OpenerDirector, url: str) -> PageAPI:
+def obtenir_page_recherche(session: Session, url: str) -> PageAPI:
     """Requête initiale — pose la recherche côté session serveur."""
-    html = _requete(opener, url)
+    html = session.lire(url).texte()
     title_m = re.search(r"<title>(.*?)</title>", html, re.S)
     return {"html": html, "title": title_m.group(1).strip() if title_m else ""}
 
 
-def obtenir_page_suivante(opener: urllib.request.OpenerDirector, page: int) -> str:
+def obtenir_page_suivante(session: Session, page: int) -> str:
     """Page suivante de la recherche en cours (même session) — retourne
     un fragment HTML brut (`<tr>` à ajouter), pas du JSON."""
-    donnees = urllib.parse.urlencode({"page": str(page), "ajax": "1"}).encode("ascii")
-    return _requete(opener, URL_PAGINATION, donnees=donnees)
+    return session.lire(URL_PAGINATION, {"page": str(page), "ajax": "1"}).texte()
 
 
-def obtenir_fiche_offre(opener: urllib.request.OpenerDirector, url: str) -> str:
+def obtenir_fiche_offre(session: Session, url: str) -> str:
     """Télécharge le HTML complet d'une fiche offre."""
-    return _requete(opener, url)
+    return session.lire(url).texte()

@@ -207,6 +207,10 @@ class Candidature(TypedDict, closed=True):
             ``True`` par défaut tant que non vérifiée — ne préjuge pas.
         derniere_verification: Date ISO 8601 de la dernière vérification
             de disponibilité, chaîne vide si jamais vérifiée.
+        depubliee_le: Date ISO 8601 à laquelle la dépublication a été
+            constatée (le poste est alors probablement pourvu) ; absente
+            tant que l'offre est en ligne. Ce n'est pas un événement de
+            l'historique : le statut reste celui du dernier événement.
         offre_reference, offre_domaine, offre_localisation,
             offre_versant, offre_date: Reste du snapshot `Offre` au
             moment de la candidature (voir `src.types.Offre`).
@@ -230,6 +234,7 @@ class Candidature(TypedDict, closed=True):
     disponible: bool
     derniere_verification: str
     detail: DetailOffre
+    depubliee_le: NotRequired[str]
     offre_source: NotRequired[str]
 
 

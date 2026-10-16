@@ -1,17 +1,20 @@
 """Tests de src/sources/detail.py et des outils réseau de src/sources/base.py :
 fiche et disponibilité d'une offre selon son site (pas de réseau)."""
 
-import io
 from collections.abc import Callable
-import urllib.error
-import urllib.request
-from email.message import Message
 
 import pytest
+import urllib3
 
 from src.sources import base, detail
 from src.sources.base import PageIntrouvable, sur_domaine, valider_url
 from src.types import DetailOffre
+from tests.sources.reponses import (
+    Comportement,
+    ReponseHttp,
+    echec_reseau,
+    simuler_reseau,
+)
 
 FICHE: DetailOffre = {**detail.DETAIL_VIDE, "description": "Missions"}
 
@@ -95,8 +98,35 @@ def test_recuperer_detail_offre_site_inconnu_fiche_vide() -> None:
 # --- verifier_disponibilite ---
 
 
+@pytest.fixture(autouse=True)
+def _oublier_les_controles() -> None:
+    base._controles.clear()
+
+
+def _site(
+    monkeypatch: pytest.MonkeyPatch,
+    reponses: dict[str, tuple[str, str] | BaseException],
+    accueil: tuple[str, str] | BaseException = ("", "Accueil"),
+) -> list[str]:
+    """Pages du site par adresse (le reste vaut `accueil`) ; renvoie les
+    adresses demandées."""
+    demandees: list[str] = []
+
+    def consulter(url: str) -> tuple[str, str]:
+        demandees.append(url)
+        reponse = reponses.get(url, accueil)
+        if isinstance(reponse, BaseException):
+            raise reponse
+        return (reponse[0] or url, reponse[1])
+
+    monkeypatch.setattr(detail, "consulter_page", consulter)
+    monkeypatch.setattr(base, "consulter_page", consulter)
+    return demandees
+
+
 def _page(monkeypatch: pytest.MonkeyPatch, url_finale: str, titre: str) -> None:
-    monkeypatch.setattr(detail, "consulter_page", lambda _url: (url_finale, titre))
+    """Toute offre du test mène à `url_finale` ; l'accueil répond normalement."""
+    _site(monkeypatch, {}, accueil=(url_finale, titre))
 
 
 def test_verifier_disponibilite_offre_en_ligne(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -108,20 +138,25 @@ def test_verifier_disponibilite_offre_en_ligne(monkeypatch: pytest.MonkeyPatch) 
 def test_verifier_disponibilite_page_introuvable(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def introuvable(_url: str) -> tuple[str, str]:
-        raise PageIntrouvable("Page introuvable (HTTP 404)")
-
-    monkeypatch.setattr(detail, "consulter_page", introuvable)
+    _site(
+        monkeypatch,
+        {"https://emploi.fhf.fr/emploi/1": PageIntrouvable("Page introuvable (404)")},
+    )
     assert detail.verifier_disponibilite("https://emploi.fhf.fr/emploi/1") is False
 
 
 def test_verifier_disponibilite_page_depubliee_csp(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    _page(
+    _site(
         monkeypatch,
-        "https://choisirleservicepublic.gouv.fr/offre-depubliee/",
-        "Offre dépubliée | Choisir le service public",
+        {
+            "https://choisirleservicepublic.gouv.fr/offre-emploi/x/": (
+                "https://choisirleservicepublic.gouv.fr/offre-depubliee/",
+                "Offre dépubliée | Choisir le service public",
+            )
+        },
+        accueil=("", "Accueil | Choisir le service public"),
     )
     assert (
         detail.verifier_disponibilite(
@@ -134,10 +169,18 @@ def test_verifier_disponibilite_page_depubliee_csp(
 def test_verifier_disponibilite_retour_a_l_accueil_passerelles(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    _page(
+    _site(
         monkeypatch,
-        "https://www.passerelles.economie.gouv.fr/accueil.aspx?LCID=1036",
-        "MINISTERE DE L'ECONOMIE ET DES FINANCES - Site d'offres d'emploi",
+        {
+            "https://www.passerelles.economie.gouv.fr/offre-de-emploi/emploi-x_1.aspx": (
+                "https://www.passerelles.economie.gouv.fr/accueil.aspx?LCID=1036",
+                "Erreur - MINISTERE DE L'ECONOMIE ET DES FINANCES",
+            )
+        },
+        accueil=(
+            "",
+            "MINISTERE DE L'ECONOMIE ET DES FINANCES - Site d'offres d'emploi",
+        ),
     )
     assert (
         detail.verifier_disponibilite(
@@ -158,29 +201,96 @@ def test_verifier_disponibilite_site_injoignable_propage(
         detail.verifier_disponibilite("https://emploi.fhf.fr/emploi/1")
 
 
+def test_une_offre_en_ligne_ne_demande_pas_de_controle_du_site(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    demandees = _site(monkeypatch, {})
+    assert detail.verifier_disponibilite("https://emploi.fhf.fr/emploi/5") is True
+    assert demandees == ["https://emploi.fhf.fr/emploi/5"]
+
+
+def test_un_404_sur_un_site_en_panne_ne_conclut_pas_a_la_depublication(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _site(
+        monkeypatch,
+        {
+            "https://emploi.fhf.fr/emploi/1": PageIntrouvable("404"),
+            "https://emploi.fhf.fr/": PageIntrouvable("404"),
+        },
+    )
+    with pytest.raises(RuntimeError, match="ne répond pas normalement") as capture:
+        detail.verifier_disponibilite("https://emploi.fhf.fr/emploi/1")
+    assert "emploi.fhf.fr" in str(capture.value)
+
+
+def test_un_404_sur_un_site_qui_annonce_une_maintenance_ne_conclut_pas(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _site(
+        monkeypatch,
+        {"https://emploi.fhf.fr/emploi/1": PageIntrouvable("404")},
+        accueil=("", "Site en maintenance | FHF"),
+    )
+    with pytest.raises(RuntimeError, match="annonce une panne"):
+        detail.verifier_disponibilite("https://emploi.fhf.fr/emploi/1")
+
+
+def test_le_controle_du_site_est_fait_une_fois_pour_plusieurs_offres(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    demandees = _site(
+        monkeypatch,
+        {
+            "https://emploi.fhf.fr/emploi/1": PageIntrouvable("404"),
+            "https://emploi.fhf.fr/emploi/2": PageIntrouvable("404"),
+            "https://emploi.fhf.fr/emploi/3": PageIntrouvable("404"),
+        },
+    )
+    resultats = [
+        detail.verifier_disponibilite(f"https://emploi.fhf.fr/emploi/{n}")
+        for n in (1, 2, 3)
+    ]
+    assert resultats == [False, False, False]
+    assert demandees.count("https://emploi.fhf.fr/") == 1
+
+
+def test_le_controle_en_echec_est_retenu_pour_les_offres_suivantes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    demandees = _site(
+        monkeypatch,
+        {
+            "https://emploi.fhf.fr/emploi/1": PageIntrouvable("404"),
+            "https://emploi.fhf.fr/emploi/2": PageIntrouvable("404"),
+            "https://emploi.fhf.fr/": RuntimeError("Erreur HTTP 503"),
+        },
+    )
+    for numero in (1, 2):
+        with pytest.raises(RuntimeError):
+            detail.verifier_disponibilite(f"https://emploi.fhf.fr/emploi/{numero}")
+    assert demandees.count("https://emploi.fhf.fr/") == 1
+
+
 # --- consulter_page ---
-
-
-class _Reponse(io.BytesIO):
-    def __init__(self, contenu: bytes, url: str) -> None:
-        super().__init__(contenu)
-        self._url = url
-
-    def geturl(self) -> str:
-        return self._url
 
 
 def test_consulter_page_rend_url_finale_et_titre(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(
-        urllib.request,
-        "urlopen",
-        lambda requete, timeout: _Reponse(
-            b"<html><title> Offre d\xc3\xa9publi\xc3\xa9e </title></html>",
-            "https://choisirleservicepublic.gouv.fr/offre-depubliee/",
-        ),
-    )
+    def comportement(
+        methode: str, url: str, corps: object, entetes: dict[str, str]
+    ) -> ReponseHttp:
+        if url.endswith("/x/"):
+            return ReponseHttp(
+                statut=302,
+                entetes={
+                    "Location": "https://choisirleservicepublic.gouv.fr/offre-depubliee/"
+                },
+            )
+        return ReponseHttp("<html><title> Offre dépubliée </title></html>")
+
+    simuler_reseau(monkeypatch, comportement)
     assert base.consulter_page("https://choisirleservicepublic.gouv.fr/x/") == (
         "https://choisirleservicepublic.gouv.fr/offre-depubliee/",
         "Offre dépubliée",
@@ -191,29 +301,24 @@ def test_consulter_page_rend_url_finale_et_titre(
 def test_consulter_page_404_et_410_page_introuvable(
     monkeypatch: pytest.MonkeyPatch, code: int
 ) -> None:
-    def erreur(requete: urllib.request.Request, timeout: float) -> None:
-        raise urllib.error.HTTPError(requete.full_url, code, "absent", Message(), None)
-
-    monkeypatch.setattr(urllib.request, "urlopen", erreur)
+    simuler_reseau(monkeypatch, ReponseHttp(statut=code))
     with pytest.raises(PageIntrouvable):
         base.consulter_page("https://emploi.fhf.fr/emploi/1")
 
 
 @pytest.mark.parametrize(
-    "erreur",
+    "comportement",
     [
-        urllib.error.HTTPError("https://x", 503, "indisponible", Message(), None),
-        urllib.error.URLError("hors ligne"),
-        TimeoutError("délai dépassé"),
+        lambda *_a: ReponseHttp(statut=503),
+        echec_reseau(urllib3.exceptions.HTTPError("hors ligne")),
+        echec_reseau(TimeoutError("délai dépassé")),
     ],
+    ids=["http", "reseau", "delai"],
 )
 def test_consulter_page_autres_echecs_runtime_error(
-    monkeypatch: pytest.MonkeyPatch, erreur: OSError
+    monkeypatch: pytest.MonkeyPatch, comportement: Comportement
 ) -> None:
-    def echec(requete: urllib.request.Request, timeout: float) -> None:
-        raise erreur
-
-    monkeypatch.setattr(urllib.request, "urlopen", echec)
+    simuler_reseau(monkeypatch, comportement)
     with pytest.raises(RuntimeError) as capture:
         base.consulter_page("https://emploi.fhf.fr/emploi/1")
     assert not isinstance(capture.value, PageIntrouvable)

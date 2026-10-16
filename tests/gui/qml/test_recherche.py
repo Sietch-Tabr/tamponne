@@ -32,6 +32,7 @@ def moteur(qapp: QApplication) -> Iterator[QQmlApplicationEngine]:
     moteur.load(
         QUrl.fromLocalFile(str(application.DOSSIER_QML / "Tamponne" / "Fenetre.qml"))
     )
+    moteur.rootObjects()[0].setProperty("ecransEnAvance", 5)
     qapp.processEvents()
     yield moteur
     del moteur
@@ -103,3 +104,65 @@ def test_appels_du_formulaire_depuis_javascript(
     assert objet is not None, composant.errorString()
 
     assert _etat(moteur)[champ] == attendu
+
+
+def _fenetre_detail(
+    moteur: QQmlApplicationEngine,
+) -> tuple[QObject, Any, QObject]:
+    """(racine, contrôleur, fenêtre de détail) : la racine doit rester
+    référencée pendant le test, sa libération détruirait la fenêtre."""
+    racine = moteur.rootObjects()[0]
+    dialogue = racine.findChild(QObject, "dialogueDetail")
+    assert dialogue is not None
+    return racine, racine.property("pont").recherche, dialogue
+
+
+def test_detail_s_ouvre_des_l_attente_puis_se_remplit(
+    moteur: QQmlApplicationEngine, qapp: QApplication
+) -> None:
+    racine, recherche, dialogue = _fenetre_detail(moteur)
+    recherche.detail_attendu.emit(
+        {"reference": "R1", "titre": "Chargé de mission", "sousTitre": "Paris"}
+    )
+    qapp.processEvents()
+    assert dialogue.property("opened") is True
+    assert dialogue.property("chargement") is True
+
+    recherche.detail_pret.emit(
+        {"reference": "R1", "titre": "Chargé de mission", "description": "Missions."}
+    )
+    qapp.processEvents()
+    assert dialogue.property("chargement") is False
+    assert dialogue.property("fiche")["description"] == "Missions."
+
+
+def test_detail_ignore_une_fiche_d_une_autre_offre_ou_arrivee_apres_la_fermeture(
+    moteur: QQmlApplicationEngine, qapp: QApplication
+) -> None:
+    racine, recherche, dialogue = _fenetre_detail(moteur)
+    recherche.detail_attendu.emit({"reference": "R1", "titre": "A", "sousTitre": ""})
+    qapp.processEvents()
+
+    recherche.detail_pret.emit({"reference": "R2", "titre": "B"})
+    qapp.processEvents()
+    assert dialogue.property("chargement") is True
+    assert dialogue.property("fiche")["reference"] == "R1"
+
+    QMetaObject.invokeMethod(dialogue, "close")
+    qapp.processEvents()
+    recherche.detail_pret.emit({"reference": "R1", "titre": "A"})
+    qapp.processEvents()
+    assert dialogue.property("opened") is False
+
+
+def test_detail_se_ferme_si_le_telechargement_echoue(
+    moteur: QQmlApplicationEngine, qapp: QApplication
+) -> None:
+    racine, recherche, dialogue = _fenetre_detail(moteur)
+    recherche.detail_attendu.emit({"reference": "R1", "titre": "A", "sousTitre": ""})
+    qapp.processEvents()
+
+    recherche.action_echouee.emit("Opération impossible")
+    qapp.processEvents()
+    assert dialogue.property("opened") is False
+    del racine

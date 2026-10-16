@@ -56,9 +56,19 @@ def deriver_source(reference: str) -> str:
     return _SOURCES_CONNUES.get(prefixe, prefixe)
 
 
+def _depuis_la_premiere_carte(html: str) -> str:
+    """Fin de la page à partir de la première carte d'offre. Les cartes
+    suivent 4 Mo de cases de filtres (page de 4,4 Mo, 20 offres) : les
+    analyser seules prend 25 fois moins de temps."""
+    marque = html.find("fr-card__body")
+    if marque < 0:
+        return ""
+    return html[max(html.rfind("<div", 0, marque), 0) :]
+
+
 def extraire_offres(html: str) -> list[Offre]:
     """Extrait toutes les offres du HTML (sans filtre de grade)."""
-    soup = BeautifulSoup(html, "html.parser")
+    soup = BeautifulSoup(_depuis_la_premiere_carte(html), "html.parser")
     offres: list[Offre] = []
 
     for carte in soup.find_all("div", class_="fr-card__body"):

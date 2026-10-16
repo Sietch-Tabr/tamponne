@@ -1,18 +1,16 @@
 """Client API — requêtes GET filtrées (format WordPress rewrite URL)."""
 
 import re
-lazy import urllib.error
 import urllib.parse
-lazy import urllib.request
 
 from src.filtres import VALEUR_TOGGLE_ACTIF
 from src.sources.base import USER_AGENT_IDENTIFIE
+from src.sources.reseau import Session
 from src.types import PageAPI
 
 URL_SITE = "https://choisirleservicepublic.gouv.fr"
 URL_OFFRES = f"{URL_SITE}/nos-offres/"
 
-_TIMEOUT = 30
 _HEADERS = {"User-Agent": USER_AGENT_IDENTIFIE}
 
 # Ordre et nommage des filtres dans l'URL WordPress (issu de url_keywords côté JS)
@@ -91,17 +89,7 @@ def obtenir_page_offres(url: str) -> PageAPI:
         RuntimeError: Si le serveur retourne un code HTTP d'erreur, ou si la
             connexion échoue pour une raison réseau.
     """
-    try:
-        requete = urllib.request.Request(url, headers=_HEADERS)
-        with urllib.request.urlopen(requete, timeout=_TIMEOUT) as reponse:
-            contenu = reponse.read().decode("utf-8", errors="replace")
-    except urllib.error.HTTPError as e:
-        raise RuntimeError(f"Erreur HTTP {e.code} lors du chargement de {url}") from e
-    # Délai dépassé en pleine lecture : TimeoutError, pas URLError.
-    except OSError as e:
-        raise RuntimeError(
-            f"Erreur réseau lors du chargement de {url}\u00a0: {getattr(e, 'reason', e)}"
-        ) from e
+    contenu = Session(_HEADERS).lire(url).texte()
     title_m = re.search(r"<title>(.*?)</title>", contenu)
     return {
         "html": contenu,
@@ -111,31 +99,9 @@ def obtenir_page_offres(url: str) -> PageAPI:
 
 def telecharger_binaire(url: str) -> bytes:
     """Télécharge le contenu binaire d'une URL (ex. PDF officiel d'une offre)."""
-    try:
-        requete = urllib.request.Request(url, headers=_HEADERS)
-        with urllib.request.urlopen(requete, timeout=_TIMEOUT) as reponse:
-            return reponse.read()
-    except urllib.error.HTTPError as e:
-        raise RuntimeError(f"Erreur HTTP {e.code} lors du chargement de {url}") from e
-    # Délai dépassé en pleine lecture : TimeoutError, pas URLError.
-    except OSError as e:
-        raise RuntimeError(
-            f"Erreur réseau lors du chargement de {url}\u00a0: {getattr(e, 'reason', e)}"
-        ) from e
+    return Session(_HEADERS).lire(url).corps
 
 
 def telecharger_page_offres() -> str:
     """Télécharge le HTML brut de /nos-offres/ (pour le cache organisations)."""
-    try:
-        requete = urllib.request.Request(URL_OFFRES, headers=_HEADERS)
-        with urllib.request.urlopen(requete, timeout=_TIMEOUT) as reponse:
-            return reponse.read().decode("utf-8", errors="replace")
-    except urllib.error.HTTPError as e:
-        raise RuntimeError(
-            f"Erreur HTTP {e.code} lors du chargement de {URL_OFFRES}"
-        ) from e
-    # Délai dépassé en pleine lecture : TimeoutError, pas URLError.
-    except OSError as e:
-        raise RuntimeError(
-            f"Erreur réseau lors du chargement de {URL_OFFRES}\u00a0: {getattr(e, 'reason', e)}"
-        ) from e
+    return Session(_HEADERS).lire(URL_OFFRES).texte()

@@ -8,6 +8,7 @@ from PySide6.QtCore import QObject, Qt, QUrl
 from PySide6.QtGui import QAccessible, QAccessibleInterface, QWindow
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtWidgets import QApplication
+from pytestqt.qtbot import QtBot
 
 from src.donnees import parametres_affichage
 from src.gui import application
@@ -113,3 +114,43 @@ def test_adapter_a_l_ecran_garde_la_taille_si_elle_tient(qapp: QApplication) -> 
     application.adapter_a_l_ecran(fenetre)
     assert not fenetre.windowState() & Qt.WindowState.WindowMaximized
     fenetre.close()
+
+
+def test_seul_l_ecran_courant_est_cree_au_demarrage(
+    moteur: QQmlApplicationEngine,
+) -> None:
+    racine = _racine(moteur)
+    assert racine.findChild(QObject, "ecranProfils") is not None
+    for nom in ("ecranRecherche", "ecranSuivi", "ecranReglages"):
+        assert racine.findChild(QObject, nom) is None
+
+
+def test_les_autres_ecrans_sont_crees_apres_la_premiere_image(
+    moteur: QQmlApplicationEngine, qtbot: QtBot
+) -> None:
+    racine = _racine(moteur)
+    qtbot.waitUntil(
+        lambda: racine.findChild(QObject, "ecranReglages") is not None, timeout=3000
+    )
+    for nom in ("ecranRecherche", "ecranSuivi", "ecranAide"):
+        assert racine.findChild(QObject, nom) is not None
+
+
+def test_un_onglet_non_encore_cree_s_ouvre_a_la_demande(
+    moteur: QQmlApplicationEngine, qapp: QApplication
+) -> None:
+    racine = _racine(moteur)
+    racine.setProperty("ongletCourant", 4)
+    qapp.processEvents()
+    assert racine.findChild(QObject, "ecranReglages") is not None
+
+
+def test_la_question_du_raccourci_est_posee_avant_la_creation_des_ecrans(
+    moteur: QQmlApplicationEngine, qapp: QApplication
+) -> None:
+    racine = _racine(moteur)
+    pont = racine.property("pont")
+    pont.reglages_controleur.question_raccourci.emit("ajout")
+    qapp.processEvents()
+    dialogue = racine.findChild(QObject, "dialogueRaccourci")
+    assert dialogue is not None and dialogue.property("opened") is True

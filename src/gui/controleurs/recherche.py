@@ -2,6 +2,7 @@
 lancement en arrière-plan, registre des offres et actions sur une offre."""
 
 import logging
+import threading
 from collections.abc import Callable
 from datetime import datetime
 from typing import Any, cast
@@ -19,6 +20,7 @@ from PySide6.QtCore import (
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtQml import QJSValue
 
+from src.donnees.cache import CacheDetailsDisque
 from src.donnees.candidatures import chemin_archive_pdf, suivre_offre
 from src.donnees.profils import (
     ajouter_profil,
@@ -45,7 +47,7 @@ from src.recherche.export import exporter_html
 from src.recherche.orchestration import post_traiter_resultats
 from src.sources.choisirleservicepublic import MAX_PAGES
 from src.sources.detail import recuperer_detail_offre
-from src.types import FiltresRecherche, Offre, Organisations, Profil
+from src.types import DetailOffre, FiltresRecherche, Offre, Organisations, Profil
 
 journal = logging.getLogger(__name__)
 
@@ -105,7 +107,14 @@ class ControleurRecherche(QObject):
     """Actions et états de l'écran Recherche (objet `pont.recherche`)."""
 
     etat_change = Signal()
-    """Formulaire, avancement ou registre modifié."""
+    """Formulaire, phase, résumé ou erreur modifiés."""
+    progression_change = Signal()
+    """Avancement de la recherche en cours (émis à chaque page ou fiche lue)."""
+    selection_change = Signal()
+    """Ligne sélectionnée du registre (émis à chaque clic)."""
+    detail_attendu = Signal(dict)
+    """Offre dont la fiche de poste se télécharge (`reference`, `titre`,
+    `sousTitre`) : la fenêtre s'ouvre tout de suite, sans attendre le site."""
     detail_pret = Signal(dict)
     """Fiche de poste d'une offre, à afficher (même format que le Suivi)."""
     suivi_termine = Signal(str)
@@ -148,6 +157,9 @@ class ControleurRecherche(QObject):
         self._grades: list[str] = []
         self._grades_superieurs = False
         self._chargement_organisations = False
+        self._cache_details: CacheDetailsDisque | None = None
+        self._verrou_details = threading.Lock()
+        self._verrous_url: dict[str, threading.Lock] = {}
 
     # --- Propriétés exposées au QML ---
 
@@ -234,9 +246,9 @@ class ControleurRecherche(QObject):
     """Registre trié et filtré (`ProxyOffres` sur `ModeleRegistre`)."""
     phase = Property(str, _lire_phase, notify=etat_change)
     """« vide », « en_cours », « resultats », « aucun » ou « erreur »."""
-    texte_bouton = Property(str, _lire_texte_bouton, notify=etat_change)
-    statut = Property(str, _lire_statut, notify=etat_change)
-    avancement = Property(list, _lire_avancement, notify=etat_change)
+    texte_bouton = Property(str, _lire_texte_bouton, notify=progression_change)
+    statut = Property(str, _lire_statut, notify=progression_change)
+    avancement = Property(list, _lire_avancement, notify=progression_change)
     """Une entrée `{nom, etat}` par source interrogée."""
     resume = Property(str, _lire_resume, notify=etat_change)
     avertissements = Property(str, _lire_avertissements, notify=etat_change)
@@ -249,11 +261,20 @@ class ControleurRecherche(QObject):
     peut_filtrer_nouvelles = Property(
         bool, _lire_peut_filtrer_nouvelles, notify=etat_change
     )
-    ligne_selectionnee = Property(int, _lire_ligne_selectionnee, notify=etat_change)
+    ligne_selectionnee = Property(
+        int, _lire_ligne_selectionnee, notify=selection_change
+    )
     """Ligne du registre (après tri et filtre) sélectionnée, -1 sinon."""
-    numero_selection = Property(str, _lire_numero_selection, notify=etat_change)
+    numero_selection = Property(str, _lire_numero_selection, notify=selection_change)
     """N° (colonne du registre) de l'offre sélectionnée, vide sinon."""
     choix = Property(dict, _lire_choix, constant=True)
+
+    def _tout_change(self) -> None:
+        """Signale un changement qui touche plusieurs groupes de propriétés
+        (rare) ; les chemins fréquents n'émettent que leur signal."""
+        self.etat_change.emit()
+        self.progression_change.emit()
+        self.selection_change.emit()
 
     # --- Formulaire ---
 
@@ -328,7 +349,7 @@ class ControleurRecherche(QObject):
     def reinitialiser(self) -> None:
         """Remet le formulaire à son état par défaut (bouton RAZ)."""
         self._etat = _etat_initial()
-        self.etat_change.emit()
+        self._tout_change()
 
     def construire_filtres(self) -> FiltresRecherche:
         """Filtres de recherche correspondant au formulaire."""
@@ -399,7 +420,7 @@ class ControleurRecherche(QObject):
         if self._thread is not None or not self._charger_profil(nom):
             return
         self._edition = True
-        self.etat_change.emit()
+        self._tout_change()
 
     @Slot()
     def nouvelle_recherche(self) -> None:
@@ -409,14 +430,14 @@ class ControleurRecherche(QObject):
         self._etat = _etat_initial()
         self._nom_profil = None
         self._edition = False
-        self.etat_change.emit()
+        self._tout_change()
 
     @Slot()
     def annuler_edition(self) -> None:
         """Quitte le mode édition sans enregistrer."""
         self._edition = False
         self._nom_profil = None
-        self.etat_change.emit()
+        self._tout_change()
         self.retour_profils.emit()
 
     @Slot()
@@ -426,7 +447,7 @@ class ControleurRecherche(QObject):
         if self._edition and self._nom_profil is not None:
             modifier_profil(self._nom_profil, self.construire_filtres())
             self._edition = False
-            self.etat_change.emit()
+            self._tout_change()
             self.retour_profils.emit()
             return
         self.lancer()
@@ -470,7 +491,7 @@ class ControleurRecherche(QObject):
             # Sans la liste, le filtre serait abandonné sans rien dire.
             self._phase = "erreur"
             self._erreur = MESSAGE_ORGANISATIONS_ABSENTES
-            self.etat_change.emit()
+            self._tout_change()
             return
         self._filtres_lances = filtres
         self._profil_lance = (
@@ -501,36 +522,36 @@ class ControleurRecherche(QObject):
         self._travailleur.resultat.connect(self._thread.quit)
         self._travailleur.erreur.connect(self._thread.quit)
         self._thread.finished.connect(self._on_thread_termine)
-        self.etat_change.emit()
+        self._tout_change()
         self._thread.start()
 
     def _on_source_en_cours(self, nom: str) -> None:
         self._sources[nom] = "en cours…"
-        self.etat_change.emit()
+        self.progression_change.emit()
 
     def _on_progression(self, nom: str, page: int, total: int) -> None:
         self._pages[nom] = (page, total)
         if total > 1:
             self._sources[nom] = f"page {page}/{total}"
-        self.etat_change.emit()
+        self.progression_change.emit()
 
     def _on_fiches(self, nom: str, lues: int, total: int) -> None:
         pages, _ = self._pages.get(nom, (0, 0))
         base = self._pages_liste.setdefault(nom, pages)
         self._pages[nom] = (base + lues, base + total)
         self._sources[nom] = f"fiches {lues}/{total}"
-        self.etat_change.emit()
+        self.progression_change.emit()
 
     def _on_offres_source(self, nom: str, nombre: int) -> None:
         self._sources[nom] = f"terminé · {nombre} offre{'s' if nombre > 1 else ''}"
-        self.etat_change.emit()
+        self.progression_change.emit()
 
     def _on_avertissement(self, message: str) -> None:
         self._avertissements.append(message)
         nom = message.split(" indisponible", 1)[0]
         if nom in self._sources:
             self._sources[nom] = "indisponible"
-        self.etat_change.emit()
+        self._tout_change()
 
     def _on_resultat(
         self, offres: list[Offre], nb_pages: int, arret_anticipe: bool
@@ -557,29 +578,29 @@ class ControleurRecherche(QObject):
             datetime.now(),
         )
         self._phase = "resultats" if resultat["offres"] else "aucun"
-        self.etat_change.emit()
+        self._tout_change()
 
     def _on_erreur(self, message: str) -> None:
         self._erreur = message
         self._phase = "erreur"
-        self.etat_change.emit()
+        self._tout_change()
 
     def _on_thread_termine(self) -> None:
         self._thread = None
         self._travailleur = None
-        self.etat_change.emit()
+        self._tout_change()
 
     def remplacer_organisations(self, organisations: Organisations) -> None:
         """Nouveau cache des organisations (Réglages › Rafraîchir le cache,
         ou au lancement), utilisé dès la prochaine sélection ou recherche."""
         self._orgas_cache = organisations
-        self.etat_change.emit()
+        self._tout_change()
 
     def definir_chargement_organisations(self, en_cours: bool) -> None:
         """Signale un chargement de la liste des organisations en cours."""
         if en_cours != self._chargement_organisations:
             self._chargement_organisations = en_cours
-            self.etat_change.emit()
+            self._tout_change()
 
     def arreter(self) -> None:
         """Attend la fin d'une recherche ou d'un appel réseau en cours :
@@ -599,14 +620,14 @@ class ControleurRecherche(QObject):
         """Filtre le registre sur toutes les colonnes, sans relancer."""
         self._proxy.setFilterFixedString(texte)
         self._ligne_selectionnee = -1
-        self.etat_change.emit()
+        self._tout_change()
 
     @Slot(bool)
     def nouvelles_seulement(self, actif: bool) -> None:
         """Restreint le registre aux offres nouvelles."""
         self._proxy.definir_nouvelles_seulement(actif)
         self._ligne_selectionnee = -1
-        self.etat_change.emit()
+        self._tout_change()
 
     @Slot(int)
     def trier(self, colonne: int) -> None:
@@ -620,7 +641,7 @@ class ControleurRecherche(QObject):
         )
         self._proxy.sort(colonne, ordre)
         self._ligne_selectionnee = -1
-        self.etat_change.emit()
+        self._tout_change()
 
     def _lire_tri(self) -> dict[str, int]:
         return {
@@ -635,7 +656,7 @@ class ControleurRecherche(QObject):
     def selectionner(self, ligne: int) -> None:
         """Sélectionne une ligne du registre (-1 pour aucune)."""
         self._ligne_selectionnee = ligne if 0 <= ligne < self._proxy.rowCount() else -1
-        self.etat_change.emit()
+        self.selection_change.emit()
 
     def _offre_selectionnee(self) -> Offre | None:
         if self._ligne_selectionnee < 0:
@@ -682,19 +703,61 @@ class ControleurRecherche(QObject):
     def _on_thread_tache_fini(self) -> None:
         self._taches = [(t, tache) for t, tache in self._taches if t.isRunning()]
 
+    def _lire_detail(self, url: str) -> DetailOffre:
+        """Fiche de poste de `url`, lue sur le disque si elle y est, sinon sur
+        le site (puis gardée). Deux lectures de la même offre (préchargement
+        puis consultation) ne téléchargent qu'une fois."""
+        with self._verrou_details:
+            if self._cache_details is None:
+                self._cache_details = CacheDetailsDisque()
+            verrou = self._verrous_url.setdefault(url, threading.Lock())
+        with verrou:
+            if (connu := self._cache_details.lire(url)) is not None:
+                return connu
+            detail = recuperer_detail_offre(url)
+            # Une fiche sans description est un échec de lecture ou une offre
+            # dépubliée : à relire, jamais à garder.
+            if detail["page_html"] and detail["description"]:
+                self._cache_details.ecrire(url, detail)
+                self._cache_details.enregistrer()
+            return detail
+
+    @Slot()
+    def precharger_selection(self) -> None:
+        """Télécharge à l'avance la fiche de poste de l'offre sélectionnée,
+        pour que sa consultation s'ouvre sans attente."""
+        offre = self._offre_selectionnee()
+        if offre is None or not offre["url"].startswith("https://"):
+            return
+        url = offre["url"]
+        self._lancer_tache(lambda: self._lire_detail(url), lambda _detail: None)
+
     @Slot()
     def consulter(self) -> None:
-        """Télécharge la fiche de poste de l'offre sélectionnée puis
-        émet `detail_pret`."""
+        """Ouvre la fenêtre de la fiche de poste de l'offre sélectionnée
+        (`detail_attendu`), puis la remplit (`detail_pret`) une fois la fiche
+        lue."""
         offre = self._offre_selectionnee()
         if offre is None:
             return
+        sous_titre = [
+            offre["employeur"],
+            offre["localisation"],
+            offre.get("source") or "",
+        ]
+        self.detail_attendu.emit(
+            {
+                "reference": offre["reference"],
+                "titre": offre["titre"],
+                "sousTitre": " · ".join(p for p in sous_titre if p),
+            }
+        )
 
         def afficher(detail: object) -> None:
             contenu = contenu_detail(
                 offre["reference"],
                 offre["titre"],
-                [offre["employeur"], offre["localisation"], offre.get("source") or ""],
+                sous_titre,
                 cast(Any, detail),
                 offre["url"],
                 chemin_archive_pdf(offre["reference"]).exists(),
@@ -725,7 +788,7 @@ class ControleurRecherche(QObject):
                 }
             )
 
-        self._lancer_tache(lambda: recuperer_detail_offre(offre["url"]), afficher)
+        self._lancer_tache(lambda: self._lire_detail(offre["url"]), afficher)
 
     @Slot(str)
     def ouvrir_lien(self, url: str) -> None:

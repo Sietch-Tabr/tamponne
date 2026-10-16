@@ -1,65 +1,71 @@
 """Tests des requêtes HTTP des sources (sites simulés) : toute erreur
 réseau, délai dépassé compris, devient une RuntimeError lisible."""
 
-import io
-import urllib.error
-import urllib.request
 from collections.abc import Callable
-from email.message import Message
+from typing import Any
 
 import pytest
+import urllib3
 
 from src.sources.choisirleservicepublic import api as api_csp
 from src.sources.emploiterritorial import api as api_territorial
 from src.sources.fhf import api as api_fhf
 from src.sources.passerellesmef import api as api_mef
+from tests.sources.reponses import (
+    Comportement,
+    ReponseHttp,
+    echec_reseau,
+    simuler_reseau,
+)
 
 ERREURS = [
+    pytest.param(lambda *_a: ReponseHttp(statut=503), "Erreur HTTP 503", id="http"),
     pytest.param(
-        urllib.error.HTTPError("https://x", 503, "indisponible", Message(), None),
-        "Erreur HTTP 503",
-        id="http",
+        echec_reseau(urllib3.exceptions.HTTPError("hôte inconnu")),
+        "hôte inconnu",
+        id="reseau",
     ),
-    pytest.param(urllib.error.URLError("hôte inconnu"), "hôte inconnu", id="reseau"),
-    pytest.param(TimeoutError("timed out"), "timed out", id="delai-en-lecture"),
+    pytest.param(
+        echec_reseau(TimeoutError("timed out")), "timed out", id="delai-en-lecture"
+    ),
+]
+
+APPELS_AVEC_SESSION: list[Callable[[], object]] = [
+    lambda: api_fhf.obtenir_fiche_offre(
+        api_fhf.nouvelle_session(), "https://emploi.fhf.fr/emploi/1"
+    ),
+    lambda: api_mef.obtenir_fiche_offre(
+        api_mef.nouvelle_session(), "https://www.passerelles.economie.gouv.fr/x"
+    ),
+    lambda: api_territorial.obtenir_fiche_offre(
+        api_territorial.nouvelle_session(), "https://www.emploi-territorial.fr/x"
+    ),
 ]
 
 
-class _Ouvreur:
-    """`OpenerDirector` simulé : rend `contenu` ou lève `erreur`."""
-
-    def __init__(self, contenu: bytes = b"", erreur: OSError | None = None) -> None:
-        self.contenu = contenu
-        self.erreur = erreur
-
-    def open(self, _requete: urllib.request.Request, timeout: float) -> io.BytesIO:
-        if self.erreur is not None:
-            raise self.erreur
-        return io.BytesIO(self.contenu)
-
-
-APPELS_AVEC_OUVREUR: list[Callable[[object], object]] = [
-    lambda o: api_fhf.obtenir_fiche_offre(o, "https://emploi.fhf.fr/emploi/1"),  # type: ignore[arg-type]
-    lambda o: api_mef.obtenir_fiche_offre(o, "https://www.passerelles.economie.gouv.fr/x"),  # type: ignore[arg-type]
-    lambda o: api_territorial.obtenir_fiche_offre(o, "https://www.emploi-territorial.fr/x"),  # type: ignore[arg-type]
-]
-
-
-@pytest.mark.parametrize("appel", APPELS_AVEC_OUVREUR)
-@pytest.mark.parametrize(("erreur", "message"), ERREURS)
+@pytest.mark.parametrize("appel", APPELS_AVEC_SESSION)
+@pytest.mark.parametrize(("comportement", "message"), ERREURS)
 def test_requete_des_sources_erreur_en_runtime_error(
-    appel: Callable[[object], object], erreur: OSError, message: str
+    monkeypatch: pytest.MonkeyPatch,
+    appel: Callable[[], object],
+    comportement: Comportement,
+    message: str,
 ) -> None:
+    simuler_reseau(monkeypatch, comportement)
     with pytest.raises(RuntimeError, match=message):
-        appel(_Ouvreur(erreur=erreur))
+        appel()
 
 
 @pytest.mark.parametrize(
     "module", [api_fhf, api_mef, api_territorial], ids=["fhf", "mef", "territorial"]
 )
-def test_obtenir_page_recherche_rend_html_et_titre(module: object) -> None:
-    ouvreur = _Ouvreur(b"<html><title> Offres (3) </title></html>")
-    page = module.obtenir_page_recherche(ouvreur, "https://exemple.test/")  # type: ignore[attr-defined]
+def test_obtenir_page_recherche_rend_html_et_titre(
+    monkeypatch: pytest.MonkeyPatch, module: Any
+) -> None:
+    simuler_reseau(monkeypatch, ReponseHttp("<html><title> Offres (3) </title></html>"))
+    page = module.obtenir_page_recherche(
+        module.nouvelle_session(), "https://exemple.test/"
+    )
     assert page["title"] == "Offres (3)"
 
 
@@ -76,16 +82,13 @@ def test_obtenir_page_recherche_rend_html_et_titre(module: object) -> None:
     ],
     ids=["page", "pdf", "organisations"],
 )
-@pytest.mark.parametrize(("erreur", "message"), ERREURS)
+@pytest.mark.parametrize(("comportement", "message"), ERREURS)
 def test_choisirleservicepublic_erreur_en_runtime_error(
     monkeypatch: pytest.MonkeyPatch,
     appel: Callable[[], object],
-    erreur: OSError,
+    comportement: Comportement,
     message: str,
 ) -> None:
-    def echec(_requete: urllib.request.Request, timeout: float) -> None:
-        raise erreur
-
-    monkeypatch.setattr(urllib.request, "urlopen", echec)
+    simuler_reseau(monkeypatch, comportement)
     with pytest.raises(RuntimeError, match=message):
         appel()

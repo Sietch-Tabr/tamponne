@@ -1,19 +1,19 @@
 """Interface commune à toutes les sources d'offres."""
 
 import re
-lazy import urllib.error
-lazy import urllib.request
+import threading
+import time
 from collections.abc import Callable
 from typing import Protocol
 from urllib.parse import urlparse
 
 lazy from bs4 import Tag
 
+from src.sources.reseau import ErreurHttp, Session
 from src.types import FicheFiltrage, FiltresRecherche, Offre
 
 # Sites sans WAF : User-Agent identifiant l'application et son dépôt.
 USER_AGENT_IDENTIFIE = "tamponne (+https://codeberg.org/Kwaite/tamponne)"
-_TIMEOUT = 30
 _RE_TITRE = re.compile(r"<title[^>]*>(.*?)</title>", re.S | re.I)
 _RE_ESPACES = re.compile(r"\s+")
 _RE_LIGNES_VIDES = re.compile(r"\n{3,}")
@@ -90,23 +90,16 @@ def consulter_page(url: str) -> tuple[str, str]:
         PageIntrouvable: HTTP 404 ou 410.
         RuntimeError: Autre code d'erreur HTTP, ou échec réseau.
     """
-    requete = urllib.request.Request(url, headers={"User-Agent": USER_AGENT_IDENTIFIE})
     try:
-        with urllib.request.urlopen(requete, timeout=_TIMEOUT) as reponse:
-            url_finale = reponse.geturl()
-            html = reponse.read().decode("utf-8", errors="replace")
-    except urllib.error.HTTPError as erreur:
-        if erreur.code in (404, 410):
-            raise PageIntrouvable(f"Page introuvable (HTTP {erreur.code})") from erreur
-        raise RuntimeError(
-            f"Erreur HTTP {erreur.code} lors du chargement de {url}"
-        ) from erreur
-    except OSError as erreur:
-        raise RuntimeError(
-            f"Erreur réseau lors du chargement de {url}\u00a0: {erreur}"
-        ) from erreur
-    titre = _RE_TITRE.search(html)
-    return url_finale, titre.group(1).strip() if titre else ""
+        reponse = Session({"User-Agent": USER_AGENT_IDENTIFIE}).lire(url)
+    except ErreurHttp as erreur:
+        if erreur.statut in (404, 410):
+            raise PageIntrouvable(
+                f"Page introuvable (HTTP {erreur.statut})"
+            ) from erreur
+        raise
+    titre = _RE_TITRE.search(reponse.texte())
+    return reponse.url, titre.group(1).strip() if titre else ""
 
 
 def deduplique_offres(offres: list[Offre]) -> list[Offre]:
@@ -176,3 +169,43 @@ class SourceOffres(Protocol):
             ou boucle détectée).
         """
         ...
+
+
+MARQUEURS_PANNE = ("maintenance", "indisponible", "erreur", "error", "temporairement")
+"""Mots d'un titre de page qui annoncent une panne du site, pas une offre retirée."""
+DUREE_CONTROLE = 300
+"""Secondes pendant lesquelles le bon état d'un site est retenu."""
+
+_verrou_controle = threading.Lock()
+_controles: dict[str, tuple[float, str]] = {}
+
+
+def controler_site(url: str) -> None:
+    """Vérifie que le site de `url` répond normalement avant de conclure
+    qu'une offre y est retirée, ou qu'une recherche n'y a rien trouvé : un site
+    en panne ou en maintenance répond parfois 404 (ou une page vide) à toutes
+    ses pages. Le résultat est retenu `DUREE_CONTROLE` par site.
+
+    Raises:
+        RuntimeError: La page d'accueil ne répond pas normalement.
+    """
+    morceaux = urlparse(url)
+    racine = f"{morceaux.scheme}://{morceaux.netloc}/"
+    with _verrou_controle:
+        vu = _controles.get(racine)
+        if vu is not None and time.monotonic() - vu[0] < DUREE_CONTROLE:
+            if vu[1]:
+                raise RuntimeError(vu[1])
+            return
+    probleme = ""
+    try:
+        _, titre = consulter_page(racine)
+    except RuntimeError as erreur:
+        probleme = f"Le site {morceaux.netloc} ne répond pas normalement ({erreur})"
+    else:
+        if any(mot in titre.lower() for mot in MARQUEURS_PANNE):
+            probleme = f"Le site {morceaux.netloc} annonce une panne ({titre.strip()})"
+    with _verrou_controle:
+        _controles[racine] = (time.monotonic(), probleme)
+    if probleme:
+        raise RuntimeError(probleme)

@@ -17,6 +17,9 @@ Feuille {
     required property var tampons
     required property int joursSansNouvelles
     required property bool disponible
+    /*! Offre retirée d'un dossier encore ouvert : le poste est probablement pourvu. */
+    required property bool depublicationASignaler
+    required property string depublieeLe
 
     signal voirOffre(string reference)
     signal voirArchive(string reference)
@@ -32,6 +35,9 @@ Feuille {
     property bool courant: false
 
     readonly property bool relance: joursSansNouvelles >= 0
+    /*! Un seul post-it : la dépublication prime sur la relance (relancer pour
+        un poste pourvu n'a plus de sens). */
+    readonly property bool postitVisible: depublicationASignaler || relance
     readonly property color fondDossier: disponible ? Theme.papier : Theme.papierGrise
 
     couleur: fondDossier
@@ -72,7 +78,7 @@ Feuille {
             Layout.fillWidth: true
             Layout.minimumWidth: 320
             Layout.alignment: Qt.AlignTop
-            Layout.rightMargin: racine.relance ? 170 : 0
+            Layout.rightMargin: racine.postitVisible ? 170 : 0
             spacing: 6
 
             Texte {
@@ -149,8 +155,9 @@ Feuille {
                     focusPolicy: Qt.StrongFocus
                     hoverEnabled: true
                     Accessible.role: Accessible.Button
-                    Accessible.name: "Modifier l'événement " + modelData.libelle + " du " + modelData.date
-                    onClicked: racine.modifierEvenement(racine.reference, modelData.indice)
+                    Accessible.name: (modelData.information ? "Information\u00a0: " : "Modifier l'événement ") + modelData.libelle + " du " + modelData.date
+                    // Le constat de dépublication n'est pas un événement : rien à modifier.
+                    onClicked: if (!modelData.information) racine.modifierEvenement(racine.reference, modelData.indice)
 
                     contentItem: Tampon {
                         id: tampon
@@ -159,7 +166,8 @@ Feuille {
                         texte: boutonTampon.modelData.libelle
                         date: boutonTampon.modelData.date
                         fond: racine.fondDossier
-                        encre: boutonTampon.modelData.refus ? Theme.rouge
+                        encre: boutonTampon.modelData.information ? Theme.encre2
+                             : boutonTampon.modelData.refus ? Theme.rouge
                              : (boutonTampon.modelData.positif ? Theme.vert
                                 : (boutonTampon.modelData.courant ? Theme.tampon : Theme.encre2))
                         taille: boutonTampon.modelData.courant ? (racine.tampons.length === 1 ? 16 : 17) : 14
@@ -167,7 +175,7 @@ Feuille {
                         Accessible.ignored: true
                     }
                     background: Rectangle {
-                        visible: boutonTampon.visualFocus || boutonTampon.hovered
+                        visible: !boutonTampon.modelData.information && (boutonTampon.visualFocus || boutonTampon.hovered)
                         anchors.fill: parent
                         anchors.margins: -6
                         color: "transparent"
@@ -182,7 +190,7 @@ Feuille {
 
     Rectangle {
         id: postit
-        visible: racine.relance
+        visible: racine.postitVisible
         x: racine.width - 22 - width
         y: -14
         // 160 px de contenu + 2 × 12 px de marge (boîte CSS en content-box).
@@ -192,7 +200,9 @@ Feuille {
         color: Theme.postit
 
         Accessible.role: Accessible.Note
-        Accessible.name: "Relance suggérée, sans nouvelles depuis " + racine.joursSansNouvelles + " jours"
+        Accessible.name: racine.depublicationASignaler
+            ? "Offre dépubliée le " + racine.depublieeLe + ", le poste est probablement pourvu"
+            : "Relance suggérée, sans nouvelles depuis " + racine.joursSansNouvelles + " jours"
 
         Column {
             id: contenuPostit
@@ -202,7 +212,7 @@ Feuille {
 
             Text {
                 width: parent.width
-                text: "Relance suggérée"
+                text: racine.depublicationASignaler ? "Offre dépubliée" : "Relance suggérée"
                 color: Theme.postitTexte
                 font.family: Theme.policeTexte
                 font.pixelSize: 16
@@ -213,7 +223,9 @@ Feuille {
             }
             Text {
                 width: parent.width
-                text: "sans nouvelles depuis " + racine.joursSansNouvelles + " jours"
+                text: racine.depublicationASignaler
+                    ? "le " + racine.depublieeLe + ", poste probablement pourvu"
+                    : "sans nouvelles depuis " + racine.joursSansNouvelles + " jours"
                 color: Theme.postitTexte
                 font.family: Theme.policeMono
                 font.pixelSize: 14

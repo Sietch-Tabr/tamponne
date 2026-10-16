@@ -116,8 +116,24 @@ def _pages_par_requete(
     monkeypatch.setattr(module, "extraire_offres", _offres_de_page)
 
 
+def _fhf_pages(monkeypatch: pytest.MonkeyPatch, pages: dict[int, str]) -> list[str]:
+    """Pages de FHF par numéro (lues par lots en parallèle : ordre libre) ;
+    renvoie les adresses demandées."""
+    demandees: list[str] = []
+
+    def obtenir(_opener: object, url: str) -> dict[str, str]:
+        demandees.append(url)
+        numero = int(url.rsplit("page=", 1)[1]) if "page=" in url else 0
+        return {"html": pages.get(numero, f"p{numero}:"), "title": ""}
+
+    monkeypatch.setattr(fhf, "nouvelle_session", lambda: None)
+    monkeypatch.setattr(fhf, "obtenir_page_recherche", obtenir)
+    monkeypatch.setattr(fhf, "extraire_offres", _offres_de_page)
+    return demandees
+
+
 def test_fhf_boucle_jusqu_a_une_page_vide(monkeypatch: pytest.MonkeyPatch) -> None:
-    _pages_par_requete(monkeypatch, fhf, ["p0:a", "p1:b", "p2:"], "")
+    _fhf_pages(monkeypatch, {0: "p0:a", 1: "p1:b", 2: "p2:"})
     pages, on_page = _progression()
     offres, nb, arret = fhf.Fhf().rechercher({}, on_page)
     assert [o["reference"] for o in offres] == ["a", "b"]
@@ -126,12 +142,32 @@ def test_fhf_boucle_jusqu_a_une_page_vide(monkeypatch: pytest.MonkeyPatch) -> No
 
 
 def test_fhf_plafonne_a_max_pages(monkeypatch: pytest.MonkeyPatch) -> None:
-    _pages_par_requete(
-        monkeypatch, fhf, [f"p{n}:r{n}" for n in range(fhf.MAX_PAGES + 3)], ""
-    )
+    _fhf_pages(monkeypatch, {n: f"p{n}:r{n}" for n in range(fhf.MAX_PAGES + 3)})
     offres, nb, arret = fhf.Fhf().rechercher({})
     assert len(offres) == fhf.MAX_PAGES
     assert (nb, arret) == (fhf.MAX_PAGES, True)
+
+
+def test_fhf_ne_lit_pas_au_dela_de_la_page_vide_d_un_lot(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    demandees = _fhf_pages(monkeypatch, {0: "p0:a", 1: "p1:"})
+    offres, _, _ = fhf.Fhf().rechercher({})
+    assert [o["reference"] for o in offres] == ["a"]
+    assert len(demandees) <= fhf.LECTEURS
+
+
+def test_fhf_demande_chaque_departement_au_site_et_etiquette_les_offres(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    demandees = _fhf_pages(monkeypatch, {0: "p0:a"})
+    offres, nb, _ = fhf.Fhf().rechercher({"localisations": ["Paris", "Corse du Sud"]})
+    assert {u.split("department=")[1].split("&")[0] for u in demandees} == {"2A", "75"}
+    assert sorted(o["localisation"] for o in offres) == [
+        "Corse du Sud (2A)",
+        "Paris (75)",
+    ]
+    assert nb == 4
 
 
 def _passerelles_pages(monkeypatch: pytest.MonkeyPatch, pages: dict[int, str]) -> None:
@@ -260,3 +296,13 @@ def test_csp_recuperer_detail_offre_echec_reseau_fiche_vide(
 
     monkeypatch.setattr(csp, "obtenir_page_offres", injoignable)
     assert csp.recuperer_detail_offre("https://exemple.test/x") == csp.DETAIL_VIDE
+
+
+def test_fhf_ignore_un_departement_absent_du_site(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    demandees = _fhf_pages(monkeypatch, {0: "p0:a"})
+    offres, _, _ = fhf.Fhf().rechercher({"localisations": ["Nouvelle Calédonie"]})
+    assert [u for u in demandees if "department=988" not in u] == []
+    offres, _, _ = fhf.Fhf().rechercher({"localisations": ["Inconnue"]})
+    assert offres == []

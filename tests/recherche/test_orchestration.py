@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from src.donnees import cache, parametres_sources, profils
+from src.recherche import orchestration
 from src.recherche.orchestration import (
     RechercheImpossible,
     criteres_ignores,
@@ -36,6 +37,15 @@ def _rediriger_donnees_vers_tmp(
     parametres_sources.sauvegarder_sources_actives(
         {"passerellesmef": False, "fhf": False}
     )
+
+
+@pytest.fixture(autouse=True)
+def _site_en_bon_etat(monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    """Le contrôle du site (accueil) ne joint jamais le réseau ; renvoie les
+    sites contrôlés. Les tests de panne le remplacent."""
+    controles: list[str] = []
+    monkeypatch.setattr(orchestration, "controler_site", controles.append)
+    return controles
 
 
 def _offre(reference: str, source: str = "") -> Offre:
@@ -732,3 +742,58 @@ def test_rechercher_remonte_la_lecture_des_fiches(
 
     nom_csp = parametres_sources.SOURCES_DISPONIBLES["choisirleservicepublic"]
     assert lectures == [(nom_csp, 1, 2), (nom_csp, 2, 2)]
+
+
+def test_une_source_sans_offre_dont_le_site_va_bien_est_une_recherche_vide(
+    monkeypatch: pytest.MonkeyPatch, _site_en_bon_etat: list[str]
+) -> None:
+    monkeypatch.setattr(
+        ChoisirLeServicePublic, "rechercher", lambda *_a, **_k: ([], 1, False)
+    )
+    monkeypatch.setattr(
+        EmploiTerritorial, "rechercher", lambda *_a, **_k: ([_offre("T1")], 1, False)
+    )
+    resultats, avertissements, erreurs = _executer({})
+
+    assert (avertissements, erreurs) == ([], [])
+    assert [o["reference"] for o in resultats[0][0]] == ["T1"]
+    # Seule la source sans offre est contrôlée : un résultat prouve que le site répond.
+    assert _site_en_bon_etat == [orchestration.SITES["choisirleservicepublic"]]
+
+
+def test_une_source_sans_offre_dont_le_site_est_en_panne_est_signalee(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def panne(url: str) -> None:
+        raise RuntimeError(f"Le site {url} annonce une panne (Maintenance)")
+
+    monkeypatch.setattr(orchestration, "controler_site", panne)
+    monkeypatch.setattr(
+        ChoisirLeServicePublic, "rechercher", lambda *_a, **_k: ([], 1, False)
+    )
+    monkeypatch.setattr(
+        EmploiTerritorial, "rechercher", lambda *_a, **_k: ([_offre("T1")], 1, False)
+    )
+    resultats, avertissements, erreurs = _executer({})
+
+    assert erreurs == []
+    assert [o["reference"] for o in resultats[0][0]] == ["T1"]
+    assert len(avertissements) == 1
+    assert "indisponible" in avertissements[0] and "panne" in avertissements[0]
+
+
+def test_toutes_les_sources_vides_et_en_panne_la_recherche_est_impossible(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def panne(_url: str) -> None:
+        raise RuntimeError("Le site annonce une panne")
+
+    monkeypatch.setattr(orchestration, "controler_site", panne)
+    monkeypatch.setattr(
+        ChoisirLeServicePublic, "rechercher", lambda *_a, **_k: ([], 1, False)
+    )
+    monkeypatch.setattr(
+        EmploiTerritorial, "rechercher", lambda *_a, **_k: ([], 1, False)
+    )
+    _, _, erreurs = _executer({})
+    assert erreurs and "indisponibles" in erreurs[0]

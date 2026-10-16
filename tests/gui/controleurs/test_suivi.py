@@ -1,6 +1,8 @@
 """Tests de src/gui/controleurs/suivi.py : dossiers exposés au QML,
 vérification en arrière-plan (QThread) et actions."""
 
+from datetime import date
+
 import pytest
 from PySide6.QtCore import QModelIndex, Qt
 from PySide6.QtWidgets import QApplication
@@ -244,3 +246,111 @@ def test_proposition_suit_le_dernier_evenement(qapp: QApplication) -> None:
         "date": "2026-09-11",
     }
     assert controleur.proposition("REF-ABSENTE") == {}
+
+
+def _sauver(*dossiers: Candidature) -> None:
+    candidatures.sauvegarder_candidatures({c["offre_reference"]: c for c in dossiers})
+
+
+def _attendre_fin(qtbot: QtBot, controleur: ControleurSuivi) -> None:
+    qtbot.waitUntil(
+        lambda: not controleur.property("verification_en_cours"), timeout=5000
+    )
+
+
+def test_verification_automatique_ne_regarde_que_les_dossiers_ouverts_non_verifies(
+    qapp: QApplication, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    ouvert = _candidature("OUVERT", "https://example.org/ouvert")
+    clos = _candidature("CLOS", "https://example.org/clos")
+    clos["historique"].append({"date": "2026-09-20", "type": "refus", "note": ""})
+    deja = _candidature("DEJA", "https://example.org/deja")
+    deja["derniere_verification"] = date.today().isoformat()
+    _sauver(ouvert, clos, deja)
+    verifiees: list[str] = []
+
+    def verifier(url: str) -> bool:
+        verifiees.append(url)
+        return False
+
+    monkeypatch.setattr(travailleurs, "verifier_disponibilite", verifier)
+    controleur = ControleurSuivi(qapp)
+
+    controleur.verifier_si_necessaire()
+    _attendre_fin(qtbot, controleur)
+
+    assert verifiees == ["https://example.org/ouvert"]
+    toutes = candidatures.charger_candidatures()
+    assert toutes["OUVERT"]["disponible"] is False
+    assert toutes["OUVERT"].get("depubliee_le") == date.today().isoformat()
+    assert toutes["CLOS"]["disponible"] is True
+    assert _valeur(controleur, 2, b"depublicationASignaler") is True
+
+
+def test_verification_automatique_une_seule_fois_par_jour(
+    qapp: QApplication, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _sauver(_candidature("A", "https://example.org/a"))
+    verifiees: list[str] = []
+
+    def injoignable(url: str) -> bool:
+        verifiees.append(url)
+        raise RuntimeError("hors ligne")
+
+    monkeypatch.setattr(travailleurs, "verifier_disponibilite", injoignable)
+    controleur = ControleurSuivi(qapp)
+
+    controleur.verifier_si_necessaire()
+    _attendre_fin(qtbot, controleur)
+    controleur.verifier_si_necessaire()
+    controleur.verifier_si_necessaire()
+
+    assert verifiees == ["https://example.org/a"]
+
+
+def test_verification_automatique_sans_dossier_ne_lance_rien(
+    qapp: QApplication,
+) -> None:
+    controleur = ControleurSuivi(qapp)
+    controleur.verifier_si_necessaire()
+    assert controleur.property("verification_en_cours") is False
+
+
+def test_verification_automatique_revoit_une_depublication_recente_et_l_efface(
+    qapp: QApplication, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    candidature = _candidature("A", "https://example.org/a")
+    candidature["disponible"] = False
+    candidature["depubliee_le"] = date.today().isoformat()
+    candidature["derniere_verification"] = "2020-01-01"
+    _sauver(candidature)
+    monkeypatch.setattr(travailleurs, "verifier_disponibilite", lambda _url: True)
+    controleur = ControleurSuivi(qapp)
+
+    controleur.verifier_si_necessaire()
+    _attendre_fin(qtbot, controleur)
+
+    revue = candidatures.charger_candidatures()["A"]
+    assert revue["disponible"] is True
+    assert "depubliee_le" not in revue
+    assert _valeur(controleur, 0, b"depublicationASignaler") is False
+
+
+@pytest.mark.usefixtures("deux_dossiers")
+def test_verifier_offres_revoit_aussi_les_dossiers_ouverts_marques_depublies(
+    qapp: QApplication, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    candidatures.marquer_disponibilite("REF-A", False)
+    verifiees: list[str] = []
+
+    def verifier(url: str) -> bool:
+        verifiees.append(url)
+        return True
+
+    monkeypatch.setattr(travailleurs, "verifier_disponibilite", verifier)
+    controleur = ControleurSuivi(qapp)
+    controleur.verifier_offres()
+    _attendre_fin(qtbot, controleur)
+
+    assert len(verifiees) == 2
+    assert candidatures.charger_candidatures()["REF-A"]["disponible"] is True

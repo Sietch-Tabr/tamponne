@@ -26,6 +26,18 @@ def _pas_de_verification_maj_reseau(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture(autouse=True)
+def _pas_de_verification_des_offres_reseau(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Ouvrir l'écran Suivi lance la vérification automatique des offres :
+    jamais de vrai appel réseau (une requête encore en vol au démarrage du test
+    suivant, une fois l'interdiction levée, atteindrait le vrai site)."""
+
+    def injoignable(_url: str) -> bool:
+        raise RuntimeError("Vérification interdite pendant les tests.")
+
+    monkeypatch.setattr(travailleurs, "verifier_disponibilite", injoignable)
+
+
+@pytest.fixture(autouse=True)
 def _rediriger_affichage_vers_tmp(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -72,6 +84,7 @@ def _rediriger_caches_vers_tmp(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     monkeypatch.setattr(cache, "CHEMIN_OFFRES", tmp_path / "offres.json")
     monkeypatch.setattr(cache, "CHEMIN_CACHE", tmp_path / "cache.json")
     monkeypatch.setattr(cache, "CHEMIN_FICHES", tmp_path / "fiches.json")
+    monkeypatch.setattr(cache, "CHEMIN_DETAILS", tmp_path / "details.json")
 
 
 @pytest.fixture(autouse=True)

@@ -390,3 +390,106 @@ def test_chemin_archive_pdf_reste_dans_le_dossier_des_archives(reference: str) -
     chemin = candidatures.chemin_archive_pdf(reference)
     assert chemin.parent == candidatures.DOSSIER_ARCHIVES
     assert chemin.suffix == ".pdf" and not chemin.name.startswith(".")
+
+
+def test_marquer_disponibilite_date_la_depublication_a_la_premiere_constatation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    candidatures.ajouter_candidature(
+        "ref-1", "Attaché", "DGFiP", "https://example.org/1"
+    )
+    candidatures.marquer_disponibilite("ref-1", False)
+    premiere = candidatures.charger_candidatures()["ref-1"].get("depubliee_le")
+    assert premiere == date.today().isoformat()
+
+    class _Demain(date):
+        @classmethod
+        def today(cls) -> "_Demain":
+            return cls(2030, 1, 1)
+
+    monkeypatch.setattr(candidatures, "date", _Demain)
+    candidatures.marquer_disponibilite("ref-1", False)
+    relue = candidatures.charger_candidatures()["ref-1"]
+    assert relue.get("depubliee_le") == premiere
+    assert relue["derniere_verification"] == "2030-01-01"
+
+
+def test_marquer_disponibilite_remise_en_ligne_efface_la_depublication() -> None:
+    candidatures.ajouter_candidature(
+        "ref-1", "Attaché", "DGFiP", "https://example.org/1"
+    )
+    candidatures.marquer_disponibilite("ref-1", False)
+    candidatures.marquer_disponibilite("ref-1", True)
+    toutes = candidatures.charger_candidatures()
+    assert "depubliee_le" not in toutes["ref-1"]
+    assert candidatures.date_depublication(toutes["ref-1"]) == ""
+
+
+def test_date_depublication_reprend_la_derniere_verification_des_anciennes_offres() -> (
+    None
+):
+    candidatures.ajouter_candidature(
+        "ref-1", "Attaché", "DGFiP", "https://example.org/1"
+    )
+    toutes = candidatures.charger_candidatures()
+    candidature = toutes["ref-1"]
+    candidature["disponible"] = False
+    candidature["derniere_verification"] = "2026-10-05"
+    assert candidatures.date_depublication(candidature) == "2026-10-05"
+
+
+def test_depublication_a_signaler_seulement_pour_un_dossier_ouvert() -> None:
+    candidatures.ajouter_candidature(
+        "ref-1", "Attaché", "DGFiP", "https://example.org/1"
+    )
+    candidatures.marquer_disponibilite("ref-1", False)
+    ouvert = candidatures.charger_candidatures()["ref-1"]
+    assert candidatures.depublication_a_signaler(ouvert) is True
+
+    candidatures.ajouter_evenement("ref-1", "refus")
+    clos = candidatures.charger_candidatures()["ref-1"]
+    assert candidatures.dossier_clos(clos) is True
+    assert candidatures.depublication_a_signaler(clos) is False
+
+
+def test_depublication_ne_change_pas_le_statut() -> None:
+    candidatures.ajouter_candidature(
+        "ref-1", "Attaché", "DGFiP", "https://example.org/1"
+    )
+    candidatures.ajouter_evenement("ref-1", "entretien_planifie")
+    avant = candidatures.statut_libelle(candidatures.charger_candidatures()["ref-1"])
+    candidatures.marquer_disponibilite("ref-1", False)
+    apres = candidatures.charger_candidatures()["ref-1"]
+    assert candidatures.statut_libelle(apres) == avant == "Entretien planifié"
+    assert len(apres["historique"]) == 1
+
+
+def test_a_reverifier_une_depublication_recente_d_un_dossier_ouvert() -> None:
+    candidatures.ajouter_candidature(
+        "ref-1", "Attaché", "DGFiP", "https://example.org/1"
+    )
+    candidatures.marquer_disponibilite("ref-1", False)
+    candidature = candidatures.charger_candidatures()["ref-1"]
+    aujourd_hui = date.today()
+
+    assert candidatures.a_reverifier(candidature, aujourd_hui) is True
+    assert (
+        candidatures.a_reverifier(
+            candidature,
+            aujourd_hui + timedelta(days=candidatures.JOURS_REVERIFICATION + 1),
+        )
+        is False
+    )
+
+
+def test_a_reverifier_ignore_une_offre_en_ligne_et_un_dossier_clos() -> None:
+    candidatures.ajouter_candidature(
+        "ref-1", "Attaché", "DGFiP", "https://example.org/1"
+    )
+    en_ligne = candidatures.charger_candidatures()["ref-1"]
+    assert candidatures.a_reverifier(en_ligne, date.today()) is False
+
+    candidatures.marquer_disponibilite("ref-1", False)
+    candidatures.ajouter_evenement("ref-1", "refus")
+    clos = candidatures.charger_candidatures()["ref-1"]
+    assert candidatures.a_reverifier(clos, date.today()) is False

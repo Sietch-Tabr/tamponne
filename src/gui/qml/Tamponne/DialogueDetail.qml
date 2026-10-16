@@ -12,6 +12,10 @@ Dialogue {
     /*! Contenu fourni par le contrôleur (`detail(reference)`). */
     property var fiche: ({})
 
+    /*! Vrai tant que la fiche se télécharge : seuls l'intitulé et le
+        sous-titre de l'offre sont connus. */
+    property bool chargement: false
+
     signal postuler(string reference)
     signal consulterEnLigne(string reference)
     signal voirArchive(string reference)
@@ -26,11 +30,21 @@ Dialogue {
 
     nomAccessible: fiche.titre || ""
 
-    function afficher(contenu: var) {
-        fiche = contenu
+    function attendre(apercu: var) {
+        fiche = apercu
+        chargement = true
         open()
         boutonFermer.forceActiveFocus()
     }
+
+    function afficher(contenu: var) {
+        fiche = contenu
+        chargement = false
+        open()
+        boutonFermer.forceActiveFocus()
+    }
+
+    onClosed: chargement = false
 
     Flickable {
         id: defilement
@@ -159,7 +173,14 @@ Dialogue {
             }
 
             Texte {
-                visible: (racine.fiche.description || "") === ""
+                visible: racine.chargement
+                text: "Chargement de la fiche\u2026"
+                color: Theme.encre2
+            }
+
+            Texte {
+                visible: !racine.chargement
+                    && (racine.fiche.description || "") === ""
                     && (racine.fiche.informations || []).length === 0
                     && (racine.fiche.rubriques || []).length === 0
                 text: "Aucun détail disponible pour cette offre."

@@ -79,8 +79,8 @@ class TravailleurRecherche(QObject):
 
 class VerificateurDisponibilite(QObject):
     """Vérifie séquentiellement la disponibilité (toujours en ligne ou
-    dépubliée) des offres suivies dont le statut n'est pas déjà connu
-    comme dépublié — même pattern QThread que `TravailleurRecherche`."""
+    dépubliée) des offres des candidatures données — l'appelant choisit
+    lesquelles — même pattern QThread que `TravailleurRecherche`."""
 
     progression = Signal(int, int)
     resultat = Signal(dict, dict)
@@ -94,11 +94,7 @@ class VerificateurDisponibilite(QObject):
 
     def executer(self) -> None:
         """Slot à connecter à `QThread.started`."""
-        a_verifier = [
-            ref
-            for ref, candidature in self._candidatures.items()
-            if candidature.get("disponible", True)
-        ]
+        a_verifier = list(self._candidatures)
         resultats: dict[str, bool] = {}
         echecs: dict[str, str] = {}
         total = len(a_verifier)

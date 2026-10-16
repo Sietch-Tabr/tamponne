@@ -1,6 +1,5 @@
 """Tests du dédoublonnage multi-source (src/sources/base.py)."""
 
-import io
 import urllib.request
 from collections.abc import Callable
 
@@ -11,6 +10,7 @@ from src.sources.choisirleservicepublic import api as api_csp
 from src.sources.fhf import api as api_fhf
 from src.sources.passerellesmef import api as api_mef
 from src.types import Offre
+from tests.sources.reponses import ReponseHttp, simuler_reseau
 
 
 def _offre(reference: str, titre: str = "x", source: str = "") -> Offre:
@@ -73,24 +73,26 @@ def test_sources_sans_waf_envoient_le_user_agent_identifie() -> None:
 @pytest.mark.parametrize(
     "telecharger",
     [
-        lambda: api_csp.obtenir_page_offres("https://exemple.test/"),
-        lambda: api_csp.telecharger_binaire("https://exemple.test/a.pdf"),
+        lambda: api_csp.obtenir_page_offres("https://choisirleservicepublic.gouv.fr/"),
+        lambda: api_fhf.obtenir_fiche_offre(
+            api_fhf.nouvelle_session(), "https://emploi.fhf.fr/emploi/1"
+        ),
+        lambda: api_mef.obtenir_fiche_offre(
+            api_mef.nouvelle_session(), "https://www.passerelles.economie.gouv.fr/x"
+        ),
         api_csp.telecharger_page_offres,
     ],
+    ids=["csp", "fhf", "mef", "organisations"],
 )
-def test_choisirleservicepublic_envoie_le_user_agent_identifie(
+def test_les_sources_envoient_le_user_agent_identifie_et_demandent_la_compression(
     monkeypatch: pytest.MonkeyPatch, telecharger: Callable[[], object]
 ) -> None:
-    requetes: list[urllib.request.Request] = []
-
-    def urlopen_factice(requete: urllib.request.Request, timeout: float) -> io.BytesIO:
-        requetes.append(requete)
-        return io.BytesIO(b"<title>t</title>")
-
-    monkeypatch.setattr(urllib.request, "urlopen", urlopen_factice)
+    faux = simuler_reseau(monkeypatch, ReponseHttp("<title>t</title>"))
     telecharger()
 
-    assert requetes[0].get_header("User-agent") == USER_AGENT_IDENTIFIE
+    entetes = faux.appels[0][3]
+    assert entetes["User-Agent"] == USER_AGENT_IDENTIFIE
+    assert entetes["Accept-Encoding"] == "gzip, deflate"
 
 
 def test_reseau_interdit_pendant_les_tests() -> None:

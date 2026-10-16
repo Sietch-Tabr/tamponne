@@ -1,46 +1,39 @@
 """Source emploi.fhf.fr (Fédération Hospitalière de France) — implémente
 `SourceOffres`.
 
-Portail Drupal de la FPH. Le site ne filtre que par mot-clé : la
-localisation est appliquée ici, d'après le code postal de l'établissement lu
-sur la fiche de chaque offre (voir `filtrage`).
+Portail Drupal de la FPH. Le site filtre par mot-clé et par département
+(`department=` dans l'adresse) : une recherche par département demandé
+donne exactement les offres de ses établissements, sans lire aucune fiche.
 """
 
 import time
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 
-from src.filtres import libelle_lieu, lieu_correspond, numero_departement_texte
-from src.sources.base import CacheFiches
+from src.filtres import libelle_lieu, numeros_departements
 from src.sources.choisirleservicepublic.extraction import DETAIL_VIDE
-from src.sources.fhf.filtrage import extraire_fiche
-from src.sources.fiches import lire_fiches
 from src.sources.fhf.api import (
+    DEPARTEMENTS_SITE,
     construire_url_recherche,
     nouvelle_session,
     obtenir_fiche_offre,
     obtenir_page_recherche,
 )
 from src.sources.fhf.extraction import extraire_detail_offre, extraire_offres
-from src.types import DetailOffre, FicheFiltrage, FiltresRecherche, Offre
+from src.types import DetailOffre, FiltresRecherche, Offre
 
 MAX_PAGES = 20
 MAX_PAGES_FILTREE = 100
-"""Plafond quand la localisation s'applique après coup : lire tout le portail,
-sinon les offres du lieu demandé pourraient se trouver au-delà de MAX_PAGES."""
-_DELAI_COURTOISIE = 0.5
+"""Plafond de pages d'un département (une recherche sans lieu s'arrête à
+MAX_PAGES) : Paris en compte une quarantaine."""
+LECTEURS = 4
+"""Pages lues en même temps (vérifié : 160 pages en 21 s, sans refus)."""
+_DELAI_COURTOISIE = 0.3
 
 
 class Fhf:
     """Implémente :class:`~src.sources.base.SourceOffres` pour le portail
-    de la Fédération Hospitalière de France.
-
-    Args:
-        cache_fiches: Fiches déjà lues, pour ne pas les relire d'une
-            recherche à l'autre (aucune mémoire si `None`).
-    """
-
-    def __init__(self, cache_fiches: CacheFiches | None = None) -> None:
-        self._cache_fiches = cache_fiches
+    de la Fédération Hospitalière de France."""
 
     def rechercher(
         self,
@@ -50,61 +43,72 @@ class Fhf:
     ) -> tuple[list[Offre], int, bool]:
         """Voir :meth:`SourceOffres.rechercher`.
 
-        Pas de total annoncé sur ce site (pager Drupal sans compteur) —
-        boucle jusqu'à une page vide ou le plafond de pages, comme ailleurs
-        dans le projet. Avec une localisation, le lieu se lit sur la fiche
-        (le site n'affiche qu'une ville) ; la date de publication est
-        appliquée par l'appelant."""
+        Pas de total annoncé sur ce site (pager Drupal sans compteur) :
+        lecture par lots de pages jusqu'à une page vide ou le plafond. Avec
+        une localisation, une recherche par département du site (la liste
+        n'affiche qu'une ville, le numéro vient donc de la recherche) ; la
+        date de publication est appliquée par l'appelant."""
+        query = filtres.get("query", "")
         localisations = filtres.get("localisations", [])
-        offres, nb_pages, arret_anticipe = self._lire_liste(
-            filtres.get("query", ""),
-            MAX_PAGES_FILTREE if localisations else MAX_PAGES,
-            on_page,
-        )
         if not localisations:
-            return offres, nb_pages, arret_anticipe
+            return self._lire_liste(query, "", MAX_PAGES, on_page, 0)
 
-        fiches = lire_fiches(
-            [o["url"] for o in offres], self._lire_fiche, self._cache_fiches, on_fiche
+        departements = sorted(
+            numero
+            for numero in numeros_departements(localisations)
+            if numero in DEPARTEMENTS_SITE
         )
-        retenues: list[Offre] = []
-        for offre in offres:
-            fiche = fiches.get(offre["url"])
-            numero = fiche["numero"] if fiche is not None else ""
-            if not lieu_correspond(numero, localisations):
-                continue
-            if numero and numero_departement_texte(offre["localisation"]) is None:
+        offres: list[Offre] = []
+        nb_pages = 0
+        plafonne = False
+        for numero in departements:
+            offres_dep, pages, plafond = self._lire_liste(
+                query, numero, MAX_PAGES_FILTREE, on_page, nb_pages
+            )
+            for offre in offres_dep:
                 offre["localisation"] = _lieu_complet(offre["localisation"], numero)
-            retenues.append(offre)
-        return retenues, nb_pages, arret_anticipe
+            offres.extend(offres_dep)
+            nb_pages += pages
+            plafonne = plafonne or plafond
+        return offres, nb_pages, plafonne
 
     def _lire_liste(
         self,
         query: str,
+        departement: str,
         max_pages: int,
         on_page: Callable[[int, int], None] | None,
+        deja_lues: int,
     ) -> tuple[list[Offre], int, bool]:
+        """Pages du mot-clé et du département (tous si vide), par lots de
+        `LECTEURS`, jusqu'à la première page vide ou `max_pages`.
+
+        `deja_lues` : pages des départements précédents, pour la progression.
+        Retourne les offres, le nombre de pages parcourues (page vide
+        comprise) et si le plafond a coupé la liste.
+        """
         opener = nouvelle_session()
-        toutes_offres: list[Offre] = []
-        for page in range(max_pages):
-            if page:
-                time.sleep(_DELAI_COURTOISIE)
-            url = construire_url_recherche(query=query, page=page)
-            reponse = obtenir_page_recherche(opener, url)
-            offres_page = extraire_offres(reponse.get("html", ""))
-            if not offres_page:
-                if on_page:
-                    on_page(page + 1, page + 1)
-                return toutes_offres, page + 1, False
-            toutes_offres.extend(offres_page)
-            if on_page:
-                on_page(page + 1, max_pages)
 
-        return toutes_offres, max_pages, True
+        def _page(numero: int) -> list[Offre]:
+            time.sleep(_DELAI_COURTOISIE)
+            url = construire_url_recherche(query, numero, departement)
+            return extraire_offres(obtenir_page_recherche(opener, url).get("html", ""))
 
-    @staticmethod
-    def _lire_fiche(url: str) -> FicheFiltrage | None:
-        return extraire_fiche(recuperer_detail_offre(url))
+        offres: list[Offre] = []
+        lues = deja_lues
+        with ThreadPoolExecutor(max_workers=LECTEURS) as pool:
+            for debut in range(0, max_pages, LECTEURS):
+                lot = range(debut, min(debut + LECTEURS, max_pages))
+                for numero, offres_page in zip(lot, pool.map(_page, lot)):
+                    if not offres_page:
+                        if on_page:
+                            on_page(lues + 1, lues + 1)
+                        return offres, numero + 1, False
+                    offres.extend(offres_page)
+                    lues += 1
+                    if on_page:
+                        on_page(lues, max(lues, max_pages))
+        return offres, max_pages, True
 
 
 def _lieu_complet(ville: str, numero: str) -> str:

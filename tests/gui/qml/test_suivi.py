@@ -30,6 +30,7 @@ def _charger(qapp: QApplication) -> tuple[QQmlApplicationEngine, Pont, list[str]
     moteur.load(
         QUrl.fromLocalFile(str(application.DOSSIER_QML / "Tamponne" / "Fenetre.qml"))
     )
+    moteur.rootObjects()[0].setProperty("ecransEnAvance", 5)
     moteur.rootObjects()[0].setProperty("ongletCourant", ONGLET_SUIVI)
     qapp.processEvents()
     return moteur, pont, avertissements
@@ -43,6 +44,7 @@ def ecran_avec_dossiers(
     monkeypatch.setattr(controleur_suivi, "date_du_jour", lambda: date(2026, 10, 4))
     moteur, pont, avertissements = _charger(qapp)
     yield moteur, avertissements
+    pont.arreter()
     del moteur, pont
 
 
@@ -90,6 +92,7 @@ def test_ecran_suivi_vide_affiche_le_message(qapp: QApplication) -> None:
     noms = _noms_accessibles(moteur.rootObjects()[0])
     assert avertissements == []
     assert any(n.startswith("Aucun dossier en cours.") for n in noms)
+    pont.arreter()
     del moteur, pont
 
 
@@ -157,3 +160,30 @@ def test_suppr_demande_confirmation_puis_oui_supprime(
     assert "Attaché(e) d'administration RH" in confirmation.property("message")
     confirmation.confirme.emit()  # type: ignore[attr-defined]
     assert "MINT_2026-31544" not in candidatures.charger_candidatures()
+
+
+def test_dossier_ouvert_dont_l_offre_est_depubliee_affiche_le_post_it_et_le_tampon(
+    qapp: QApplication, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    donnees_demo.installer(tmp_path / "donnees")
+    monkeypatch.setattr(controleur_suivi, "date_du_jour", lambda: date(2026, 10, 4))
+    toutes = candidatures.charger_candidatures()
+    entretien = toutes["MINT_2026-31544"]
+    entretien["disponible"] = False
+    entretien["depubliee_le"] = "2026-10-02"
+    candidatures.sauvegarder_candidatures(toutes)
+
+    moteur, pont, avertissements = _charger(qapp)
+    noms = _noms_accessibles(moteur.rootObjects()[0])
+
+    assert avertissements == []
+    assert "Offre dépubliée le 02/10/26, le poste est probablement pourvu" in noms
+    assert any(
+        n.startswith("Statut\u00a0: candidature envoyée le 11/09/2026")
+        and "offre dépubliée le 02/10/2026" in n
+        for n in noms
+    ), [n for n in noms if "Statut" in n or "dépubl" in n]
+    assert "Information : Offre dépubliée du 02/10/26" in noms
+    assert "Modifier l'événement Offre dépubliée du 02/10/26" not in noms
+    pont.arreter()
+    del moteur, pont
