@@ -12,6 +12,7 @@ from PySide6.QtWidgets import QApplication
 from pytestqt.qtbot import QtBot
 
 from src.donnees import cache, parametres_sources, profils
+from src.gui import travailleurs
 from src.donnees.profils import versants_compatibles
 from src.filtres import CATEGORIES, resumer_filtres
 from src.gui.controleurs import recherche as controleur_recherche
@@ -614,3 +615,117 @@ def test_precharger_selection_prepare_la_consultation(
         controleur.consulter()
 
     assert len(telechargements) == 1
+
+
+# --- robustesse (revue de code) ---
+
+
+def test_exception_inattendue_pendant_la_recherche_ne_bloque_pas_l_ecran(
+    controleur: ControleurRecherche, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def casse(*_args: object, **_kwargs: object) -> None:
+        raise KeyError("imprévu")
+
+    monkeypatch.setattr(travailleurs, "rechercher_toutes_sources", casse)
+    controleur.lancer()
+    qtbot.waitUntil(lambda: controleur.property("phase") == "erreur", timeout=5000)
+    qtbot.waitUntil(lambda: controleur._thread is None, timeout=5000)
+
+    assert controleur.property("erreur") == travailleurs.MESSAGE_INATTENDU
+    assert controleur.property("texte_bouton") == "Lancer la recherche"
+
+
+def test_exception_pendant_l_affichage_du_resultat_est_signalee(
+    controleur: ControleurRecherche, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def casse(*_args: object, **_kwargs: object) -> None:
+        raise OSError("disque")
+
+    monkeypatch.setattr(controleur_recherche, "post_traiter_resultats", casse)
+    controleur.lancer()
+    qtbot.waitUntil(lambda: controleur.property("phase") == "erreur", timeout=5000)
+    assert controleur.property("erreur") == travailleurs.MESSAGE_INATTENDU
+
+
+def test_source_en_echec_est_marquee_indisponible_sans_lire_le_texte(
+    controleur: ControleurRecherche,
+) -> None:
+    controleur._on_source_en_cours("Passerelles")
+    controleur._on_avertissement("Un message sans le mot habituel")
+    assert controleur.property("avancement") == [
+        {"nom": "Passerelles", "etat": "en cours…"}
+    ]
+
+    controleur._on_echec_source("Passerelles")
+    assert controleur.property("avancement") == [
+        {"nom": "Passerelles", "etat": "indisponible"}
+    ]
+    assert "Un message sans le mot habituel" in controleur.property("avertissements")
+
+
+def test_echec_du_prechargement_ne_montre_aucune_erreur(
+    controleur: ControleurRecherche, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def casse(url: str) -> dict[str, object]:
+        raise RuntimeError("site injoignable")
+
+    monkeypatch.setattr(controleur_recherche, "recuperer_detail_offre", casse)
+    controleur.lancer()
+    _attendre(controleur, qtbot)
+    controleur.selectionner(0)
+    erreurs: list[str] = []
+    controleur.action_echouee.connect(erreurs.append)
+
+    controleur.precharger_selection()
+    qtbot.waitUntil(lambda: not controleur._taches, timeout=5000)
+
+    assert erreurs == []
+    assert controleur._silencieuses == set()
+
+
+def test_echec_de_la_consultation_est_montre(
+    controleur: ControleurRecherche, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def casse(url: str) -> dict[str, object]:
+        raise RuntimeError("site injoignable")
+
+    monkeypatch.setattr(controleur_recherche, "recuperer_detail_offre", casse)
+    controleur.lancer()
+    _attendre(controleur, qtbot)
+    controleur.selectionner(0)
+
+    with qtbot.waitSignal(controleur.action_echouee, timeout=5000) as signal:
+        controleur.consulter()
+    assert signal.args == ["Opération impossible : site injoignable"]
+
+
+def test_verrous_par_url_sont_retires_apres_usage(
+    controleur: ControleurRecherche, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        controleur_recherche, "recuperer_detail_offre", lambda url: _detail_lu()
+    )
+    for numero in range(5):
+        controleur._lire_detail(f"https://exemple.test/{numero}")
+    assert controleur._verrous_url == {}
+
+
+def test_fiches_de_poste_ecrites_par_lots_et_a_l_arret(
+    controleur: ControleurRecherche, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        controleur_recherche, "recuperer_detail_offre", lambda url: _detail_lu()
+    )
+    lot = controleur_recherche.ENREGISTREMENT_DETAILS_PAR_LOT
+    for numero in range(lot - 1):
+        controleur._lire_detail(f"https://exemple.test/{numero}")
+    assert not cache.CHEMIN_DETAILS.exists()
+
+    controleur._lire_detail("https://exemple.test/dernier")
+    assert cache.CHEMIN_DETAILS.exists()
+
+    cache.CHEMIN_DETAILS.unlink()
+    controleur._lire_detail("https://exemple.test/apres")
+    assert not cache.CHEMIN_DETAILS.exists()
+    controleur.arreter()
+    assert cache.CHEMIN_DETAILS.exists()

@@ -325,3 +325,42 @@ def test_cache_details_entree_au_format_inattendu_est_ignoree() -> None:
         encoding="utf-8",
     )
     assert cache.CacheDetailsDisque().lire("https://x/1") is None
+
+
+def test_cache_details_non_enregistre_sans_lever_si_le_fichier_est_tenu(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def refuse(_chemin: Path, _donnees: dict[str, Any]) -> None:
+        raise PermissionError("tenu par l'antivirus")
+
+    monkeypatch.setattr(cache, "ecriture_atomique", refuse)
+    cache_details = cache.CacheDetailsDisque()
+    cache_details.ecrire("https://x/1", _detail())
+    cache_details.enregistrer()  # ne lève pas
+    assert not cache.CHEMIN_DETAILS.exists()
+
+    monkeypatch.undo()
+    cache_details.enregistrer()  # réessayé à l'occasion suivante
+    assert cache.CHEMIN_DETAILS.exists()
+
+
+def test_cache_fiches_non_enregistre_sans_lever_si_le_fichier_est_tenu(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def refuse(_chemin: Path, _donnees: dict[str, Any]) -> None:
+        raise PermissionError("tenu")
+
+    monkeypatch.setattr(cache, "ecriture_atomique", refuse)
+    cache_fiches = cache.CacheFichesDisque()
+    cache_fiches.ecrire("https://x/1", _fiche())
+    cache_fiches.enregistrer()  # ne lève pas
+
+
+def test_maj_cache_offres_rend_les_nouvelles_meme_si_l_ecriture_echoue(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def refuse(_offres: object) -> None:
+        raise PermissionError("tenu")
+
+    monkeypatch.setattr(cache, "_sauvegarder_offres", refuse)
+    assert cache.maj_cache_offres("mon-profil", [_offre("REF1")]) == {"REF1"}

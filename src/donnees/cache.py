@@ -211,7 +211,11 @@ def maj_cache_offres(nom_profil: str, offres_fraiches: list[Offre]) -> set[str]:
         del cache_profil[ref]
 
     toutes[nom_profil] = cache_profil
-    _sauvegarder_offres(toutes)
+    try:
+        _sauvegarder_offres(toutes)
+    except OSError as erreur:
+        # Les offres s'affichent quand même ; elles seront de nouveau « nouvelles ».
+        journal.warning("%s non enregistré\u00a0: %s", CHEMIN_OFFRES.name, erreur)
     return nouvelles
 
 
@@ -316,7 +320,15 @@ class _CacheTemporel:
             valides = [(u, e) for u, e in self._entrees.items() if self._valide(e)]
             valides.sort(key=lambda couple: couple[1]["lu_le"])
             self._entrees = dict(valides[-self._maximum :])
-            ecriture_atomique(self._chemin(), self._entrees)
+            try:
+                ecriture_atomique(self._chemin(), self._entrees)
+            except OSError as erreur:
+                # Un cache non écrit ne gâche ni une recherche ni une consultation :
+                # il sera réécrit à la prochaine occasion.
+                journal.warning(
+                    "%s non enregistré\u00a0: %s", self._chemin().name, erreur
+                )
+                return
             self._modifie = False
 
 

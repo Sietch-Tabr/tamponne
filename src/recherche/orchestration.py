@@ -148,6 +148,7 @@ def rechercher_toutes_sources(
     on_fiches: Callable[[str, int, int], None] = _ignorer,
     on_source_terminee: Callable[[str], None] = _ignorer,
     on_avertissement: Callable[[str], None] = _ignorer,
+    on_echec_source: Callable[[str], None] = _ignorer,
     on_offres_source: Callable[[str, int], None] = _ignorer,
 ) -> tuple[list[Offre], int, bool]:
     """Interroge les sources actives en parallèle, puis fusionne et
@@ -172,6 +173,8 @@ def rechercher_toutes_sources(
             échec) — depuis les threads du pool.
         on_avertissement: Appelé pour chaque source en échec, sans
             interrompre les autres.
+        on_echec_source: Appelé avec le nom affiché de chaque source en
+            échec (en plus de `on_avertissement`).
         on_offres_source: Appelé avec (nom affiché, nombre d'offres
             trouvées avant dédoublonnage) quand une source réussit —
             depuis les threads du pool.
@@ -236,6 +239,7 @@ def rechercher_toutes_sources(
                 nb_echecs += 1
                 journal.warning("%s indisponible\u00a0: %s", nom_affiche, erreur)
                 on_avertissement(f"{nom_affiche} indisponible\u00a0: {erreur}")
+                on_echec_source(nom_affiche)
                 continue
             # Page au format imprévu (site modifié) : cette source seule est
             # perdue, les autres restent affichées.
@@ -246,6 +250,7 @@ def rechercher_toutes_sources(
                     f"{nom_affiche} indisponible\u00a0: réponse inattendue du site "
                     f"({type(erreur).__name__}\u00a0: {erreur})"
                 )
+                on_echec_source(nom_affiche)
                 continue
             if fenetre := filtres.get("date_publication"):
                 if cle not in _SOURCES_AVEC_DATE:
@@ -300,7 +305,12 @@ def post_traiter_resultats(
     nouvelles: set[str] = set()
     if nom_profil:
         nouvelles = maj_cache_offres(nom_profil, offres_filtrees)
-        noter_lancement(nom_profil)
+        try:
+            noter_lancement(nom_profil)
+        except OSError as erreur:
+            journal.warning(
+                "Date de lancement de la fiche non enregistrée\u00a0: %s", erreur
+            )
 
     return {"offres": offres_filtrees, "nb_exclus": nb_exclus, "nouvelles": nouvelles}
 

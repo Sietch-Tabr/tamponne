@@ -797,3 +797,32 @@ def test_toutes_les_sources_vides_et_en_panne_la_recherche_est_impossible(
     )
     _, _, erreurs = _executer({})
     assert erreurs and "indisponibles" in erreurs[0]
+
+
+def test_source_en_echec_est_signalee_par_son_nom(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def echec(*_args: object, **_kwargs: object) -> None:
+        raise RuntimeError("HTTP 503")
+
+    monkeypatch.setattr(EmploiTerritorial, "rechercher", echec)
+    monkeypatch.setattr(
+        ChoisirLeServicePublic,
+        "rechercher",
+        lambda *_a, **_k: ([_offre("O1")], 1, False),
+    )
+    noms: list[str] = []
+    rechercher_toutes_sources({}, {}, on_echec_source=noms.append)
+    assert noms == [parametres_sources.SOURCES_DISPONIBLES["emploiterritorial"]]
+
+
+def test_date_de_lancement_non_enregistree_ne_fait_pas_echouer_le_traitement(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def refuse(_nom: str) -> None:
+        raise PermissionError("tenu")
+
+    monkeypatch.setattr(orchestration, "noter_lancement", refuse)
+    resultat = post_traiter_resultats([_offre("O1")], [], False, "fiche")
+    assert [o["reference"] for o in resultat["offres"]] == ["O1"]
+    assert resultat["nouvelles"] == {"O1"}
