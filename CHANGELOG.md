@@ -4,6 +4,29 @@ Toutes les évolutions notables de Tamponné, de la plus récente à la plus
 ancienne. Le détail de chaque version est aussi publié sur la page
 [Releases](https://codeberg.org/Kwaite/tamponne/releases) du dépôt.
 
+## [1.6.1] — 2026-10-16
+
+### Nouveautés
+
+- Suivi : les offres des dossiers ouverts sont vérifiées automatiquement à l'ouverture de l'écran, une fois par jour ; une offre retirée est datée dans l'historique par un tampon d'information (le statut ne change pas) et un post-it prévient que le poste est probablement pourvu
+- Suivi : « Vérifier les offres » revérifie aussi les offres déjà marquées dépubliées d'un dossier ouvert ; si l'offre est de retour, la dépublication disparaît
+- Consultation : la fenêtre de la fiche de poste s'ouvre tout de suite avec « Chargement… » ; la fiche est préchargée à la sélection d'une ligne et gardée un jour, jamais une offre dépubliée
+- Recherche : la lecture des fiches affiche sa progression (« fiches 120/300 ») et la barre continue d'avancer
+
+### Corrections
+
+- FHF : la recherche s'arrêtait à 100 pages et manquait l'essentiel du portail (Seine-Saint-Denis : 16 offres trouvées sur 245) ; elle interroge maintenant le site département par département et n'a plus besoin de lire les fiches
+- Passerelles (Bercy) : catégorie, région, domaine et organisme sont filtrés par le site lui-même, la recherche lit quelques pages et fiches au lieu de 50 pages et près de 400 fiches
+- Offres retirées : un 404 ou une page d'erreur n'est plus pris pour une dépublication quand le site est en panne ou en maintenance (l'accueil du site est contrôlé) ; une source qui ne trouve rien est contrôlée de même au lieu de passer pour une recherche vide
+- Passerelles : une offre sans aucun lieu n'est plus gardée quand un lieu est demandé
+
+### En coulisses
+
+- Réseau : client HTTP partagé (nouvelle dépendance urllib3) qui réutilise les connexions, demande les pages compressées (4,4 Mo deviennent 185 Ko chez Choisir le service public) et conserve le proxy et les certificats du système
+- Choisir le service public : seules les cartes d'offres sont analysées, 540 ms au lieu de 45 ms par page ; pages lues 3 à la fois, FHF 4 à la fois
+- Interface : l'avancement, la sélection et le formulaire n'émettent plus un signal unique (17 fois moins de travail d'interface par page lue) ; les écrans autres que l'onglet courant sont créés après la première image
+- Une recherche large sur les trois versants passe de 247 s à 10 s
+
 ## [1.6.0] — 2026-10-16
 
 ### Nouveautés
