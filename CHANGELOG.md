@@ -4,6 +4,20 @@ Toutes les évolutions notables de Tamponné, de la plus récente à la plus
 ancienne. Le détail de chaque version est aussi publié sur la page
 [Releases](https://codeberg.org/Kwaite/tamponne/releases) du dépôt.
 
+## [1.6.0] — 2026-10-16
+
+### Nouveautés
+
+- Consultation : un double-clic (ou Entrée) sur une offre ouvre sa fiche de poste dans l'application ; le site ne s'ouvre que par « Consulter en ligne »
+- Recherche : la lecture des fiches affiche sa progression (« fiches 120/300 ») au lieu de rester sur « page 50/50 »
+
+### Corrections
+
+- Passerelles (Bercy) : catégorie, région, domaine et organisme de rattachement sont maintenant filtrés par le site lui-même quand ils s'y rattachent sans ambiguïté ; une recherche qui lisait 50 pages et près de 400 fiches (plus d'une minute, bien davantage derrière un proxy) en lit quelques-unes
+- Passerelles : une offre sans aucun lieu n'est plus gardée quand un lieu est demandé (elle sortait par exemple pour la Haute-Marne)
+- Recherche : une offre dont le lieu de la liste est hors de la demande est écartée sans lire sa fiche
+- Recherche : la barre de progression compte aussi la lecture des fiches
+
 ## [1.5.0] — 2026-10-16
 
 ### Nouveautés
