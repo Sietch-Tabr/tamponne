@@ -172,6 +172,7 @@ def _site(monkeypatch: pytest.MonkeyPatch) -> dict[str, DetailOffre]:
     ]
     monkeypatch.setattr(passerellesmef.time, "sleep", lambda _s: None)
     monkeypatch.setattr(passerellesmef, "nouvelle_session", lambda: None)
+    monkeypatch.setattr(passerellesmef, "obtenir_formulaire", lambda _o: "")
     monkeypatch.setattr(
         passerellesmef,
         "obtenir_page_recherche",

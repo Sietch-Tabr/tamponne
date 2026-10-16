@@ -102,7 +102,7 @@ Item {
 
             Keys.onUpPressed: racine.recherche.selectionner(Math.max(0, racine.recherche.ligne_selectionnee - 1))
             Keys.onDownPressed: racine.recherche.selectionner(Math.min(rows - 1, racine.recherche.ligne_selectionnee + 1))
-            Keys.onReturnPressed: racine.recherche.ouvrir_en_ligne(racine.recherche.ligne_selectionnee)
+            Keys.onReturnPressed: racine.recherche.consulter_ligne(racine.recherche.ligne_selectionnee)
 
             delegate: Rectangle {
                 id: cellule
@@ -201,7 +201,7 @@ Item {
                         table.forceActiveFocus()
                         racine.recherche.selectionner(cellule.row)
                     }
-                    onDoubleClicked: racine.recherche.ouvrir_en_ligne(cellule.row)
+                    onDoubleClicked: racine.recherche.consulter_ligne(cellule.row)
                 }
             }
         }

@@ -18,6 +18,7 @@ from src.gui.controleurs import recherche as controleur_recherche
 from src.gui.controleurs.recherche import ControleurRecherche
 from src.gui.modeles.offres import ProxyOffres
 from src.sources.choisirleservicepublic import ChoisirLeServicePublic
+from src.sources.choisirleservicepublic.extraction import DETAIL_VIDE
 from src.sources.emploiterritorial import EmploiTerritorial
 from src.types import FiltresRecherche, Offre
 
@@ -269,6 +270,28 @@ def test_consulter_et_tamponner_passent_par_un_thread(
         controleur.tamponner_pour_suivi()
     assert signal.args == ["Attaché(e) d'administration RH"]
     assert suivis == ["MINT_2026-1"]
+
+
+def test_consulter_ligne_ouvre_la_fiche_dans_l_application(
+    controleur: ControleurRecherche, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        controleur_recherche,
+        "recuperer_detail_offre",
+        lambda url: DETAIL_VIDE,
+    )
+    ouverts: list[object] = []
+    monkeypatch.setattr(
+        controleur_recherche.QDesktopServices, "openUrl", ouverts.append
+    )
+    controleur.lancer()
+    _attendre(controleur, qtbot)
+
+    with qtbot.waitSignal(controleur.detail_pret, timeout=5000):
+        controleur.consulter_ligne(0)
+
+    assert controleur.property("ligne_selectionnee") == 0
+    assert ouverts == []
 
 
 def test_versants_compatibles_lit_l_ancien_format_singulier() -> None:

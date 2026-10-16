@@ -646,12 +646,11 @@ class ControleurRecherche(QObject):
         return self._modele.offre(source.row()) if source.isValid() else None
 
     @Slot(int)
-    def ouvrir_en_ligne(self, ligne: int) -> None:
-        """Ouvre l'offre de la ligne dans le navigateur (double-clic)."""
+    def consulter_ligne(self, ligne: int) -> None:
+        """Sélectionne la ligne puis ouvre sa fiche de poste dans
+        l'application (double-clic, Entrée)."""
         self.selectionner(ligne)
-        offre = self._offre_selectionnee()
-        if offre is not None and offre["url"].startswith("https://"):
-            QDesktopServices.openUrl(QUrl(offre["url"]))
+        self.consulter()
 
     def _lancer_tache(
         self, fonction: Callable[[], object], suite: Callable[[object], None]

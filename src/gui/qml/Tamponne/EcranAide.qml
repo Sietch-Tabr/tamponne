@@ -182,7 +182,7 @@ Item {
                     Terme { text: "Filtrer · Nouvelles seulement" }
                     Definition { text: "Filtrer garde les lignes qui contiennent le texte saisi, dans n'importe quelle colonne. «\u00a0Nouvelles seulement\u00a0» ne montre que les offres marquées «\u00a0Nouveau\u00a0»." }
                     Terme { text: "Consulter · Exporter" }
-                    Definition { text: "Consulter affiche la fiche de poste, avec «\u00a0Postuler\u00a0» quand le site le permet. Double-clic ou Entrée ouvre l'offre dans le navigateur. Exporter enregistre le registre affiché (tri et filtre compris) en page HTML dans le dossier «\u00a0exports\u00a0»." }
+                    Definition { text: "Consulter affiche la fiche de poste, avec «\u00a0Postuler\u00a0» quand le site le permet. Double-clic ou Entrée sur une offre fait de même ; «\u00a0Consulter en ligne\u00a0» ouvre alors le site dans le navigateur. Exporter enregistre le registre affiché (tri et filtre compris) en page HTML dans le dossier «\u00a0exports\u00a0»." }
                 }
 
                 FeuilleNotice {

@@ -23,14 +23,16 @@ MINISTERE_BERCY = "Ministères Economiques et Financiers"
 _SEUIL_RESSEMBLANCE = 0.9
 
 
-def _normaliser(texte: str) -> str:
+def normaliser(texte: str) -> str:
+    """Texte sans accents, en minuscules, espaces simples."""
     sans_accents = unicodedata.normalize("NFD", texte)
     sans_accents = "".join(c for c in sans_accents if not unicodedata.combining(c))
     return " ".join(sans_accents.lower().split())
 
 
-def _ressemblent(a: str, b: str) -> bool:
-    a, b = _normaliser(a), _normaliser(b)
+def ressemblent(a: str, b: str) -> bool:
+    """Vrai si deux libellés ne diffèrent que par un détail d'écriture."""
+    a, b = normaliser(a), normaliser(b)
     return bool(a) and SequenceMatcher(None, a, b).ratio() >= _SEUIL_RESSEMBLANCE
 
 
@@ -80,14 +82,13 @@ def extraire_fiche(detail: DetailOffre) -> FicheFiltrage | None:
 
 def _domaine_correspond(secteur: str, domaines: list[str]) -> bool:
     domaine_fiche = secteur.split(" - ")[0]
-    return any(_ressemblent(domaine_fiche, d) for d in domaines)
+    return any(ressemblent(domaine_fiche, d) for d in domaines)
 
 
 def _organisation_correspond(direction: str, sous_organisations: list[str]) -> bool:
-    cible = _normaliser(direction)
+    cible = normaliser(direction)
     return any(
-        _ressemblent(direction, s) or _normaliser(s) in cible
-        for s in sous_organisations
+        ressemblent(direction, s) or normaliser(s) in cible for s in sous_organisations
     )
 
 
@@ -108,7 +109,7 @@ def fiche_correspond(fiche: FicheFiltrage, filtres: FiltresRecherche) -> bool:
             return False
     experience = filtres.get("experience") or ""
     if experience in EXPERIENCES and fiche["experience"]:
-        if _normaliser(fiche["experience"]) != _normaliser(experience):
+        if normaliser(fiche["experience"]) != normaliser(experience):
             return False
     if filtres.get("management") and not fiche["management"]:
         return False
