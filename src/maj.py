@@ -285,7 +285,8 @@ def appliquer_maj(info: InfoMaj) -> None:
         raise RuntimeError("URL de l'archive de mise à jour manquante.")
     if not info["url_zip"].startswith(PREFIXE_ARCHIVES):
         raise RuntimeError(
-            f"Archive de mise à jour hors du dépôt Tamponné refusée\u00a0: {info['url_zip']}"
+            "Archive de mise à jour hors du dépôt Tamponné refusée\u00a0: "
+            f"{info['url_zip']}"
         )
 
     with tempfile.TemporaryDirectory(prefix="tamponne-maj-") as dossier_tmp:

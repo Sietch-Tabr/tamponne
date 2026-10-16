@@ -153,6 +153,27 @@ def _sauvegarder_offres(offres: dict[str, dict[str, OffreCache]]) -> None:
     ecriture_atomique(CHEMIN_OFFRES, offres)
 
 
+def _purger_offres_absentes(
+    cache_profil: dict[str, OffreCache], refs_fraiches: set[str], maintenant: datetime
+) -> None:
+    """Retire du cache d'un profil les offres absentes de la dernière recherche
+    depuis plus de `TTL_OFFRES` (ou dont la date de dernière vue est illisible)."""
+    a_purger = []
+    for ref, donnees in cache_profil.items():
+        if ref in refs_fraiches:
+            continue
+        try:
+            derniere = datetime.fromisoformat(
+                donnees.get("derniere_vue", maintenant.isoformat())
+            )
+            if (maintenant - derniere).total_seconds() > TTL_OFFRES:
+                a_purger.append(ref)
+        except ValueError, TypeError:
+            a_purger.append(ref)
+    for ref in a_purger:
+        del cache_profil[ref]
+
+
 def maj_cache_offres(nom_profil: str, offres_fraiches: list[Offre]) -> set[str]:
     """Met à jour le cache des offres pour un profil.
 
@@ -195,21 +216,7 @@ def maj_cache_offres(nom_profil: str, offres_fraiches: list[Offre]) -> set[str]:
         else:
             cache_profil[ref].update({**offre, "derniere_vue": maintenant_iso})
 
-    # Purge des offres absentes depuis plus de TTL_OFFRES
-    a_purger = []
-    for ref, donnees in cache_profil.items():
-        if ref not in refs_fraiches:
-            try:
-                derniere = datetime.fromisoformat(
-                    donnees.get("derniere_vue", maintenant_iso)
-                )
-                age = (maintenant - derniere).total_seconds()
-                if age > TTL_OFFRES:
-                    a_purger.append(ref)
-            except ValueError, TypeError:
-                a_purger.append(ref)
-    for ref in a_purger:
-        del cache_profil[ref]
+    _purger_offres_absentes(cache_profil, refs_fraiches, maintenant)
 
     toutes[nom_profil] = cache_profil
     try:

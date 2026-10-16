@@ -49,7 +49,7 @@ class ModeleFiches(QAbstractListModel):
         self._profils = fiches
         self.endResetModel()
 
-    def rowCount(self, parent: _Index = QModelIndex()) -> int:
+    def rowCount(self, parent: _Index = QModelIndex()) -> int:  # noqa: B008
         return 0 if parent.isValid() else len(self._profils)
 
     def roleNames(self) -> dict[int, QByteArray]:

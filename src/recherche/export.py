@@ -15,8 +15,14 @@ NB_PAR_PAGE = 20
 d'affichage, indépendante de la pagination réelle de l'API."""
 
 _CSS = """
-body { font-family: system-ui, sans-serif; max-width: 1200px; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; }
-h1 { font-size: 1.3rem; color: #005b99; border-bottom: 2px solid #005b99; padding-bottom: .5rem; }
+body {
+  font-family: system-ui, sans-serif; max-width: 1200px; margin: 2rem auto;
+  padding: 0 1rem; color: #1a1a1a;
+}
+h1 {
+  font-size: 1.3rem; color: #005b99; border-bottom: 2px solid #005b99;
+  padding-bottom: .5rem;
+}
 .meta { font-size: .85rem; color: #666; margin-bottom: 1.5rem; }
 table { width: 100%; border-collapse: collapse; font-size: .9rem; }
 thead th { background: #005b99; color: #fff; padding: .6rem .8rem; text-align: left; }
@@ -64,7 +70,8 @@ def exporter_html(
         lignes_offres.append(
             f"<tr>"
             f"<td>{i}</td>"
-            f'<td><a href="{url}" target="_blank" rel="noopener noreferrer">{titre_echappe}</a>'
+            f'<td><a href="{url}" target="_blank" rel="noopener noreferrer">'
+            f"{titre_echappe}</a>"
             f'<br><span class="ref">{ref}</span></td>'
             f"<td>{employeur}</td>"
             f"<td>{localisation}</td>"

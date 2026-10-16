@@ -25,6 +25,7 @@ s'arrête au lieu d'ouvrir une deuxième fenêtre ou de relancer l'installation.
 Sans dépendance à Qt : l'interface n'est importée que par le sous-processus.
 """
 
+import contextlib
 import ctypes
 import os
 import platform
@@ -228,10 +229,8 @@ def ouvrir_journal() -> None:
     `TAILLE_MAX_JOURNAL` (une seule archive, `CHEMIN_JOURNAL_ARCHIVE`), puis
     écrit l'en-tête daté avec les versions de Tamponné, du système et de
     Python. Retire au passage l'ancien journal (`NOM_ANCIEN_JOURNAL`)."""
-    try:
+    with contextlib.suppress(OSError):
         (CHEMIN_JOURNAL.parent / NOM_ANCIEN_JOURNAL).unlink(missing_ok=True)
-    except OSError:
-        pass
     try:
         if CHEMIN_JOURNAL.stat().st_size > TAILLE_MAX_JOURNAL:
             CHEMIN_JOURNAL.replace(CHEMIN_JOURNAL_ARCHIVE)

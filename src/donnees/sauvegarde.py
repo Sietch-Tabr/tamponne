@@ -103,14 +103,8 @@ def exporter_donnees(destination: Path) -> None:
         ) from erreur
 
 
-def _verifier(archive: zipfile.ZipFile) -> None:
-    """Refuse tout ce qui n'est pas une sauvegarde de Tamponné intacte.
-
-    Raises:
-        ErreurSauvegarde: Manifeste absent ou inconnu, format plus récent,
-            fichier inattendu (dont chemin absolu ou `..`), taille excessive
-            ou JSON illisible.
-    """
+def _verifier_manifeste(archive: zipfile.ZipFile) -> None:
+    """Manifeste présent, de Tamponné, et d'un format que cette version lit."""
     pas_une_sauvegarde = ErreurSauvegarde(
         "Ce fichier n'est pas une sauvegarde de Tamponné."
     )
@@ -129,11 +123,22 @@ def _verifier(archive: zipfile.ZipFile) -> None:
             "mettez d'abord l'application à jour."
         )
 
+
+def _verifier(archive: zipfile.ZipFile) -> None:
+    """Refuse tout ce qui n'est pas une sauvegarde de Tamponné intacte.
+
+    Raises:
+        ErreurSauvegarde: Manifeste absent ou inconnu, format plus récent,
+            fichier inattendu (dont chemin absolu ou `..`), taille excessive
+            ou JSON illisible.
+    """
+    _verifier_manifeste(archive)
+
     autorises = set(_fichiers()) | {NOM_MANIFESTE}
     infos = [info for info in archive.infolist() if not info.is_dir()]
     for info in infos:
         if info.filename not in autorises and not _ARCHIVE_PDF.fullmatch(info.filename):
-            raise pas_une_sauvegarde
+            raise ErreurSauvegarde("Ce fichier n'est pas une sauvegarde de Tamponné.")
     if sum(info.file_size for info in infos) > TAILLE_MAX:
         raise ErreurSauvegarde("Cette sauvegarde est trop volumineuse.")
     for nom in set(_fichiers()) & {info.filename for info in infos}:

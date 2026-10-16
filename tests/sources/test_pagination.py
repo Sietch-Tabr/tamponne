@@ -306,3 +306,10 @@ def test_fhf_ignore_un_departement_absent_du_site(
     assert [u for u in demandees if "department=988" not in u] == []
     offres, _, _ = fhf.Fhf().rechercher({"localisations": ["Inconnue"]})
     assert offres == []
+
+
+def test_departements_du_site_fhf_couvrent_la_france_sans_le_20() -> None:
+    departements = fhf.DEPARTEMENTS_SITE
+    assert len(departements) == 103
+    assert {"01", "19", "21", "95", "2A", "2B", "971", "976", "988"} <= departements
+    assert "20" not in departements

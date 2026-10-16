@@ -116,9 +116,8 @@ class VerificateurDisponibilite(QObject):
             except RuntimeError as erreur:
                 journal.warning("Offre %s non vérifiée\u00a0: %s", reference, erreur)
                 echecs[reference] = str(erreur)
-            except (
-                Exception
-            ) as erreur:  # noqa: BLE001 - une offre ne bloque pas les autres
+            # Une offre en erreur ne bloque pas les autres.
+            except Exception as erreur:  # noqa: BLE001
                 journal.exception(
                     "Offre %s non vérifiée (erreur inattendue)", reference
                 )

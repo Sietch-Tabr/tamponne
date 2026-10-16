@@ -595,7 +595,8 @@ class ControleurRecherche(QObject):
             self._avertissements.append(f"Arrêt à la page {nb_pages} (page vide)")
         elif nb_pages > MAX_PAGES:
             self._avertissements.append(
-                f"{nb_pages} pages au total\u00a0: seules les {MAX_PAGES} premières chargées."
+                f"{nb_pages} pages au total\u00a0: "
+                f"seules les {MAX_PAGES} premières chargées."
             )
         self._resume = resume_registre(
             len(resultat["offres"]),

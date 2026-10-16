@@ -189,7 +189,12 @@ class PasserellesMef:
             reponse = obtenir_page_recherche(
                 session, construire_url_recherche(query=query, page=1)
             )
-            url_page = lambda numero: construire_url_recherche(query, numero)
+
+            def _url_mot_cle(page: int) -> str:
+                return construire_url_recherche(query, page)
+
+            url_page = _url_mot_cle
+
         else:
             reponse = premiere
             url_page = construire_url_resultats

@@ -41,7 +41,8 @@ class ErreurRaccourci(RuntimeError):
 
 def systeme_courant() -> Systeme | None:
     """Système pris en charge, `None` pour les autres."""
-    # Variable typée `str` : pyright ne fige pas le résultat sur la plateforme d'analyse.
+    # Variable typée `str` : pyright ne fige pas le résultat sur la plateforme
+    # d'analyse.
     plateforme: str = sys.platform
     if plateforme == "win32":
         return "windows"

@@ -27,7 +27,7 @@ class ModeleRegistre(ModeleOffres):
     def __init__(self, parent: QObject | None = None) -> None:
         super().__init__(parent)
 
-    def columnCount(self, parent: _Index = QModelIndex()) -> int:
+    def columnCount(self, parent: _Index = QModelIndex()) -> int:  # noqa: B008
         return 0 if parent.isValid() else len(ENTETES_REGISTRE)
 
     def headerData(
@@ -69,7 +69,9 @@ class ModeleRegistre(ModeleOffres):
             return reformater_date(offre["date"]) if offre["date"] else "—"
         return offre.get("source") or SOURCE_PAR_DEFAUT
 
-    def data(self, index: _Index, role: int = Qt.ItemDataRole.DisplayRole) -> Any:
+    def data(  # noqa: PLR0911 - une valeur par rôle Qt
+        self, index: _Index, role: int = Qt.ItemDataRole.DisplayRole
+    ) -> Any:
         if not index.isValid():
             return None
         ligne, colonne = index.row(), index.column()

@@ -542,8 +542,21 @@ def date_dans_fenetre(texte: str, fenetre: str, aujourdhui: date | None = None) 
     return publiee >= (aujourdhui or date.today()) - timedelta(days=jours)
 
 
-# Valeur fixe envoyée par les filtres à bascule (toggle) du site : management, télétravail
+# Valeur fixe envoyée par les filtres à bascule du site (management, télétravail)
 VALEUR_TOGGLE_ACTIF = 1814
+
+
+def premier_et_reste(valeurs: list[str]) -> str:
+    """« Premier +N » : première valeur suivie du nombre des autres (« Paris +2 »)."""
+    return valeurs[0] + (f" +{len(valeurs) - 1}" if len(valeurs) > 1 else "")
+
+
+def _resume_versants(versants: list[str]) -> str:
+    if not versants:
+        return "tous versants"
+    if len(versants) == 1:
+        return LABELS_VERSANTS.get(versants[0], versants[0])
+    return "+".join(LABELS_VERSANTS_ABREGES.get(v, v) for v in versants)
 
 
 def resumer_filtres(filtres: FiltresRecherche) -> str:
@@ -556,23 +569,17 @@ def resumer_filtres(filtres: FiltresRecherche) -> str:
     if cats := filtres.get("categories"):
         parties.append("Cat." + "+".join(cats))
     if d := filtres.get("domaines"):
-        parties.append(d[0] + (f" +{len(d)-1}" if len(d) > 1 else ""))
+        parties.append(premier_et_reste(d))
     if locs := filtres.get("localisations"):
-        parties.append(locs[0] + (f" +{len(locs)-1}" if len(locs) > 1 else ""))
+        parties.append(premier_et_reste(locs))
     if orgs := filtres.get("organisations"):
-        label = orgs[0].split(" - ")[-1]
-        parties.append(label + (f" +{len(orgs)-1}" if len(orgs) > 1 else ""))
-    versants = filtres.get("versants") or []
-    if not versants:
-        parties.append("tous versants")
-    elif len(versants) == 1:
-        parties.append(LABELS_VERSANTS.get(versants[0], versants[0]))
-    else:
-        parties.append("+".join(LABELS_VERSANTS_ABREGES.get(v, v) for v in versants))
-    if exp := filtres.get("experience"):
-        parties.append(exp)
-    if date_pub := filtres.get("date_publication"):
-        parties.append(date_pub)
+        parties.append(premier_et_reste([o.split(" - ")[-1] for o in orgs]))
+    parties.append(_resume_versants(filtres.get("versants") or []))
+    parties.extend(
+        valeur
+        for valeur in (filtres.get("experience"), filtres.get("date_publication"))
+        if valeur
+    )
     if filtres.get("management"):
         parties.append("Management")
     if filtres.get("teletravail"):

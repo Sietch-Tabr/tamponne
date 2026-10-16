@@ -58,10 +58,10 @@ class ModeleOffres(QAbstractTableModel):
         """Vrai si l'offre de la ligne `ligne` est marquée nouvelle."""
         return self._offres[ligne].get("reference") in self._nouvelles
 
-    def rowCount(self, parent: _Index = QModelIndex()) -> int:
+    def rowCount(self, parent: _Index = QModelIndex()) -> int:  # noqa: B008
         return 0 if parent.isValid() else len(self._offres)
 
-    def columnCount(self, parent: _Index = QModelIndex()) -> int:
+    def columnCount(self, parent: _Index = QModelIndex()) -> int:  # noqa: B008
         return 0 if parent.isValid() else len(ENTETES)
 
     def headerData(
@@ -78,7 +78,9 @@ class ModeleOffres(QAbstractTableModel):
             return ENTETES[section]
         return None
 
-    def data(self, index: _Index, role: int = Qt.ItemDataRole.DisplayRole) -> object:
+    def data(  # noqa: PLR0911 - une valeur par rôle Qt
+        self, index: _Index, role: int = Qt.ItemDataRole.DisplayRole
+    ) -> object:
         if not index.isValid():
             return None
         ligne, colonne = index.row(), index.column()

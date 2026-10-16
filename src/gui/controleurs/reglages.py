@@ -311,7 +311,8 @@ class ControleurReglages(QObject):
         }
 
     raccourci = Property(dict, _lire_raccourci, notify=etat_change)
-    """Feuille Raccourci : `disponible`, `etat` (`src.systeme.raccourci.etat`), `texte`."""
+    """Feuille Raccourci : `disponible`, `etat` (voir `src.systeme.raccourci.etat`)
+    et `texte`."""
 
     def verifier_raccourci(self) -> None:
         """Pose, si besoin, la question du raccourci. Appelée par `main()`

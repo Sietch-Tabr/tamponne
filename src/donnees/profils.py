@@ -6,7 +6,7 @@ from datetime import date
 from typing import Any, cast
 
 from src.chemins import DATA
-from src.filtres import categorie_normalisee, resumer_filtres
+from src.filtres import categorie_normalisee
 from src.types import FiltresRecherche, Profil
 from src.utils import ecriture_atomique
 
