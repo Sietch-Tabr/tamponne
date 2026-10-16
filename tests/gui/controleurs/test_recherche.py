@@ -49,6 +49,7 @@ def _sources_factices(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         self: object,
         filtres: FiltresRecherche,
         on_page: Callable[[int, int], None] | None = None,
+        on_fiche: Callable[[int, int], None] | None = None,
     ) -> tuple[list[Offre], int, bool]:
         assert on_page is not None
         on_page(1, 2)
@@ -66,6 +67,7 @@ def _sources_factices(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         self: object,
         filtres: FiltresRecherche,
         on_page: Callable[[int, int], None] | None = None,
+        on_fiche: Callable[[int, int], None] | None = None,
     ) -> tuple[list[Offre], int, bool]:
         return (
             [
@@ -449,3 +451,16 @@ def test_organisations_absentes_affichees_et_recherche_refusee(
     controleur.definir_chargement_organisations(False)
     assert controleur.property("etat_organisations") == ""
     controleur.arreter()
+
+
+def test_lecture_des_fiches_prolonge_la_progression_de_la_source(
+    controleur: ControleurRecherche,
+) -> None:
+    controleur._on_progression("MEF", 50, 50)
+    controleur._on_fiches("MEF", 30, 300)
+
+    assert controleur.property("avancement") == [
+        {"nom": "MEF", "etat": "fiches 30/300"}
+    ]
+    assert controleur._totaux_pages() == (80, 350)
+    assert controleur._lire_statut() == "Recherche en cours… étape 80/350"

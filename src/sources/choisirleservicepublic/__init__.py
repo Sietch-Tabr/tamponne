@@ -68,6 +68,7 @@ class ChoisirLeServicePublic:
         self,
         filtres: FiltresRecherche,
         on_page: Callable[[int, int], None] | None = None,
+        on_fiche: Callable[[int, int], None] | None = None,
     ) -> tuple[list[Offre], int, bool]:
         """Voir :meth:`SourceOffres.rechercher`."""
         categories = [

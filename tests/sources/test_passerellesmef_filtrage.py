@@ -264,3 +264,23 @@ def test_rechercher_ne_relit_pas_une_fiche_en_cache(
     monkeypatch.setattr(passerellesmef, "recuperer_detail_offre", _detail_espion)
     assert _references({"categories": ["A"]}, cache) == ["paris", "sans-lieu"]
     assert lectures == []
+
+
+def test_rechercher_ecarte_sans_lire_sa_fiche_une_offre_d_un_autre_lieu(
+    _site: dict[str, DetailOffre], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    lectures: list[str] = []
+
+    def _detail_espion(url: str) -> DetailOffre:
+        lectures.append(url.rsplit("/", 1)[1])
+        return DETAIL_VIDE
+
+    monkeypatch.setattr(passerellesmef, "recuperer_detail_offre", _detail_espion)
+    suivi: list[tuple[int, int]] = []
+    offres, _, _ = passerellesmef.PasserellesMef().rechercher(
+        {"categories": ["A"], "localisations": ["Paris"]},
+        on_fiche=lambda lues, total: suivi.append((lues, total)),
+    )
+    assert [o["reference"] for o in offres] == ["paris", "sans-lieu"]
+    assert sorted(lectures) == ["paris", "sans-lieu"]
+    assert suivi == [(1, 2), (2, 2)]

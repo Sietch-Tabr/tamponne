@@ -127,6 +127,7 @@ def rechercher_toutes_sources(
     *,
     on_source_en_cours: Callable[[str], None] = _ignorer,
     on_progression: Callable[[str, int, int], None] = _ignorer,
+    on_fiches: Callable[[str, int, int], None] = _ignorer,
     on_source_terminee: Callable[[str], None] = _ignorer,
     on_avertissement: Callable[[str], None] = _ignorer,
     on_offres_source: Callable[[str, int], None] = _ignorer,
@@ -146,6 +147,9 @@ def rechercher_toutes_sources(
             l'interrogation démarre.
         on_progression: Appelé avec (nom affiché, page chargée, nb pages
             à charger) — depuis les threads du pool.
+        on_fiches: Appelé avec (nom affiché, fiches lues, fiches à lire)
+            par les sources qui lisent les fiches pour filtrer — depuis
+            les threads du pool.
         on_source_terminee: Appelé quand une source a fini (succès ou
             échec) — depuis les threads du pool.
         on_avertissement: Appelé pour chaque source en échec, sans
@@ -181,8 +185,11 @@ def rechercher_toutes_sources(
         def _on_page(page: int, total: int) -> None:
             on_progression(nom_affiche, page, total)
 
+        def _on_fiche(lues: int, total: int) -> None:
+            on_fiches(nom_affiche, lues, total)
+
         try:
-            resultat = source.rechercher(filtres, on_page=_on_page)
+            resultat = source.rechercher(filtres, on_page=_on_page, on_fiche=_on_fiche)
             on_offres_source(nom_affiche, len(resultat[0]))
             return resultat
         finally:

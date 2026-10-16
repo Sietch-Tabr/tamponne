@@ -58,6 +58,7 @@ class PasserellesMef:
         self,
         filtres: FiltresRecherche,
         on_page: Callable[[int, int], None] | None = None,
+        on_fiche: Callable[[int, int], None] | None = None,
     ) -> tuple[list[Offre], int, bool]:
         """Voir :meth:`SourceOffres.rechercher`.
 
@@ -79,7 +80,15 @@ class PasserellesMef:
         if not (localisations or lire_les_fiches):
             return offres, nb_pages, arret_anticipe
 
-        # Sans numéro dans la liste, le lieu ne se lit que sur la fiche.
+        # Un lieu de la liste hors de la demande écarte l'offre sans lire sa
+        # fiche ; sans numéro dans la liste, le lieu ne se lit que sur la fiche.
+        offres = [
+            o
+            for o in offres
+            if not localisations
+            or not (numero := _numero_liste(o["localisation"]))
+            or lieu_correspond(numero, localisations)
+        ]
         fiches = lire_fiches(
             [
                 o["url"]
@@ -88,6 +97,7 @@ class PasserellesMef:
             ],
             self._lire_fiche,
             self._cache_fiches,
+            on_fiche,
         )
         retenues: list[Offre] = []
         for offre in offres:
