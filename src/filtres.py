@@ -2,6 +2,7 @@
 
 import re
 from collections.abc import Iterable, Mapping
+from datetime import date, timedelta
 from typing import Final
 
 from src.types import FiltresRecherche, Offre
@@ -415,6 +416,21 @@ def numero_departement_texte(texte: str) -> str | None:
     return code[:2]
 
 
+def libelle_lieu(numero: str) -> str:
+    """« Paris (75) » pour un numéro de département connu, chaîne vide sinon
+    (même forme que les listes des sites)."""
+    for nom, numero_nom in NUMEROS_DEPARTEMENTS.items():
+        if numero_nom == numero:
+            return f"{nom} ({numero})"
+    return ""
+
+
+def lieu_correspond(numero: str, localisations: Iterable[str]) -> bool:
+    """Vrai si le département `numero` est visé par `localisations` ; un
+    numéro vide (lieu introuvable) est gardé, faute de pouvoir l'écarter."""
+    return not numero or numero in numeros_departements(localisations)
+
+
 def cle_categorie(texte: str) -> str | None:
     """Clé de `CATEGORIES` d'un libellé de fiche (« Catégorie A (cadre) »),
     `None` si le libellé n'en contient pas."""
@@ -504,6 +520,27 @@ DATES_PUBLICATION: Final[Mapping[str, str]] = {
     "7 derniers jours": "7_derniers_jours",
     "14 derniers jours": "14_derniers_jours",
 }
+
+_JOURS_PAR_FENETRE: Final[Mapping[str, int]] = {
+    "Dernières 48 heures": 2,
+    "7 derniers jours": 7,
+    "14 derniers jours": 14,
+}
+
+
+def date_dans_fenetre(texte: str, fenetre: str, aujourdhui: date | None = None) -> bool:
+    """Vrai si la date « jj/mm/aaaa » tombe dans la fenêtre de publication
+    `fenetre` (clé de `DATES_PUBLICATION`) ; une date illisible est gardée."""
+    jours = _JOURS_PAR_FENETRE.get(fenetre, 0)
+    if not jours:
+        return True
+    try:
+        jour, mois, annee = (int(p) for p in texte.split("/"))
+        publiee = date(annee, mois, jour)
+    except ValueError:
+        return True
+    return publiee >= (aujourdhui or date.today()) - timedelta(days=jours)
+
 
 # Valeur fixe envoyée par les filtres à bascule (toggle) du site : management, télétravail
 VALEUR_TOGGLE_ACTIF = 1814

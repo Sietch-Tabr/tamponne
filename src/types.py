@@ -261,6 +261,31 @@ class InfoMaj(TypedDict, closed=True):
     url_publication: str
 
 
+class FicheFiltrage(TypedDict, closed=True):
+    """Ce que la fiche d'une offre apprend pour filtrer ses résultats.
+
+    Gardé en cache à la place de la fiche entière : il ne dépend d'aucun
+    filtre, une même lecture sert toutes les recherches.
+
+    Attributes:
+        numero: Numéro de département du lieu, chaîne vide si introuvable.
+        categorie: Clé de ``CATEGORIES`` (``"A"``, ``"B"``...), vide si absente.
+        secteur: Domaine et métier tels qu'affichés par le site.
+        direction: Direction ou service employeur, vide si absent.
+        experience: Niveau d'expérience requis, vide si absent.
+        management: Poste d'encadrement.
+        teletravail: Télétravail possible.
+    """
+
+    numero: str
+    categorie: str
+    secteur: str
+    direction: str
+    experience: str
+    management: bool
+    teletravail: bool
+
+
 class EchecMaj(TypedDict, closed=True):
     """Mise à jour annulée par le lanceur (retour à la version précédente).
 

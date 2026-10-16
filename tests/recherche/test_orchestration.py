@@ -11,11 +11,10 @@ import pytest
 from src.donnees import cache, parametres_sources, profils
 from src.recherche.orchestration import (
     RechercheImpossible,
-    criteres_non_honores,
+    criteres_ignores,
     lignes_resume,
     post_traiter_resultats,
     rechercher_toutes_sources,
-    sources_a_interroger,
 )
 from src.sources import emploiterritorial as emploiterritorial_module
 from src.sources.choisirleservicepublic import ChoisirLeServicePublic
@@ -587,33 +586,23 @@ def test_lignes_resume_aucune_offre() -> None:
     assert lignes[-1] == "Aucune offre trouvée."
 
 
-# --- sources écartées faute de savoir appliquer un critère ---
+# --- critères qu'une source ne peut pas appliquer : prévenir, ne pas exclure ---
 
 
-def test_sources_a_interroger_ecarte_fhf_et_signale_pourquoi() -> None:
-    parametres_sources.sauvegarder_sources_actives(
-        dict.fromkeys(parametres_sources.SOURCES_DISPONIBLES, True)
-    )
-    ecartees: list[str] = []
-    sources = sources_a_interroger({"localisations": ["Paris"]}, {}, ecartees)
-    assert [cle for cle, _, _ in sources] == [
-        "choisirleservicepublic",
-        "emploiterritorial",
-        "passerellesmef",
+def test_criteres_ignores_ignore_les_criteres_vides() -> None:
+    assert criteres_ignores("fhf", {"categories": [], "management": False}) == []
+    assert criteres_ignores("fhf", {"categories": ["A"], "teletravail": True}) == [
+        "la catégorie",
+        "le télétravail",
     ]
-    assert len(ecartees) == 1
-    assert "la localisation" in ecartees[0]
-
-
-def test_criteres_non_honores_ignore_les_criteres_vides() -> None:
-    assert criteres_non_honores("fhf", {"localisations": [], "management": False}) == []
-    assert criteres_non_honores("emploiterritorial", {"domaines": ["Numérique"]}) == [
+    assert criteres_ignores("emploiterritorial", {"domaines": ["Numérique"]}) == [
         "le domaine"
     ]
-    assert criteres_non_honores("choisirleservicepublic", {"domaines": ["X"]}) == []
+    assert criteres_ignores("passerellesmef", {"domaines": ["X"]}) == []
+    assert criteres_ignores("choisirleservicepublic", {"domaines": ["X"]}) == []
 
 
-def test_rechercher_erreur_si_aucune_source_ne_sait_filtrer(
+def test_rechercher_previent_sans_exclure_une_source_qui_ignore_un_critere(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     parametres_sources.sauvegarder_sources_actives(
@@ -624,5 +613,46 @@ def test_rechercher_erreur_si_aucune_source_ne_sait_filtrer(
             "fhf": True,
         }
     )
-    with pytest.raises(RechercheImpossible, match="ne sait appliquer"):
-        rechercher_toutes_sources({"localisations": ["Paris"]}, {})
+    interrogees: list[str] = []
+
+    def _fhf_espion(
+        self: Fhf, filtres: FiltresRecherche, on_page: object = None
+    ) -> _Resultat:
+        interrogees.append("fhf")
+        return [_offre("F1", "FHF")], 1, False
+
+    monkeypatch.setattr(Fhf, "rechercher", _fhf_espion)
+    avertissements: list[str] = []
+    offres, _, _ = rechercher_toutes_sources(
+        {"categories": ["A"]}, {}, on_avertissement=avertissements.append
+    )
+    assert interrogees == ["fhf"]
+    assert [o["reference"] for o in offres] == ["F1"]
+    assert len(avertissements) == 1
+    assert "la catégorie" in avertissements[0]
+
+
+def test_rechercher_ecarte_les_offres_hors_fenetre_de_date_des_sources_sans_filtre(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    parametres_sources.sauvegarder_sources_actives(
+        {
+            "choisirleservicepublic": False,
+            "emploiterritorial": False,
+            "passerellesmef": True,
+            "fhf": False,
+        }
+    )
+    recente = _offre("R", "MEF")
+    recente["date"] = date.today().strftime("%d/%m/%Y")
+    ancienne = _offre("A", "MEF")
+    ancienne["date"] = "01/01/2020"
+    monkeypatch.setattr(
+        PasserellesMef,
+        "rechercher",
+        lambda self, filtres, on_page=None: ([recente, ancienne], 1, False),
+    )
+    offres, _, _ = rechercher_toutes_sources(
+        {"date_publication": "7 derniers jours"}, {}
+    )
+    assert [o["reference"] for o in offres] == ["R"]

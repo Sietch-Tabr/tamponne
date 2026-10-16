@@ -1,5 +1,6 @@
 """Tests pour src/donnees/cache.py — logique TTL et purge des caches."""
 
+import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, cast
@@ -7,7 +8,7 @@ from typing import Any, cast
 import pytest
 
 from src.donnees import cache
-from src.types import Offre, OffreCache
+from src.types import FicheFiltrage, Offre, OffreCache
 
 
 @pytest.fixture(autouse=True)
@@ -201,3 +202,66 @@ def test_organisations_en_cache_perimees_gardees_en_attendant(
         {"organisations": {"cached_at": _iso_il_y_a(60), "data": orgas}}
     )
     assert cache.organisations_en_cache() == (orgas, False)
+
+
+# --- cache des fiches lues pour filtrer ---
+
+
+def _fiche(numero: str = "75") -> FicheFiltrage:
+    return {
+        "numero": numero,
+        "categorie": "A",
+        "secteur": "Numérique - Développeur",
+        "direction": "DGFiP",
+        "experience": "Confirmé",
+        "management": False,
+        "teletravail": True,
+    }
+
+
+def test_cache_fiches_ecrit_puis_relit_apres_rechargement() -> None:
+    cache_fiches = cache.CacheFichesDisque()
+    assert cache_fiches.lire("https://x/1") is None
+    cache_fiches.ecrire("https://x/1", _fiche())
+    cache_fiches.enregistrer()
+    assert cache.CacheFichesDisque().lire("https://x/1") == _fiche()
+
+
+def test_cache_fiches_n_ecrit_rien_sans_modification() -> None:
+    cache.CacheFichesDisque().enregistrer()
+    assert not cache.CHEMIN_FICHES.exists()
+
+
+def test_cache_fiches_ignore_et_purge_une_fiche_perimee() -> None:
+    ancienne = datetime.now(UTC) - timedelta(seconds=cache.TTL_FICHES + 60)
+    cache.CHEMIN_FICHES.write_text(
+        json.dumps(
+            {
+                "https://x/vieille": {
+                    "lu_le": ancienne.isoformat(),
+                    "fiche": _fiche(),
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    cache_fiches = cache.CacheFichesDisque()
+    assert cache_fiches.lire("https://x/vieille") is None
+    cache_fiches.ecrire("https://x/neuve", _fiche("92"))
+    cache_fiches.enregistrer()
+    assert set(json.loads(cache.CHEMIN_FICHES.read_text(encoding="utf-8"))) == {
+        "https://x/neuve"
+    }
+
+
+def test_cache_fiches_fichier_corrompu_repart_de_zero() -> None:
+    cache.CHEMIN_FICHES.write_text("pas du json", encoding="utf-8")
+    assert cache.CacheFichesDisque().lire("https://x/1") is None
+
+
+def test_cache_fiches_entree_au_format_inattendu_est_ignoree() -> None:
+    cache.CHEMIN_FICHES.write_text(
+        json.dumps({"https://x/1": {"lu_le": "x", "fiche": {"numero": "75"}}}),
+        encoding="utf-8",
+    )
+    assert cache.CacheFichesDisque().lire("https://x/1") is None

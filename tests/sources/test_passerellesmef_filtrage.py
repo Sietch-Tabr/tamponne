@@ -1,27 +1,24 @@
 """Tests du filtrage côté client de Passerelles/MEF (pas de réseau)."""
 
-from datetime import date
-
 import pytest
 
 from src.sources import passerellesmef
 from src.sources.choisirleservicepublic.extraction import DETAIL_VIDE
 from src.sources.passerellesmef.filtrage import (
-    date_dans_fenetre,
+    extraire_fiche,
     fiche_correspond,
-    libelle_lieu,
-    lieu_correspond,
-    numero_depuis_fiche,
     organisations_de_bercy,
 )
-from src.types import DetailOffre, FiltresRecherche, Offre
+from src.types import DetailOffre, FicheFiltrage, FiltresRecherche, Offre
+
+BERCY = "Ministères Economiques et Financiers"
 
 
-def _fiche(**champs: str) -> DetailOffre:
-    secteur = champs.pop("secteur", "")
+def _detail(secteur: str = "", experience: str = "", **champs: str) -> DetailOffre:
     return {
         **DETAIL_VIDE,
         "secteur": secteur,
+        "experience_requise": experience,
         "page_html": "<html>",
         "sections_complementaires": {
             cle.replace("_", " "): valeur for cle, valeur in champs.items()
@@ -29,52 +26,73 @@ def _fiche(**champs: str) -> DetailOffre:
     }
 
 
-def test_lieu_correspond_departement_region_et_inconnu() -> None:
-    assert lieu_correspond("75", ["Paris"])
-    assert not lieu_correspond("52", ["Paris", "Hauts-de-Seine"])
-    assert lieu_correspond("93", ["Ile-de-France"])
-    assert lieu_correspond(None, ["Paris"])
+def _fiche(**modifs: object) -> FicheFiltrage:
+    base: FicheFiltrage = {
+        "numero": "75",
+        "categorie": "A",
+        "secteur": "Numérique - Développeuse",
+        "direction": "Direction générale des finances publiques (DGFiP)",
+        "experience": "Confirmé",
+        "management": False,
+        "teletravail": True,
+    }
+    return {**base, **modifs}  # type: ignore[typeddict-item]
 
 
-def test_numero_depuis_fiche_prefere_la_localisation_puis_le_code_postal() -> None:
-    avec_numero = _fiche(
+# --- extraire_fiche ---
+
+
+def test_extraire_fiche_prefere_la_localisation_puis_le_code_postal() -> None:
+    avec_numero = _detail(
         **{"Localisation_du_poste": "France, Pays de Loire, Loire Atlantique (44)"}
     )
-    assert numero_depuis_fiche(avec_numero) == "44"
-    region_seule = _fiche(
+    extrait = extraire_fiche(avec_numero)
+    assert extrait is not None
+    assert extrait["numero"] == "44"
+    region_seule = _detail(
         **{
             "Localisation_du_poste": "France, Ile-de-France",
             "Lieu_d'affectation": "86-92 Allée de Bercy - 75012 PARIS",
         }
     )
-    assert numero_depuis_fiche(region_seule) == "75"
-    assert numero_depuis_fiche(_fiche()) is None
+    extrait = extraire_fiche(region_seule)
+    assert extrait is not None
+    assert extrait["numero"] == "75"
 
 
-def test_libelle_lieu() -> None:
-    assert libelle_lieu("75") == "Paris (75)"
-    assert libelle_lieu("21") == ""
+def test_extraire_fiche_lit_categorie_domaine_et_options() -> None:
+    fiche = extraire_fiche(
+        _detail(
+            "Numérique - Développeuse / Développeur",
+            "Confirmé",
+            Catégorie="Catégorie A (cadre)",
+            Directions_et_Services="DGFiP",
+            Management="Oui",
+            **{"Télétravail_possible": "Non"},
+        )
+    )
+    assert fiche == {
+        "numero": "",
+        "categorie": "A",
+        "secteur": "Numérique - Développeuse / Développeur",
+        "direction": "DGFiP",
+        "experience": "Confirmé",
+        "management": True,
+        "teletravail": False,
+    }
 
 
-@pytest.mark.parametrize(
-    ("texte", "cle", "attendu"),
-    [
-        ("14/10/2026", "Dernières 48 heures", True),
-        ("10/10/2026", "Dernières 48 heures", False),
-        ("10/10/2026", "7 derniers jours", True),
-        ("illisible", "7 derniers jours", True),
-        ("01/01/2020", "", True),
-    ],
-)
-def test_date_dans_fenetre(texte: str, cle: str, attendu: bool) -> None:
-    assert date_dans_fenetre(texte, cle, date(2026, 10, 15)) is attendu
+def test_extraire_fiche_illisible_retourne_none() -> None:
+    assert extraire_fiche(DETAIL_VIDE) is None
+
+
+# --- fiche_correspond ---
 
 
 def test_fiche_correspond_categorie_et_domaine() -> None:
-    fiche = _fiche(Catégorie="Catégorie A (cadre)", secteur="Numérique - Développeuse")
-    assert fiche_correspond(fiche, {"categories": ["A"], "domaines": ["Numérique"]})
-    assert not fiche_correspond(fiche, {"categories": ["B"]})
-    assert not fiche_correspond(fiche, {"domaines": ["Finances Publiques"]})
+    assert fiche_correspond(_fiche(), {"categories": ["A"], "domaines": ["Numérique"]})
+    assert not fiche_correspond(_fiche(), {"categories": ["B"]})
+    assert not fiche_correspond(_fiche(), {"domaines": ["Finances Publiques"]})
 
 
 def test_fiche_correspond_domaine_ecrit_differemment_sur_les_deux_sites() -> None:
@@ -84,35 +102,40 @@ def test_fiche_correspond_domaine_ecrit_differemment_sur_les_deux_sites() -> Non
     )
 
 
-def test_fiche_correspond_organisation_management_et_teletravail() -> None:
-    fiche = _fiche(
-        Directions_et_Services="Direction générale des finances publiques (DGFiP)",
-        Management="Non",
-        **{"Télétravail_possible": "Oui"},
-    )
-    bercy = "Ministères Economiques et Financiers - DGFiP"
-    assert fiche_correspond(fiche, {"organisations": [bercy]})
-    assert not fiche_correspond(
-        fiche, {"organisations": ["Ministères Economiques et Financiers - Douane"]}
-    )
-    assert not fiche_correspond(fiche, {"management": True})
-    assert fiche_correspond(fiche, {"teletravail": True})
+def test_fiche_correspond_organisation() -> None:
+    assert fiche_correspond(_fiche(), {"organisations": [f"{BERCY} - DGFiP"]})
+    assert not fiche_correspond(_fiche(), {"organisations": [f"{BERCY} - Douane"]})
 
 
-def test_fiche_illisible_est_gardee() -> None:
-    assert fiche_correspond(DETAIL_VIDE, {"categories": ["A"]})
+def test_fiche_correspond_experience_management_et_teletravail() -> None:
+    assert fiche_correspond(_fiche(), {"experience": "Confirmé"})
+    assert not fiche_correspond(_fiche(), {"experience": "Expert"})
+    assert not fiche_correspond(_fiche(), {"management": True})
+    assert fiche_correspond(_fiche(), {"teletravail": True})
+    assert not fiche_correspond(_fiche(teletravail=False), {"teletravail": True})
+
+
+def test_fiche_correspond_information_absente_n_ecarte_pas() -> None:
+    vide = _fiche(categorie="", secteur="", direction="", experience="")
+    filtres: FiltresRecherche = {
+        "categories": ["A"],
+        "domaines": ["Numérique"],
+        "organisations": [f"{BERCY} - DGFiP"],
+        "experience": "Expert",
+    }
+    assert fiche_correspond(vide, filtres)
 
 
 def test_organisations_de_bercy() -> None:
-    assert organisations_de_bercy(
-        ["Ministères Economiques et Financiers - DGFiP", "Mairie de Paris - X"]
-    ) == ["DGFiP"]
+    assert organisations_de_bercy([f"{BERCY} - DGFiP", "Mairie de Paris - X"]) == [
+        "DGFiP"
+    ]
 
 
 # --- rechercher : filtrage branché sur la source ---
 
 
-def _offre(reference: str, localisation: str, date_offre: str = "") -> Offre:
+def _offre(reference: str, localisation: str) -> Offre:
     return {
         "titre": f"Offre {reference}",
         "url": f"https://exemple.test/{reference}",
@@ -121,15 +144,26 @@ def _offre(reference: str, localisation: str, date_offre: str = "") -> Offre:
         "employeur": "",
         "localisation": localisation,
         "versant": "",
-        "date": date_offre,
+        "date": "",
         "source": "MEF",
     }
 
 
+class _CacheMemoire:
+    def __init__(self) -> None:
+        self.fiches: dict[str, FicheFiltrage] = {}
+
+    def lire(self, url: str) -> FicheFiltrage | None:
+        return self.fiches.get(url)
+
+    def ecrire(self, url: str, fiche: FicheFiltrage) -> None:
+        self.fiches[url] = fiche
+
+
 @pytest.fixture
 def _site(monkeypatch: pytest.MonkeyPatch) -> dict[str, DetailOffre]:
-    """Liste de trois offres et leurs fiches ; renvoie le dictionnaire des
-    fiches, à compléter par chaque test."""
+    """Liste de trois offres ; renvoie le dictionnaire de leurs fiches, à
+    compléter par chaque test."""
     fiches: dict[str, DetailOffre] = {}
     offres = [
         _offre("paris", "Paris (75)"),
@@ -143,7 +177,9 @@ def _site(monkeypatch: pytest.MonkeyPatch) -> dict[str, DetailOffre]:
         "obtenir_page_recherche",
         lambda _o, _u: {"html": "", "title": ""},
     )
-    monkeypatch.setattr(passerellesmef, "extraire_offres", lambda _h: list(offres))
+    monkeypatch.setattr(
+        passerellesmef, "extraire_offres", lambda _h: [dict(o) for o in offres]
+    )
     monkeypatch.setattr(
         passerellesmef,
         "recuperer_detail_offre",
@@ -152,8 +188,11 @@ def _site(monkeypatch: pytest.MonkeyPatch) -> dict[str, DetailOffre]:
     return fiches
 
 
-def _references(filtres: FiltresRecherche) -> list[str]:
-    offres, _, _ = passerellesmef.PasserellesMef().rechercher(filtres)
+def _references(
+    filtres: FiltresRecherche, cache: _CacheMemoire | None = None
+) -> list[str]:
+    source = passerellesmef.PasserellesMef(cache)
+    offres, _, _ = source.rechercher(filtres)
     return [o["reference"] for o in offres]
 
 
@@ -166,7 +205,7 @@ def test_rechercher_sans_critere_local_ne_lit_aucune_fiche(
 def test_rechercher_localisation_lit_le_lieu_manquant_sur_la_fiche(
     _site: dict[str, DetailOffre],
 ) -> None:
-    _site["sans-lieu"] = _fiche(
+    _site["sans-lieu"] = _detail(
         **{"Lieu_d'affectation": "86-92 Allée de Bercy - 75012 PARIS"}
     )
     offres, _, _ = passerellesmef.PasserellesMef().rechercher(
@@ -179,16 +218,16 @@ def test_rechercher_localisation_lit_le_lieu_manquant_sur_la_fiche(
 def test_rechercher_localisation_ecarte_une_fiche_d_un_autre_departement(
     _site: dict[str, DetailOffre],
 ) -> None:
-    _site["sans-lieu"] = _fiche(**{"Localisation_du_poste": "France, Somme (80)"})
+    _site["sans-lieu"] = _detail(**{"Localisation_du_poste": "France, Somme (80)"})
     assert _references({"localisations": ["Paris"]}) == ["paris"]
 
 
 def test_rechercher_categorie_filtre_sur_la_fiche(
     _site: dict[str, DetailOffre],
 ) -> None:
-    _site["paris"] = _fiche(Catégorie="Catégorie A (cadre)")
-    _site["marne"] = _fiche(Catégorie="Catégorie B (profession intermédiaire)")
-    _site["sans-lieu"] = _fiche(Catégorie="Catégorie B (profession intermédiaire)")
+    _site["paris"] = _detail(Catégorie="Catégorie A (cadre)")
+    _site["marne"] = _detail(Catégorie="Catégorie B (profession intermédiaire)")
+    _site["sans-lieu"] = _detail(Catégorie="Catégorie B (profession intermédiaire)")
     assert _references({"categories": ["A"]}) == ["paris"]
 
 
@@ -205,3 +244,23 @@ def test_rechercher_organisation_hors_bercy_ne_renvoie_rien(
     _site: dict[str, DetailOffre],
 ) -> None:
     assert _references({"organisations": ["Mairie de Paris - Crédit municipal"]}) == []
+
+
+def test_rechercher_ne_relit_pas_une_fiche_en_cache(
+    _site: dict[str, DetailOffre], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cache = _CacheMemoire()
+    _site["paris"] = _detail(Catégorie="Catégorie A (cadre)")
+    _site["marne"] = _detail(Catégorie="Catégorie B (profession intermédiaire)")
+    _site["sans-lieu"] = _detail(Catégorie="Catégorie A (cadre)")
+    assert _references({"categories": ["A"]}, cache) == ["paris", "sans-lieu"]
+
+    lectures: list[str] = []
+
+    def _detail_espion(url: str) -> DetailOffre:
+        lectures.append(url)
+        return DETAIL_VIDE
+
+    monkeypatch.setattr(passerellesmef, "recuperer_detail_offre", _detail_espion)
+    assert _references({"categories": ["A"]}, cache) == ["paris", "sans-lieu"]
+    assert lectures == []

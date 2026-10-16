@@ -10,15 +10,15 @@ from collections.abc import Callable, Mapping
 from concurrent.futures import Future, ThreadPoolExecutor
 from typing import Final
 
-from src.donnees.cache import maj_cache_offres
+from src.donnees.cache import CacheFichesDisque, maj_cache_offres
 from src.donnees.parametres_sources import (
     SOURCES_DISPONIBLES,
     VERSANT_SOURCE,
     charger_sources_actives,
 )
 from src.donnees.profils import noter_lancement
-from src.filtres import filtrer_par_grades, resumer_filtres
-from src.sources.base import SourceOffres, deduplique_offres
+from src.filtres import date_dans_fenetre, filtrer_par_grades, resumer_filtres
+from src.sources.base import CacheFiches, SourceOffres, deduplique_offres
 from src.sources.choisirleservicepublic import MAX_PAGES, ChoisirLeServicePublic
 from src.sources.choisirleservicepublic.extraction import filtrer_grades_superieurs
 from src.sources.emploiterritorial import EmploiTerritorial
@@ -37,69 +37,67 @@ class RechercheImpossible(Exception):
     """
 
 
-def construire_source(cle: str, orgas_cache: Organisations) -> SourceOffres | None:
-    """Instancie la source correspondant à `cle`, `None` si inconnue."""
-    if cle == "choisirleservicepublic":
-        return ChoisirLeServicePublic(orgas_cache)
-    if cle == "emploiterritorial":
-        return EmploiTerritorial()
-    if cle == "passerellesmef":
-        return PasserellesMef()
-    if cle == "fhf":
-        return Fhf()
-    return None
-
-
-# Critères qu'une source n'applique pas du tout : elle renverrait des offres
-# hors sujet, elle est donc écartée quand l'un d'eux est renseigné.
-CRITERES_NON_HONORES: Final[Mapping[str, tuple[str, ...]]] = {
-    "emploiterritorial": ("domaines", "organisations", "date_publication"),
-    "passerellesmef": ("experience",),
+# Critères renseignés qu'une source ne peut pas appliquer : le site ne les
+# filtre pas et sa fiche ne les donne pas. La source reste interrogée, le
+# résumé de la recherche prévient que ses offres ne sont pas triées dessus.
+CRITERES_IGNORES: Final[Mapping[str, tuple[str, ...]]] = {
+    "emploiterritorial": ("domaines", "organisations"),
     "fhf": (
-        "localisations",
         "categories",
         "domaines",
         "organisations",
         "experience",
-        "date_publication",
         "management",
         "teletravail",
     ),
 }
 
 _LIBELLES_CRITERES: Final[Mapping[str, str]] = {
-    "localisations": "la localisation",
     "categories": "la catégorie",
     "domaines": "le domaine",
     "organisations": "l'organisation",
     "experience": "l'expérience",
-    "date_publication": "la date de publication",
     "management": "le management",
     "teletravail": "le télétravail",
 }
 
+_SOURCES_AVEC_DATE: Final = frozenset({"choisirleservicepublic"})
+"""Sources dont le site filtre la date de publication ; pour les autres,
+l'orchestration écarte les offres hors de la fenêtre demandée."""
 
-def criteres_non_honores(cle: str, filtres: FiltresRecherche) -> list[str]:
-    """Libellés des critères renseignés que la source `cle` ne sait pas
+
+def criteres_ignores(cle: str, filtres: FiltresRecherche) -> list[str]:
+    """Libellés des critères renseignés que la source `cle` ne peut pas
     appliquer."""
     return [
         _LIBELLES_CRITERES[critere]
-        for critere in CRITERES_NON_HONORES.get(cle, ())
+        for critere in CRITERES_IGNORES.get(cle, ())
         if filtres.get(critere)
     ]
+
+
+def construire_source(
+    cle: str, orgas_cache: Organisations, cache_fiches: CacheFiches | None = None
+) -> SourceOffres | None:
+    """Instancie la source correspondant à `cle`, `None` si inconnue."""
+    if cle == "choisirleservicepublic":
+        return ChoisirLeServicePublic(orgas_cache)
+    if cle == "emploiterritorial":
+        return EmploiTerritorial()
+    if cle == "passerellesmef":
+        return PasserellesMef(cache_fiches)
+    if cle == "fhf":
+        return Fhf(cache_fiches)
+    return None
 
 
 def sources_a_interroger(
     filtres: FiltresRecherche,
     orgas_cache: Organisations,
-    ecartees: list[str] | None = None,
+    cache_fiches: CacheFiches | None = None,
 ) -> list[tuple[str, str, SourceOffres]]:
     """(clé, nom affiché, source) des sources actives et compatibles avec
-    le filtre Versant, dans l'ordre de `SOURCES_DISPONIBLES`.
-
-    Une source qui ne sait pas appliquer un critère renseigné est écartée ;
-    si `ecartees` est fourni, un message par source écartée y est ajouté.
-    """
+    le filtre Versant, dans l'ordre de `SOURCES_DISPONIBLES`."""
     sources_actives = charger_sources_actives()
     versants_filtres = filtres.get("versants") or []
     resultat: list[tuple[str, str, SourceOffres]] = []
@@ -113,14 +111,7 @@ def sources_a_interroger(
             and versant_source not in versants_filtres
         ):
             continue  # source mono-versant exclue par le filtre Versant
-        if ignores := criteres_non_honores(cle, filtres):
-            if ecartees is not None:
-                ecartees.append(
-                    f"{nom_affiche} non interrogée\u00a0: elle ne filtre pas sur "
-                    + ", ".join(ignores)
-                )
-            continue
-        source = construire_source(cle, orgas_cache)
+        source = construire_source(cle, orgas_cache, cache_fiches)
         if source is not None:
             resultat.append((cle, nom_affiche, source))
     return resultat
@@ -171,16 +162,18 @@ def rechercher_toutes_sources(
     Raises:
         RechercheImpossible: aucune source active, ou toutes en échec.
     """
-    ecartees: list[str] = []
-    sources = sources_a_interroger(filtres, orgas_cache, ecartees)
+    cache_fiches = CacheFichesDisque()
+    sources = sources_a_interroger(filtres, orgas_cache, cache_fiches)
     if not sources:
         raise RechercheImpossible(
-            "Aucune source ne sait appliquer ces critères."
-            if ecartees
-            else "Aucune source cochée\u00a0: voir Réglages › Sources consultées."
+            "Aucune source cochée\u00a0: voir Réglages › Sources consultées."
         )
-    for message in ecartees:
-        on_avertissement(message)
+    for cle, nom_affiche, _ in sources:
+        if ignores := criteres_ignores(cle, filtres):
+            on_avertissement(
+                f"{nom_affiche} ne filtre pas sur {', '.join(ignores)}\u00a0: "
+                "ses offres ne sont pas triées sur ce critère."
+            )
 
     def _interroger(
         nom_affiche: str, source: SourceOffres
@@ -225,12 +218,19 @@ def rechercher_toutes_sources(
                     f"({type(erreur).__name__}\u00a0: {erreur})"
                 )
                 continue
+            if fenetre := filtres.get("date_publication"):
+                if cle not in _SOURCES_AVEC_DATE:
+                    offres = [
+                        o for o in offres if date_dans_fenetre(o["date"], fenetre)
+                    ]
             if cle == "fhf":
                 offres = filtrer_doublons_fhf(offres, toutes_offres)
             toutes_offres.extend(offres)
             if cle == "choisirleservicepublic":
                 nb_pages_reference = nb_pages
                 arret_anticipe_reference = arret_anticipe
+
+    cache_fiches.enregistrer()
 
     if nb_echecs == len(sources):
         journal.error("Recherche impossible\u00a0: toutes les sources ont échoué")

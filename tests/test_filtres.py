@@ -1,5 +1,7 @@
 """Tests du filtre de grade (client, cross-source) — src/filtres.py."""
 
+from datetime import date
+
 import pytest
 
 from src.filtres import (
@@ -10,7 +12,10 @@ from src.filtres import (
     NUMEROS_REGIONS,
     RE_GRADE_SUPERIEUR,
     cle_categorie,
+    date_dans_fenetre,
     filtrer_par_grades,
+    libelle_lieu,
+    lieu_correspond,
     numero_departement_texte,
     numeros_departements,
 )
@@ -206,3 +211,29 @@ def test_grade_superieur_reconnait_ip_suivi_d_une_barre(titre: str) -> None:
 def test_grade_superieur_ne_prend_pas_ifip_ni_ipsum() -> None:
     assert not RE_GRADE_SUPERIEUR.match("IFIP/ATT - Développeur")
     assert not RE_GRADE_SUPERIEUR.match("Ipsum lorem")
+
+
+def test_lieu_correspond_departement_region_et_inconnu() -> None:
+    assert lieu_correspond("75", ["Paris"])
+    assert not lieu_correspond("52", ["Paris", "Hauts-de-Seine"])
+    assert lieu_correspond("93", ["Ile-de-France"])
+    assert lieu_correspond("", ["Paris"])
+
+
+def test_libelle_lieu() -> None:
+    assert libelle_lieu("75") == "Paris (75)"
+    assert libelle_lieu("21") == ""
+
+
+@pytest.mark.parametrize(
+    ("texte", "fenetre", "attendu"),
+    [
+        ("14/10/2026", "Dernières 48 heures", True),
+        ("10/10/2026", "Dernières 48 heures", False),
+        ("10/10/2026", "7 derniers jours", True),
+        ("illisible", "7 derniers jours", True),
+        ("01/01/2020", "", True),
+    ],
+)
+def test_date_dans_fenetre(texte: str, fenetre: str, attendu: bool) -> None:
+    assert date_dans_fenetre(texte, fenetre, date(2026, 10, 15)) is attendu

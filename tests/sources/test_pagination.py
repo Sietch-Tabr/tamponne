@@ -134,22 +134,47 @@ def test_fhf_plafonne_a_max_pages(monkeypatch: pytest.MonkeyPatch) -> None:
     assert (nb, arret) == (fhf.MAX_PAGES, True)
 
 
+def _passerelles_pages(monkeypatch: pytest.MonkeyPatch, pages: dict[int, str]) -> None:
+    """Pages de Passerelles par numéro (lues en parallèle : ordre libre)."""
+
+    def obtenir(_opener: object, url: str) -> dict[str, str]:
+        numero = int(url.rsplit("page=", 1)[1]) if "page=" in url else 1
+        return {"html": pages.get(numero, ""), "title": ""}
+
+    monkeypatch.setattr(passerellesmef, "nouvelle_session", lambda: None)
+    monkeypatch.setattr(passerellesmef, "obtenir_page_recherche", obtenir)
+    monkeypatch.setattr(passerellesmef, "extraire_offres", _offres_de_page)
+
+
 def test_passerelles_pages_selon_le_total_annonce(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    _pages_par_requete(monkeypatch, passerellesmef, ["p1:a", "p2:b"], "")
+    _passerelles_pages(monkeypatch, {1: "p1:a", 2: "p2:b"})
     monkeypatch.setattr(passerellesmef, "extraire_totaux", lambda _t: (20, 2))
-    offres, nb, arret = passerellesmef.PasserellesMef().rechercher({})
+    pages, on_page = _progression()
+    offres, nb, arret = passerellesmef.PasserellesMef().rechercher({}, on_page)
     assert [o["reference"] for o in offres] == ["a", "b"]
     assert (nb, arret) == (2, False)
+    assert sorted(pages) == [(1, 2), (2, 2)]
 
 
 def test_passerelles_page_vide_avant_la_fin(monkeypatch: pytest.MonkeyPatch) -> None:
-    _pages_par_requete(monkeypatch, passerellesmef, ["p1:a", "p2:"], "")
+    _passerelles_pages(monkeypatch, {1: "p1:a", 2: "p2:", 3: "p3:c"})
     monkeypatch.setattr(passerellesmef, "extraire_totaux", lambda _t: (45, 3))
     offres, nb, arret = passerellesmef.PasserellesMef().rechercher({})
     assert [o["reference"] for o in offres] == ["a"]
     assert (nb, arret) == (3, True)
+
+
+def test_passerelles_plafonne_les_pages_sans_filtre(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    total = passerellesmef.MAX_PAGES + 5
+    _passerelles_pages(monkeypatch, {n: f"p{n}:r{n}" for n in range(1, total + 1)})
+    monkeypatch.setattr(passerellesmef, "extraire_totaux", lambda _t: (total * 15, 1))
+    offres, nb, arret = passerellesmef.PasserellesMef().rechercher({})
+    assert len(offres) == passerellesmef.MAX_PAGES
+    assert (nb, arret) == (total, True)
 
 
 # --- emploi-territorial : une seule requête cumulative ---

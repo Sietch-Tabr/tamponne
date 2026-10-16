@@ -1,33 +1,25 @@
 """Filtrage côté client des offres de Passerelles/MEF.
 
 Le site n'expose ni département, ni catégorie, ni domaine, ni organisation
-dans sa recherche : seules la liste (lieu, date) et la fiche de chaque offre
-(catégorie, domaine, direction, télétravail, management) permettent de
-trancher.
+dans sa recherche : seules la liste (lieu) et la fiche de chaque offre
+(catégorie, domaine, direction, expérience, télétravail, management)
+permettent de trancher.
 """
 
 import unicodedata
-from datetime import date, timedelta
 from difflib import SequenceMatcher
 
 from src.filtres import (
     CATEGORIES,
-    DATES_PUBLICATION,
-    NUMEROS_DEPARTEMENTS,
+    EXPERIENCES,
     cle_categorie,
     numero_departement_texte,
-    numeros_departements,
 )
-from src.types import DetailOffre, FiltresRecherche
+from src.types import DetailOffre, FicheFiltrage, FiltresRecherche
 
 MINISTERE_BERCY = "Ministères Economiques et Financiers"
 """Ministère du cache des organisations dont relève ce portail."""
 
-_JOURS_PAR_FENETRE = {
-    "dernieres_48_heures": 2,
-    "7_derniers_jours": 7,
-    "14_derniers_jours": 14,
-}
 _SEUIL_RESSEMBLANCE = 0.9
 
 
@@ -55,50 +47,35 @@ def fiche_necessaire(filtres: FiltresRecherche) -> bool:
         filtres.get("categories")
         or filtres.get("domaines")
         or filtres.get("organisations")
+        or filtres.get("experience")
         or filtres.get("management")
         or filtres.get("teletravail")
     )
 
 
-def numero_depuis_fiche(detail: DetailOffre) -> str | None:
-    """Département de la fiche : « Localisation du poste » quand elle donne
-    un numéro, sinon le code postal du lieu d'affectation."""
+def extraire_fiche(detail: DetailOffre) -> FicheFiltrage | None:
+    """Ce que la fiche apprend pour filtrer, `None` si elle est illisible.
+
+    Le département vient de « Localisation du poste » quand elle donne un
+    numéro, sinon du code postal du lieu d'affectation.
+    """
+    if not detail["page_html"]:
+        return None
     champs = detail["sections_complementaires"]
+    numero = ""
     for libelle in ("Localisation du poste", "Lieu d'affectation"):
-        if numero := numero_departement_texte(champs.get(libelle, "")):
-            return numero
-    return None
-
-
-def libelle_lieu(numero: str) -> str:
-    """« Paris (75) » pour un numéro de département connu, chaîne vide sinon
-    (même forme que la liste du site)."""
-    for nom, numero_nom in NUMEROS_DEPARTEMENTS.items():
-        if numero_nom == numero:
-            return f"{nom} ({numero})"
-    return ""
-
-
-def lieu_correspond(numero: str | None, localisations: list[str]) -> bool:
-    """Vrai si `numero` est un département visé par `localisations` ; un
-    numéro inconnu (`None`) est gardé, faute de pouvoir l'écarter."""
-    if numero is None:
-        return True
-    return numero in numeros_departements(localisations)
-
-
-def date_dans_fenetre(texte: str, cle: str, aujourdhui: date | None = None) -> bool:
-    """Vrai si la date « jj/mm/aaaa » tombe dans la fenêtre de publication
-    `cle` (clé de `DATES_PUBLICATION`) ; une date illisible est gardée."""
-    jours = _JOURS_PAR_FENETRE.get(DATES_PUBLICATION.get(cle, ""), 0)
-    if not jours:
-        return True
-    try:
-        jour, mois, annee = (int(p) for p in texte.split("/"))
-        publiee = date(annee, mois, jour)
-    except ValueError:
-        return True
-    return publiee >= (aujourdhui or date.today()) - timedelta(days=jours)
+        numero = numero_departement_texte(champs.get(libelle, "")) or ""
+        if numero:
+            break
+    return {
+        "numero": numero,
+        "categorie": cle_categorie(champs.get("Catégorie", "")) or "",
+        "secteur": detail["secteur"],
+        "direction": champs.get("Directions et Services", ""),
+        "experience": detail["experience_requise"],
+        "management": champs.get("Management") == "Oui",
+        "teletravail": champs.get("Télétravail possible") == "Oui",
+    }
 
 
 def _domaine_correspond(secteur: str, domaines: list[str]) -> bool:
@@ -107,8 +84,6 @@ def _domaine_correspond(secteur: str, domaines: list[str]) -> bool:
 
 
 def _organisation_correspond(direction: str, sous_organisations: list[str]) -> bool:
-    if not direction:
-        return True
     cible = _normaliser(direction)
     return any(
         _ressemblent(direction, s) or _normaliser(s) in cible
@@ -116,25 +91,27 @@ def _organisation_correspond(direction: str, sous_organisations: list[str]) -> b
     )
 
 
-def fiche_correspond(detail: DetailOffre, filtres: FiltresRecherche) -> bool:
+def fiche_correspond(fiche: FicheFiltrage, filtres: FiltresRecherche) -> bool:
     """Vrai si la fiche respecte catégories, domaines, organisations,
-    management et télétravail ; une fiche illisible est gardée."""
-    if not detail["page_html"]:
-        return True
-    champs = detail["sections_complementaires"]
+    expérience, management et télétravail. Une information absente de la
+    fiche n'écarte pas l'offre."""
     if categories := [c for c in filtres.get("categories", []) if c in CATEGORIES]:
-        if cle_categorie(champs.get("Catégorie", "")) not in categories:
+        if fiche["categorie"] and fiche["categorie"] not in categories:
             return False
     if domaines := filtres.get("domaines"):
-        if not _domaine_correspond(detail["secteur"], domaines):
+        if fiche["secteur"] and not _domaine_correspond(fiche["secteur"], domaines):
             return False
     if organisations := organisations_de_bercy(filtres.get("organisations", [])):
-        if not _organisation_correspond(
-            champs.get("Directions et Services", ""), organisations
+        if fiche["direction"] and not _organisation_correspond(
+            fiche["direction"], organisations
         ):
             return False
-    if filtres.get("management") and champs.get("Management") != "Oui":
+    experience = filtres.get("experience") or ""
+    if experience in EXPERIENCES and fiche["experience"]:
+        if _normaliser(fiche["experience"]) != _normaliser(experience):
+            return False
+    if filtres.get("management") and not fiche["management"]:
         return False
-    if filtres.get("teletravail") and champs.get("Télétravail possible") != "Oui":
+    if filtres.get("teletravail") and not fiche["teletravail"]:
         return False
     return True
