@@ -72,6 +72,7 @@ def _rediriger_caches_vers_tmp(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     monkeypatch.setattr(cache, "CHEMIN_OFFRES", tmp_path / "offres.json")
     monkeypatch.setattr(cache, "CHEMIN_CACHE", tmp_path / "cache.json")
     monkeypatch.setattr(cache, "CHEMIN_FICHES", tmp_path / "fiches.json")
+    monkeypatch.setattr(cache, "CHEMIN_DETAILS", tmp_path / "details.json")
 
 
 @pytest.fixture(autouse=True)

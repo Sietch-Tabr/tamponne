@@ -33,15 +33,35 @@ Item {
 
     Connections {
         target: racine.recherche
-        function onDetail_pret(fiche: var) { detail.afficher(fiche) }
+        function onDetail_attendu(apercu: var) {
+            preparation.stop()
+            detail.attendre(apercu)
+        }
+        // Une fiche arrivée après la fermeture de la fenêtre, ou pour une autre
+        // offre, ne la rouvre pas.
+        function onDetail_pret(fiche: var) {
+            if (detail.chargement && detail.opened && detail.fiche.reference === fiche.reference)
+                detail.afficher(fiche)
+        }
+        function onSelection_change() { preparation.restart() }
         function onSuivi_termine(titre: string) {
             avisSuivi.message = "«\u00a0" + titre + "\u00a0» rejoint les dossiers en cours, avec sa fiche archivée."
             avisSuivi.open()
         }
         function onAction_echouee(message: string) {
+            if (detail.chargement)
+                detail.close()
             avisErreur.message = message
             avisErreur.open()
         }
+    }
+
+    // Fiche de l'offre sélectionnée téléchargée à l'avance : sa consultation
+    // s'ouvre ensuite sans attendre le site.
+    Timer {
+        id: preparation
+        interval: 350
+        onTriggered: racine.recherche.precharger_selection()
     }
 
     DialogueSelection {
@@ -63,6 +83,7 @@ Item {
 
     DialogueDetail {
         id: detail
+        objectName: "dialogueDetail"
         onPostuler: racine.recherche.ouvrir_lien(detail.fiche.lienPostuler || "")
         onConsulterEnLigne: racine.recherche.ouvrir_lien(detail.fiche.url || "")
         onVoirArchive: (reference) => racine.suivi.voir_archive(reference)

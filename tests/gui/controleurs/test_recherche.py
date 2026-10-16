@@ -505,3 +505,90 @@ def test_selection_et_progression_n_emettent_que_leur_signal(
     emis.clear()
     controleur.definir("mot_cle", "réseau")
     assert emis == ["etat"]
+
+
+def _detail_lu(description: str = "Missions.") -> dict[str, object]:
+    return {**DETAIL_VIDE, "description": description, "page_html": "<html>"}
+
+
+def test_consulter_ouvre_la_fenetre_avant_la_fin_du_telechargement(
+    controleur: ControleurRecherche, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        controleur_recherche, "recuperer_detail_offre", lambda url: _detail_lu()
+    )
+    ordre: list[str] = []
+    controleur.detail_attendu.connect(lambda apercu: ordre.append(apercu["titre"]))
+    controleur.detail_pret.connect(lambda fiche: ordre.append("pret"))
+    controleur.lancer()
+    _attendre(controleur, qtbot)
+    controleur.selectionner(0)
+
+    with qtbot.waitSignal(controleur.detail_pret, timeout=5000):
+        controleur.consulter()
+
+    assert ordre == ["Attaché(e) d'administration RH", "pret"]
+
+
+def test_consulter_deux_fois_ne_telecharge_qu_une_fois(
+    controleur: ControleurRecherche, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    telechargements: list[str] = []
+
+    def lire(url: str) -> dict[str, object]:
+        telechargements.append(url)
+        return _detail_lu()
+
+    monkeypatch.setattr(controleur_recherche, "recuperer_detail_offre", lire)
+    controleur.lancer()
+    _attendre(controleur, qtbot)
+    controleur.selectionner(0)
+
+    for _ in range(2):
+        with qtbot.waitSignal(controleur.detail_pret, timeout=5000):
+            controleur.consulter()
+
+    assert len(telechargements) == 1
+
+
+def test_une_fiche_illisible_n_est_pas_gardee(
+    controleur: ControleurRecherche, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    telechargements: list[str] = []
+
+    def lire(url: str) -> dict[str, object]:
+        telechargements.append(url)
+        return dict(DETAIL_VIDE)
+
+    monkeypatch.setattr(controleur_recherche, "recuperer_detail_offre", lire)
+    controleur.lancer()
+    _attendre(controleur, qtbot)
+    controleur.selectionner(0)
+
+    for _ in range(2):
+        with qtbot.waitSignal(controleur.detail_pret, timeout=5000):
+            controleur.consulter()
+
+    assert len(telechargements) == 2
+
+
+def test_precharger_selection_prepare_la_consultation(
+    controleur: ControleurRecherche, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    telechargements: list[str] = []
+
+    def lire(url: str) -> dict[str, object]:
+        telechargements.append(url)
+        return _detail_lu()
+
+    monkeypatch.setattr(controleur_recherche, "recuperer_detail_offre", lire)
+    controleur.lancer()
+    _attendre(controleur, qtbot)
+    controleur.selectionner(0)
+    controleur.precharger_selection()
+    qtbot.waitUntil(lambda: not controleur._taches, timeout=5000)
+
+    with qtbot.waitSignal(controleur.detail_pret, timeout=5000):
+        controleur.consulter()
+
+    assert len(telechargements) == 1

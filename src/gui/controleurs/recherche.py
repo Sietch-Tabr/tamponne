@@ -2,6 +2,7 @@
 lancement en arrière-plan, registre des offres et actions sur une offre."""
 
 import logging
+import threading
 from collections.abc import Callable
 from datetime import datetime
 from typing import Any, cast
@@ -19,6 +20,7 @@ from PySide6.QtCore import (
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtQml import QJSValue
 
+from src.donnees.cache import CacheDetailsDisque
 from src.donnees.candidatures import chemin_archive_pdf, suivre_offre
 from src.donnees.profils import (
     ajouter_profil,
@@ -45,7 +47,7 @@ from src.recherche.export import exporter_html
 from src.recherche.orchestration import post_traiter_resultats
 from src.sources.choisirleservicepublic import MAX_PAGES
 from src.sources.detail import recuperer_detail_offre
-from src.types import FiltresRecherche, Offre, Organisations, Profil
+from src.types import DetailOffre, FiltresRecherche, Offre, Organisations, Profil
 
 journal = logging.getLogger(__name__)
 
@@ -110,6 +112,9 @@ class ControleurRecherche(QObject):
     """Avancement de la recherche en cours (émis à chaque page ou fiche lue)."""
     selection_change = Signal()
     """Ligne sélectionnée du registre (émis à chaque clic)."""
+    detail_attendu = Signal(dict)
+    """Offre dont la fiche de poste se télécharge (`reference`, `titre`,
+    `sousTitre`) : la fenêtre s'ouvre tout de suite, sans attendre le site."""
     detail_pret = Signal(dict)
     """Fiche de poste d'une offre, à afficher (même format que le Suivi)."""
     suivi_termine = Signal(str)
@@ -152,6 +157,9 @@ class ControleurRecherche(QObject):
         self._grades: list[str] = []
         self._grades_superieurs = False
         self._chargement_organisations = False
+        self._cache_details: CacheDetailsDisque | None = None
+        self._verrou_details = threading.Lock()
+        self._verrous_url: dict[str, threading.Lock] = {}
 
     # --- Propriétés exposées au QML ---
 
@@ -695,19 +703,60 @@ class ControleurRecherche(QObject):
     def _on_thread_tache_fini(self) -> None:
         self._taches = [(t, tache) for t, tache in self._taches if t.isRunning()]
 
+    def _lire_detail(self, url: str) -> DetailOffre:
+        """Fiche de poste de `url`, lue sur le disque si elle y est, sinon sur
+        le site (puis gardée). Deux lectures de la même offre (préchargement
+        puis consultation) ne téléchargent qu'une fois."""
+        with self._verrou_details:
+            if self._cache_details is None:
+                self._cache_details = CacheDetailsDisque()
+            verrou = self._verrous_url.setdefault(url, threading.Lock())
+        with verrou:
+            if (connu := self._cache_details.lire(url)) is not None:
+                return connu
+            detail = recuperer_detail_offre(url)
+            # Une fiche vide est un échec de lecture : à retenter, pas à garder.
+            if detail["page_html"]:
+                self._cache_details.ecrire(url, detail)
+                self._cache_details.enregistrer()
+            return detail
+
+    @Slot()
+    def precharger_selection(self) -> None:
+        """Télécharge à l'avance la fiche de poste de l'offre sélectionnée,
+        pour que sa consultation s'ouvre sans attente."""
+        offre = self._offre_selectionnee()
+        if offre is None or not offre["url"].startswith("https://"):
+            return
+        url = offre["url"]
+        self._lancer_tache(lambda: self._lire_detail(url), lambda _detail: None)
+
     @Slot()
     def consulter(self) -> None:
-        """Télécharge la fiche de poste de l'offre sélectionnée puis
-        émet `detail_pret`."""
+        """Ouvre la fenêtre de la fiche de poste de l'offre sélectionnée
+        (`detail_attendu`), puis la remplit (`detail_pret`) une fois la fiche
+        lue."""
         offre = self._offre_selectionnee()
         if offre is None:
             return
+        sous_titre = [
+            offre["employeur"],
+            offre["localisation"],
+            offre.get("source") or "",
+        ]
+        self.detail_attendu.emit(
+            {
+                "reference": offre["reference"],
+                "titre": offre["titre"],
+                "sousTitre": " · ".join(p for p in sous_titre if p),
+            }
+        )
 
         def afficher(detail: object) -> None:
             contenu = contenu_detail(
                 offre["reference"],
                 offre["titre"],
-                [offre["employeur"], offre["localisation"], offre.get("source") or ""],
+                sous_titre,
                 cast(Any, detail),
                 offre["url"],
                 chemin_archive_pdf(offre["reference"]).exists(),
@@ -738,7 +787,7 @@ class ControleurRecherche(QObject):
                 }
             )
 
-        self._lancer_tache(lambda: recuperer_detail_offre(offre["url"]), afficher)
+        self._lancer_tache(lambda: self._lire_detail(offre["url"]), afficher)
 
     @Slot(str)
     def ouvrir_lien(self, url: str) -> None:

@@ -4,13 +4,14 @@ import json
 import logging
 import threading
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 lazy from bs4 import BeautifulSoup, Tag
 
 from src.chemins import DATA
 from src.sources.choisirleservicepublic.api import telecharger_page_offres
-from src.types import FicheFiltrage, Offre, OffreCache, Organisations
+from src.types import DetailOffre, FicheFiltrage, Offre, OffreCache, Organisations
 from src.utils import ecriture_atomique
 
 journal = logging.getLogger(__name__)
@@ -18,9 +19,12 @@ journal = logging.getLogger(__name__)
 CHEMIN_CACHE = DATA / "cache.json"
 CHEMIN_OFFRES = DATA / "offres.json"
 CHEMIN_FICHES = DATA / "fiches.json"
+CHEMIN_DETAILS = DATA / "details.json"
 TTL_ORGANISATIONS = 7 * 24 * 3600  # 7 jours en secondes
 TTL_OFFRES = 30 * 24 * 3600  # 30 jours en secondes
 TTL_FICHES = 30 * 24 * 3600  # 30 jours en secondes
+TTL_DETAILS = 30 * 24 * 3600  # 30 jours en secondes
+MAXIMUM_DETAILS = 300
 
 
 def _charger_cache() -> dict[str, Any]:
@@ -231,12 +235,92 @@ def date_cache_organisations() -> datetime | None:
         return None
 
 
-# --- Cache des fiches lues pour filtrer ---
+# --- Caches de pages lues sur les sites (fiches pour filtrer, fiches de poste) ---
 
 _CLES_FICHE = frozenset(FicheFiltrage.__annotations__)
+_CLES_DETAIL = frozenset(DetailOffre.__annotations__)
 
 
-class CacheFichesDisque:
+class _CacheTemporel:
+    """Entrées datées par URL, gardées `ttl` secondes dans un fichier JSON.
+
+    L'écriture est groupée : appeler :meth:`enregistrer` en fin d'opération.
+    Sous-classes : `_champ` (clé de la donnée dans l'entrée), `_ttl`,
+    `_maximum` (nombre d'entrées gardées, les plus anciennes partent d'abord),
+    `_chemin()` et `_donnee_valide()`.
+    """
+
+    _champ = ""
+    _ttl = 0
+    _maximum = 1_000_000
+
+    def __init__(self) -> None:
+        self._verrou = threading.Lock()
+        self._modifie = False
+        self._entrees = self._charger()
+
+    @staticmethod
+    def _chemin() -> Path:
+        raise NotImplementedError
+
+    @staticmethod
+    def _donnee_valide(donnee: object) -> bool:
+        raise NotImplementedError
+
+    def _charger(self) -> dict[str, dict[str, Any]]:
+        chemin = self._chemin()
+        if not chemin.exists():
+            return {}
+        try:
+            donnees = json.loads(chemin.read_text(encoding="utf-8"))
+        except json.JSONDecodeError, OSError:
+            journal.warning(
+                "%s illisible ou corrompu, cache réinitialisé.", chemin.name
+            )
+            return {}
+        return donnees if isinstance(donnees, dict) else {}
+
+    def _valide(self, entree: object) -> bool:
+        if not isinstance(entree, dict):
+            return False
+        lu_le = entree.get("lu_le")
+        if not self._donnee_valide(entree.get(self._champ)) or not isinstance(
+            lu_le, str
+        ):
+            return False
+        try:
+            age = datetime.now(UTC) - datetime.fromisoformat(lu_le)
+        except ValueError:
+            return False
+        return age.total_seconds() < self._ttl
+
+    def _lire(self, url: str) -> Any | None:
+        with self._verrou:
+            entree = self._entrees.get(url)
+        return entree[self._champ] if self._valide(entree) and entree else None
+
+    def _ecrire(self, url: str, donnee: dict[str, Any]) -> None:
+        with self._verrou:
+            self._entrees[url] = {
+                "lu_le": datetime.now(UTC).isoformat(),
+                self._champ: donnee,
+            }
+            self._modifie = True
+
+    def enregistrer(self) -> None:
+        """Écrit le cache sur le disque (sans les entrées périmées ni, au-delà
+        du maximum, les plus anciennes) s'il a changé."""
+        with self._verrou:
+            if not self._modifie:
+                return
+            valides = [(u, e) for u, e in self._entrees.items() if self._valide(e)]
+            valides.sort(key=lambda couple: couple[1]["lu_le"])
+            self._entrees = dict(valides[-self._maximum :])
+            ecriture_atomique(self._chemin(), self._entrees)
+            self._modifie = False
+
+
+class CacheFichesDisque(_CacheTemporel):
     """Fiches d'offres déjà lues (voir :class:`~src.sources.base.CacheFiches`),
     gardées `TTL_FICHES` dans `data/fiches.json`.
 
@@ -245,62 +329,50 @@ class CacheFichesDisque:
     de recherche.
     """
 
-    def __init__(self) -> None:
-        self._verrou = threading.Lock()
-        self._modifie = False
-        self._entrees = self._charger()
+    _champ = "fiche"
+    _ttl = TTL_FICHES
 
     @staticmethod
-    def _charger() -> dict[str, dict[str, Any]]:
-        if not CHEMIN_FICHES.exists():
-            return {}
-        try:
-            donnees = json.loads(CHEMIN_FICHES.read_text(encoding="utf-8"))
-        except json.JSONDecodeError, OSError:
-            journal.warning(
-                "%s illisible ou corrompu, cache réinitialisé.", CHEMIN_FICHES.name
-            )
-            return {}
-        return donnees if isinstance(donnees, dict) else {}
+    def _chemin() -> Path:
+        return CHEMIN_FICHES
 
     @staticmethod
-    def _valide(entree: object) -> bool:
-        if not isinstance(entree, dict):
-            return False
-        fiche, lu_le = entree.get("fiche"), entree.get("lu_le")
-        if not isinstance(fiche, dict) or set(fiche) != _CLES_FICHE:
-            return False
-        if not isinstance(lu_le, str):
-            return False
-        try:
-            age = datetime.now(UTC) - datetime.fromisoformat(lu_le)
-        except ValueError:
-            return False
-        return age.total_seconds() < TTL_FICHES
+    def _donnee_valide(donnee: object) -> bool:
+        return isinstance(donnee, dict) and set(donnee) == _CLES_FICHE
 
     def lire(self, url: str) -> FicheFiltrage | None:
         """Fiche mémorisée de `url`, `None` si absente ou trop ancienne."""
-        with self._verrou:
-            entree = self._entrees.get(url)
-        return entree["fiche"] if self._valide(entree) and entree else None
+        return self._lire(url)
 
     def ecrire(self, url: str, fiche: FicheFiltrage) -> None:
         """Mémorise la fiche de `url`."""
-        with self._verrou:
-            self._entrees[url] = {
-                "lu_le": datetime.now(UTC).isoformat(),
-                "fiche": dict(fiche),
-            }
-            self._modifie = True
+        self._ecrire(url, dict(fiche))
 
-    def enregistrer(self) -> None:
-        """Écrit le cache sur le disque (sans les entrées périmées) s'il a
-        changé."""
-        with self._verrou:
-            if not self._modifie:
-                return
-            self._entrees = {
-                url: e for url, e in self._entrees.items() if self._valide(e)
-            }
-            ecriture_atomique(CHEMIN_FICHES, self._entrees)
-            self._modifie = False
+
+class CacheDetailsDisque(_CacheTemporel):
+    """Fiches de poste déjà consultées, gardées `TTL_DETAILS` dans
+    `data/details.json` (les `MAXIMUM_DETAILS` plus récentes) : rouvrir une
+    offre, ou la préparer dès sa sélection, n'attend plus le site.
+
+    Seul le texte est gardé, jamais la page (`page_html` vidé).
+    """
+
+    _champ = "detail"
+    _ttl = TTL_DETAILS
+    _maximum = MAXIMUM_DETAILS
+
+    @staticmethod
+    def _chemin() -> Path:
+        return CHEMIN_DETAILS
+
+    @staticmethod
+    def _donnee_valide(donnee: object) -> bool:
+        return isinstance(donnee, dict) and set(donnee) == _CLES_DETAIL
+
+    def lire(self, url: str) -> DetailOffre | None:
+        """Fiche de poste mémorisée de `url`, `None` si absente ou trop ancienne."""
+        return self._lire(url)
+
+    def ecrire(self, url: str, detail: DetailOffre) -> None:
+        """Mémorise la fiche de poste de `url` (sans la page brute)."""
+        self._ecrire(url, {**detail, "page_html": ""})
