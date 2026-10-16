@@ -11,6 +11,7 @@ import pytest
 from src.donnees import cache, parametres_sources, profils
 from src.recherche.orchestration import (
     RechercheImpossible,
+    criteres_ignores,
     lignes_resume,
     post_traiter_resultats,
     rechercher_toutes_sources,
@@ -583,3 +584,75 @@ def test_lignes_resume_aucune_offre() -> None:
         {}, {"offres": [], "nb_exclus": 0, "nouvelles": set()}, 1, False, []
     )
     assert lignes[-1] == "Aucune offre trouvée."
+
+
+# --- critères qu'une source ne peut pas appliquer : prévenir, ne pas exclure ---
+
+
+def test_criteres_ignores_ignore_les_criteres_vides() -> None:
+    assert criteres_ignores("fhf", {"categories": [], "management": False}) == []
+    assert criteres_ignores("fhf", {"categories": ["A"], "teletravail": True}) == [
+        "la catégorie",
+        "le télétravail",
+    ]
+    assert criteres_ignores("emploiterritorial", {"domaines": ["Numérique"]}) == [
+        "le domaine"
+    ]
+    assert criteres_ignores("passerellesmef", {"domaines": ["X"]}) == []
+    assert criteres_ignores("choisirleservicepublic", {"domaines": ["X"]}) == []
+
+
+def test_rechercher_previent_sans_exclure_une_source_qui_ignore_un_critere(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    parametres_sources.sauvegarder_sources_actives(
+        {
+            "choisirleservicepublic": False,
+            "emploiterritorial": False,
+            "passerellesmef": False,
+            "fhf": True,
+        }
+    )
+    interrogees: list[str] = []
+
+    def _fhf_espion(
+        self: Fhf, filtres: FiltresRecherche, on_page: object = None
+    ) -> _Resultat:
+        interrogees.append("fhf")
+        return [_offre("F1", "FHF")], 1, False
+
+    monkeypatch.setattr(Fhf, "rechercher", _fhf_espion)
+    avertissements: list[str] = []
+    offres, _, _ = rechercher_toutes_sources(
+        {"categories": ["A"]}, {}, on_avertissement=avertissements.append
+    )
+    assert interrogees == ["fhf"]
+    assert [o["reference"] for o in offres] == ["F1"]
+    assert len(avertissements) == 1
+    assert "la catégorie" in avertissements[0]
+
+
+def test_rechercher_ecarte_les_offres_hors_fenetre_de_date_des_sources_sans_filtre(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    parametres_sources.sauvegarder_sources_actives(
+        {
+            "choisirleservicepublic": False,
+            "emploiterritorial": False,
+            "passerellesmef": True,
+            "fhf": False,
+        }
+    )
+    recente = _offre("R", "MEF")
+    recente["date"] = date.today().strftime("%d/%m/%Y")
+    ancienne = _offre("A", "MEF")
+    ancienne["date"] = "01/01/2020"
+    monkeypatch.setattr(
+        PasserellesMef,
+        "rechercher",
+        lambda self, filtres, on_page=None: ([recente, ancienne], 1, False),
+    )
+    offres, _, _ = rechercher_toutes_sources(
+        {"date_publication": "7 derniers jours"}, {}
+    )
+    assert [o["reference"] for o in offres] == ["R"]

@@ -5,8 +5,10 @@ Valeurs vérifiées empiriquement contre le formulaire réel du site (segments
 qui sert choisirleservicepublic.gouv.fr.
 """
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from typing import Final
+
+from src.filtres import NUMEROS_REGIONS
 
 DEPARTEMENTS: Final[Mapping[str, str]] = {
     "Ain": "001",
@@ -115,9 +117,27 @@ DEPARTEMENTS: Final[Mapping[str, str]] = {
 `search_offre_form[searchdept][]` (ex. « 034 » = Hérault).
 
 Couvre les clés de `src.filtres.LOCALISATIONS` qui sont des départements ;
-régions et groupement DOM n'ont pas d'équivalent unique côté ET et restent
-volontairement absents.
+régions et groupement DOM n'ont pas de code côté ET, `codes_departements`
+les remplace par leurs départements.
 """
+
+
+def codes_departements(localisations: Iterable[str]) -> list[str]:
+    """Codes `searchdept` des `localisations` : un département donne le sien,
+    une région ou le groupement DOM ceux de tous ses départements (numéro sur
+    trois caractères, comme `DEPARTEMENTS`). Les valeurs inconnues sont
+    ignorées."""
+    codes: list[str] = []
+    for lieu in localisations:
+        if lieu in NUMEROS_REGIONS:
+            nouveaux = [numero.zfill(3) for numero in NUMEROS_REGIONS[lieu]]
+        elif lieu in DEPARTEMENTS:
+            nouveaux = [DEPARTEMENTS[lieu]]
+        else:
+            continue
+        codes.extend(c for c in nouveaux if c not in codes)
+    return codes
+
 
 # search_offre_form[searchcat][] — ET n'a qu'une catégorie « A+ » : les
 # deux variantes A+ de src.filtres y sont confondues.

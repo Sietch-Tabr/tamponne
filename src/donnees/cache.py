@@ -2,6 +2,7 @@
 
 import json
 import logging
+import threading
 from datetime import UTC, datetime
 from typing import Any
 
@@ -9,15 +10,17 @@ lazy from bs4 import BeautifulSoup, Tag
 
 from src.chemins import DATA
 from src.sources.choisirleservicepublic.api import telecharger_page_offres
-from src.types import Offre, OffreCache, Organisations
+from src.types import FicheFiltrage, Offre, OffreCache, Organisations
 from src.utils import ecriture_atomique
 
 journal = logging.getLogger(__name__)
 
 CHEMIN_CACHE = DATA / "cache.json"
 CHEMIN_OFFRES = DATA / "offres.json"
+CHEMIN_FICHES = DATA / "fiches.json"
 TTL_ORGANISATIONS = 7 * 24 * 3600  # 7 jours en secondes
 TTL_OFFRES = 30 * 24 * 3600  # 30 jours en secondes
+TTL_FICHES = 30 * 24 * 3600  # 30 jours en secondes
 
 
 def _charger_cache() -> dict[str, Any]:
@@ -226,3 +229,78 @@ def date_cache_organisations() -> datetime | None:
         return datetime.fromisoformat(entree["cached_at"])
     except KeyError, ValueError, TypeError:
         return None
+
+
+# --- Cache des fiches lues pour filtrer ---
+
+_CLES_FICHE = frozenset(FicheFiltrage.__annotations__)
+
+
+class CacheFichesDisque:
+    """Fiches d'offres déjà lues (voir :class:`~src.sources.base.CacheFiches`),
+    gardées `TTL_FICHES` dans `data/fiches.json`.
+
+    Une recherche qui filtre sur la fiche relit sinon des centaines de pages :
+    seules les offres nouvelles sont lues. Appeler :meth:`enregistrer` en fin
+    de recherche.
+    """
+
+    def __init__(self) -> None:
+        self._verrou = threading.Lock()
+        self._modifie = False
+        self._entrees = self._charger()
+
+    @staticmethod
+    def _charger() -> dict[str, dict[str, Any]]:
+        if not CHEMIN_FICHES.exists():
+            return {}
+        try:
+            donnees = json.loads(CHEMIN_FICHES.read_text(encoding="utf-8"))
+        except json.JSONDecodeError, OSError:
+            journal.warning(
+                "%s illisible ou corrompu, cache réinitialisé.", CHEMIN_FICHES.name
+            )
+            return {}
+        return donnees if isinstance(donnees, dict) else {}
+
+    @staticmethod
+    def _valide(entree: object) -> bool:
+        if not isinstance(entree, dict):
+            return False
+        fiche, lu_le = entree.get("fiche"), entree.get("lu_le")
+        if not isinstance(fiche, dict) or set(fiche) != _CLES_FICHE:
+            return False
+        if not isinstance(lu_le, str):
+            return False
+        try:
+            age = datetime.now(UTC) - datetime.fromisoformat(lu_le)
+        except ValueError:
+            return False
+        return age.total_seconds() < TTL_FICHES
+
+    def lire(self, url: str) -> FicheFiltrage | None:
+        """Fiche mémorisée de `url`, `None` si absente ou trop ancienne."""
+        with self._verrou:
+            entree = self._entrees.get(url)
+        return entree["fiche"] if self._valide(entree) and entree else None
+
+    def ecrire(self, url: str, fiche: FicheFiltrage) -> None:
+        """Mémorise la fiche de `url`."""
+        with self._verrou:
+            self._entrees[url] = {
+                "lu_le": datetime.now(UTC).isoformat(),
+                "fiche": dict(fiche),
+            }
+            self._modifie = True
+
+    def enregistrer(self) -> None:
+        """Écrit le cache sur le disque (sans les entrées périmées) s'il a
+        changé."""
+        with self._verrou:
+            if not self._modifie:
+                return
+            self._entrees = {
+                url: e for url, e in self._entrees.items() if self._valide(e)
+            }
+            ecriture_atomique(CHEMIN_FICHES, self._entrees)
+            self._modifie = False

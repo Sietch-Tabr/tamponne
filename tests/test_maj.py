@@ -92,35 +92,69 @@ def test_marqueur_effacement_sans_marqueur_ne_leve_pas() -> None:
 # --- verifier_derniere_publication ---
 
 
+def _release(version: str, notes: str = "") -> dict[str, str]:
+    return {
+        "tag_name": f"v{version}",
+        "body": notes,
+        "zipball_url": f"https://codeberg.org/Kwaite/tamponne/archive/v{version}.zip",
+        "html_url": f"https://codeberg.org/x/{version}",
+    }
+
+
 def test_verifier_derniere_publication_version_plus_recente(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    reponse = json.dumps(
-        {
-            "tag_name": "v1.1.0",
-            "body": "notes",
-            "zipball_url": "https://codeberg.org/Kwaite/tamponne/archive/v1.1.0.zip",
-            "html_url": "https://codeberg.org/x",
-        }
-    ).encode("utf-8")
+    reponse = json.dumps([_release("1.1.0", "notes")]).encode("utf-8")
     monkeypatch.setattr(urllib.request, "urlopen", _urlopen_factice(reponse))
     info = maj.verifier_derniere_publication()
     assert info == {
         "version": "1.1.0",
         "notes": "notes",
         "url_zip": "https://codeberg.org/Kwaite/tamponne/archive/v1.1.0.zip",
-        "url_publication": "https://codeberg.org/x",
+        "url_publication": "https://codeberg.org/x/1.1.0",
     }
+
+
+def test_verifier_derniere_publication_cumule_les_notes_depuis_la_version_installee(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(maj, "version_locale", lambda: "1.3.4")
+    reponse = json.dumps(
+        [
+            _release("1.4.2", "- C"),
+            _release("1.4.0", "- A"),
+            _release("1.4.1", "- B"),
+            _release("1.3.4", "- ancienne"),
+            _release("1.3.3", "- plus ancienne"),
+        ]
+    ).encode("utf-8")
+    monkeypatch.setattr(urllib.request, "urlopen", _urlopen_factice(reponse))
+    info = maj.verifier_derniere_publication()
+    assert info is not None
+    assert info["version"] == "1.4.2"
+    assert info["url_zip"].endswith("v1.4.2.zip")
+    assert info["notes"] == (
+        "## Version 1.4.2\n\n- C\n\n## Version 1.4.1\n\n- B\n\n"
+        "## Version 1.4.0\n\n- A"
+    )
 
 
 def test_verifier_derniere_publication_deja_a_jour_retourne_none(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    reponse = json.dumps({"tag_name": "v1.0.0", "body": "", "zipball_url": ""}).encode(
-        "utf-8"
-    )
+    reponse = json.dumps([_release("1.0.0")]).encode("utf-8")
     monkeypatch.setattr(urllib.request, "urlopen", _urlopen_factice(reponse))
     assert maj.verifier_derniere_publication() is None
+
+
+def test_verifier_derniere_publication_reponse_inattendue_leve_verification_impossible(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        urllib.request, "urlopen", _urlopen_factice(b'{"message": "x"}')
+    )
+    with pytest.raises(maj.VerificationImpossible):
+        maj.verifier_derniere_publication()
 
 
 def test_verifier_derniere_publication_erreur_reseau_leve_verification_impossible(

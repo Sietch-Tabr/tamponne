@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 
 lazy from bs4 import Tag
 
-from src.types import FiltresRecherche, Offre
+from src.types import FicheFiltrage, FiltresRecherche, Offre
 
 # Sites sans WAF : User-Agent identifiant l'application et son dépôt.
 USER_AGENT_IDENTIFIE = "tamponne (+https://codeberg.org/Kwaite/tamponne)"
@@ -124,6 +124,19 @@ def deduplique_offres(offres: list[Offre]) -> list[Offre]:
         vues.add(ref)
         resultat.append(offre)
     return resultat
+
+
+class CacheFiches(Protocol):
+    """Mémoire des fiches déjà lues, par URL d'offre : une fiche lue pour une
+    recherche n'est pas relue pour la suivante. Sûre entre threads."""
+
+    def lire(self, url: str) -> FicheFiltrage | None:
+        """Fiche mémorisée de `url`, `None` si absente ou trop ancienne."""
+        ...
+
+    def ecrire(self, url: str, fiche: FicheFiltrage) -> None:
+        """Mémorise la fiche de `url`."""
+        ...
 
 
 class SourceOffres(Protocol):

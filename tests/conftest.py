@@ -68,9 +68,10 @@ def _rediriger_profils_vers_tmp(
 @pytest.fixture(autouse=True)
 def _rediriger_caches_vers_tmp(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Lancer une fiche met à jour le cache des offres vues : jamais le vrai
-    data/offres.json (ni data/cache.json) pendant les tests."""
+    data/offres.json (ni data/cache.json, data/fiches.json) pendant les tests."""
     monkeypatch.setattr(cache, "CHEMIN_OFFRES", tmp_path / "offres.json")
     monkeypatch.setattr(cache, "CHEMIN_CACHE", tmp_path / "cache.json")
+    monkeypatch.setattr(cache, "CHEMIN_FICHES", tmp_path / "fiches.json")
 
 
 @pytest.fixture(autouse=True)

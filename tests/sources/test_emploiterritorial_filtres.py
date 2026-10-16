@@ -2,7 +2,11 @@
 
 from src.filtres import LOCALISATIONS
 from src.sources.emploiterritorial.api import construire_url_recherche
-from src.sources.emploiterritorial.filtres import CATEGORIES, DEPARTEMENTS
+from src.sources.emploiterritorial.filtres import (
+    CATEGORIES,
+    DEPARTEMENTS,
+    codes_departements,
+)
 
 
 def test_departements_couvre_uniquement_les_departements_pas_les_regions() -> None:
@@ -84,3 +88,15 @@ def test_construire_url_recherche_sans_filtre_retourne_url_nue() -> None:
     from src.sources.emploiterritorial.api import URL_RECHERCHE
 
     assert construire_url_recherche() == URL_RECHERCHE
+
+
+def test_codes_departements_departement_region_et_inconnu() -> None:
+    assert codes_departements(["Paris", "Hérault"]) == ["075", "034"]
+    assert codes_departements(["Bretagne"]) == ["022", "029", "035", "056"]
+    assert codes_departements(["Paris", "Ile-de-France"])[:2] == ["075", "077"]
+    assert codes_departements(["Inconnu"]) == []
+
+
+def test_codes_departements_sans_doublon() -> None:
+    codes = codes_departements(["Paris", "Ile-de-France"])
+    assert len(codes) == len(set(codes)) == 8

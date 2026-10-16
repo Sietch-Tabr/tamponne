@@ -18,6 +18,10 @@ s'affichent alors dans une boîte de dialogue. La relance utilise
 l'interpréteur de base, hors de `.venv` : `uv sync` peut alors recréer
 l'environnement sans buter sur un exécutable verrouillé.
 
+Un verrou (`instance_unique`) tient le lanceur seul pour toute sa durée :
+un second lancement, par un clic de trop ou un double-clic répété, le dit et
+s'arrête au lieu d'ouvrir une deuxième fenêtre ou de relancer l'installation.
+
 Sans dépendance à Qt : l'interface n'est importée que par le sous-processus.
 """
 
@@ -29,11 +33,12 @@ import shutil
 import signal
 import subprocess
 import sys
+import time
 from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
-from typing import TextIO
+from typing import BinaryIO, TextIO
 
 from src import maj
 from src.maj import CHEMIN_RACINE
@@ -60,6 +65,24 @@ MESSAGE_ERREUR = (
     f"joignant le fichier «\u00a0{JOURNAL_AFFICHE}\u00a0» du dossier de "
     "Tamponné."
 )
+CHEMIN_VERROU = CHEMIN_RACINE / "data" / "tamponne.verrou"
+"""Fichier verrouillé par le lanceur tant qu'il tourne (le système libère le
+verrou à la mort du processus : jamais de verrou périmé)."""
+MESSAGE_DEJA_LANCE = (
+    "Tamponné est déjà ouvert, ou en cours d'ouverture.\n\n"
+    "Patientez quelques instants (la première ouverture peut durer une "
+    "minute), ou cherchez sa fenêtre dans la barre des tâches ou le Dock."
+)
+DELAI_LECTURE = 6
+"""Secondes pendant lesquelles la console du lanceur Windows reste ouverte
+pour laisser lire `MESSAGE_DEJA_LANCE`."""
+ATTRIBUTS_ANNONCE = "\x1b[1;97;44m"
+"""Gras, blanc sur bleu : les messages de Tamponné se distinguent des
+sorties de uv et du système."""
+FIN_ATTRIBUTS = "\x1b[0m"
+EFFACER_FIN_DE_LIGNE = "\x1b[K"
+MODE_TERMINAL_VIRTUEL = 0x0004
+"""Drapeau Windows qui fait interpréter les séquences `\\x1b[…` par la console."""
 TITRE_SYNCHRONISATION = (
     "Tamponné\u00a0: téléchargement de Python et des composants (uv sync), "
     "quelques minutes peuvent être nécessaires…"
@@ -279,6 +302,8 @@ def _executer(commande: Sequence[str]) -> int:
 _sortie: TextIO | None = sys.stdout
 """Où `_afficher` écrit : le terminal, ou la console ouverte par
 `console_visible` (le lanceur Windows n'en a pas)."""
+_couleurs_actives = True
+"""Faux si la console ouverte par `console_visible` ne sait pas colorer."""
 
 
 def _afficher(texte: str) -> None:
@@ -292,25 +317,70 @@ def _afficher(texte: str) -> None:
         pass
 
 
+def _couleurs_possibles() -> bool:
+    """Vrai si la sortie est un terminal qui affiche les couleurs (et que
+    l'utilisateur ne les a pas refusées avec `NO_COLOR`)."""
+    if _sortie is None or not _couleurs_actives or "NO_COLOR" in os.environ:
+        return False
+    try:
+        return _sortie.isatty()
+    except ValueError:
+        return False
+
+
+def mettre_en_valeur(texte: str, couleurs: bool) -> str:
+    """`texte` en bandeau bleu sur trois lignes (une marge au-dessus et
+    au-dessous), ou introduit par `>>>` quand les couleurs sont refusées :
+    un message de Tamponné ne se confond pas avec les sorties de uv."""
+    if not couleurs:
+        return f"\n>>> {texte}\n\n"
+
+    def ligne(contenu: str) -> str:
+        return f"{ATTRIBUTS_ANNONCE}  {contenu}{EFFACER_FIN_DE_LIGNE}{FIN_ATTRIBUTS}\n"
+
+    return f"\n{ligne('')}{ligne(texte)}{ligne('')}\n"
+
+
+def annoncer(texte: str) -> None:
+    """Affiche `texte`, un message de Tamponné, bien distinct des sorties
+    des commandes (voir `mettre_en_valeur`)."""
+    _afficher(mettre_en_valeur(texte, _couleurs_possibles()))
+
+
+def _activer_couleurs_console() -> bool:
+    """Active les séquences de couleur de la console Windows ouverte ;
+    faux si elle ne les prend pas en charge (très ancien Windows)."""
+    if sys.platform != "win32":
+        return False
+    noyau = ctypes.windll.kernel32
+    poignee = noyau.GetStdHandle(-11)  # STD_OUTPUT_HANDLE
+    mode = ctypes.c_ulong()
+    if not noyau.GetConsoleMode(poignee, ctypes.byref(mode)):
+        return False
+    return bool(noyau.SetConsoleMode(poignee, mode.value | MODE_TERMINAL_VIRTUEL))
+
+
 @contextmanager
 def console_visible(titre: str) -> Iterator[None]:
     """Sous Windows, ouvre une console le temps du bloc pour montrer la
     progression (téléchargements de uv) au lieu de travailler sans rien
-    afficher ; ailleurs, le terminal du lanceur suffit."""
-    global _sortie
+    afficher ; ailleurs, le terminal du lanceur suffit. `titre` est annoncé
+    en tête."""
+    global _sortie, _couleurs_actives
     if sys.platform != "win32" or not ctypes.windll.kernel32.AllocConsole():
-        _afficher(f"{titre}\n")
+        annoncer(titre)
         yield
         return
-    precedente = _sortie
+    precedente, couleurs_precedentes = _sortie, _couleurs_actives
     try:
         with open("CONOUT$", "w", encoding="utf-8") as console:
             _sortie = console
+            _couleurs_actives = _activer_couleurs_console()
             ctypes.windll.kernel32.SetConsoleTitleW("Tamponné")
-            _afficher(f"{titre}\n\n")
+            annoncer(titre)
             yield
     finally:
-        _sortie = precedente
+        _sortie, _couleurs_actives = precedente, couleurs_precedentes
         ctypes.windll.kernel32.FreeConsole()
 
 
@@ -326,6 +396,54 @@ def python_de_base() -> Path:
     """Interpréteur Windows dont dérive `.venv`, sur lequel le lanceur se
     relance pour ne pas verrouiller `.venv` pendant `uv sync`."""
     return Path(sys.base_prefix) / "python.exe"
+
+
+class DejaLance(RuntimeError):
+    """Un autre lanceur tient déjà `CHEMIN_VERROU`."""
+
+
+def _verrouiller(fichier: BinaryIO) -> None:
+    """Prend le verrou exclusif de `fichier` sans attendre.
+
+    Raises:
+        DejaLance: un autre processus le tient.
+    """
+    try:
+        if sys.platform == "win32":
+            import msvcrt
+
+            fichier.seek(0)
+            msvcrt.locking(fichier.fileno(), msvcrt.LK_NBLCK, 1)
+        else:
+            import fcntl
+
+            fcntl.flock(fichier.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError as erreur:
+        raise DejaLance from erreur
+
+
+@contextmanager
+def instance_unique() -> Iterator[None]:
+    """Garde le verrou du lanceur le temps du bloc : un second lanceur, qui
+    attend la fin de l'installation ou de l'interface, n'a rien à faire.
+
+    Raises:
+        DejaLance: un autre lanceur tourne déjà.
+    """
+    CHEMIN_VERROU.parent.mkdir(parents=True, exist_ok=True)
+    with CHEMIN_VERROU.open("a+b") as fichier:
+        _verrouiller(fichier)
+        yield
+
+
+def verrou_libre() -> bool:
+    """Vrai si aucun lanceur ne tourne (le verrou est repris aussitôt
+    rendu : simple vérification)."""
+    try:
+        with instance_unique():
+            return True
+    except DejaLance:
+        return False
 
 
 def signaler(message: str) -> None:
@@ -385,7 +503,7 @@ def synchroniser(executer: Executer) -> bool:
     with console_visible(TITRE_SYNCHRONISATION):
         if executer([uv, "sync"]) == 0:
             return True
-        _afficher(f"\n{TITRE_MAJ_UV}\n")
+        annoncer(TITRE_MAJ_UV)
         return _mettre_a_jour_uv(executer, uv) and executer([uv, "sync"]) == 0
 
 
@@ -462,13 +580,34 @@ def lancer(executer: Executer = _executer) -> int:
             return code
 
 
-if __name__ == "__main__":
+def principal() -> int:
+    """Point d'entrée : sous Windows, relance le lanceur sans console ;
+    partout, ne tourne qu'un lanceur à la fois.
+
+    Returns:
+        Code de sortie du processus (0 si un autre lanceur tourne déjà).
+    """
     if sys.platform == "win32" and VARIABLE_DETACHE not in os.environ:
+        if not verrou_libre():
+            # Console de Tamponne.bat encore visible : le message s'y lit.
+            print(MESSAGE_DEJA_LANCE)
+            time.sleep(DELAI_LECTURE)
+            return 0
         retirer_marque_du_web()
         _relancer_sans_console()
-        raise SystemExit(0)
-    ouvrir_journal()
-    code_sortie = lancer()
-    if sys.platform == "win32" and code_sortie not in (0, CODE_MAJ_INACHEVEE):
-        signaler(avec_detail(MESSAGE_ERREUR))
-    raise SystemExit(code_sortie)
+        return 0
+    try:
+        with instance_unique():
+            ouvrir_journal()
+            code = lancer()
+            if sys.platform == "win32" and code not in (0, CODE_MAJ_INACHEVEE):
+                signaler(avec_detail(MESSAGE_ERREUR))
+            return code
+    except DejaLance:
+        noter(f"{datetime.now():%H:%M:%S} lancement ignoré\u00a0: déjà ouvert")
+        print(MESSAGE_DEJA_LANCE, file=sys.stderr)
+        return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(principal())

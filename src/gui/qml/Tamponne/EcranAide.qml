@@ -206,7 +206,7 @@ Item {
                     Terme { text: "Offres nouvelles" }
                     Definition { text: "Une recherche lancée depuis une fiche marque «\u00a0Nouveau\u00a0» les offres jamais vues pour cette fiche. Si les cases ont été changées entre-temps, rien n'est marqué. Une offre absente des résultats pendant 30\u00a0jours redevient nouvelle." }
                     Terme { text: "modifier · dupliquer · supprimer" }
-                    Definition { text: "Modifier rouvre le formulaire\u00a0: «\u00a0Enregistrer la fiche\u00a0» garde les nouvelles cases sans lancer, «\u00a0Annuler\u00a0» revient aux fiches. Dupliquer copie la fiche sous un autre nom, supprimer la jette (confirmation demandée)." }
+                    Definition { text: "Modifier rouvre le formulaire\u00a0: «\u00a0Modifier la fiche\u00a0» garde les nouvelles cases sans lancer, «\u00a0Annuler\u00a0» revient aux fiches. Dupliquer copie la fiche sous un autre nom, supprimer la jette (confirmation demandée)." }
                 }
 
                 FeuilleNotice {

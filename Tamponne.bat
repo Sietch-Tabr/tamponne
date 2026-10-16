@@ -7,10 +7,17 @@ cd /d "%~dp0"
 rem Variables posées ici (proxy, premier lancement) : pas dans la console appelante.
 setlocal
 set "TAMPONNE_PREMIER_LANCEMENT="
+rem Un seul Tamponné à la fois (double-clic répété) : la console garde le fichier
+rem ouvert en écriture jusqu'à sa sortie ; un second lancement ne peut pas
+rem l'ouvrir et passe à la branche du bas. Windows le libère à la mort du
+rem processus : jamais de verrou périmé. Le lanceur Python prend ensuite le relais.
+if not exist data mkdir data
+2>nul (
+9>"data\.lancement.verrou" (
 rem Depuis un raccourci ou juste après l'installation, uv n'est pas encore dans le PATH.
 set "PATH=%USERPROFILE%\.local\bin;%PATH%"
 where uv >nul 2>&1 || (
-    echo Installation de uv, le gestionnaire de Python de Tamponné…
+    set "TAMPONNE_ANNONCE=Installation de uv, le gestionnaire de Python de Tamponné…" & powershell -NoProfile -Command "try { $l = [Console]::WindowWidth - 1 } catch { $l = 79 }; $e = ' ' * $l; Write-Host ''; Write-Host $e -ForegroundColor White -BackgroundColor DarkBlue; Write-Host ('  ' + $env:TAMPONNE_ANNONCE).PadRight($l) -ForegroundColor White -BackgroundColor DarkBlue; Write-Host $e -ForegroundColor White -BackgroundColor DarkBlue; Write-Host ''"
     powershell -NoProfile -ExecutionPolicy ByPass -Command "irm https://astral.sh/uv/install.ps1 | iex"
 )
 where uv >nul 2>&1 || (
@@ -28,7 +35,7 @@ rem retire, ici comme dans src.lanceur qui hérite de la variable.
 if not exist .git set "UV_NO_DEV=1"
 if not exist .venv (
     set "TAMPONNE_PREMIER_LANCEMENT=1"
-    echo Premier lancement : téléchargement de Python et des composants ^(quelques minutes^)…
+    set "TAMPONNE_ANNONCE=Premier lancement : téléchargement de Python et des composants (quelques minutes)…" & powershell -NoProfile -Command "try { $l = [Console]::WindowWidth - 1 } catch { $l = 79 }; $e = ' ' * $l; Write-Host ''; Write-Host $e -ForegroundColor White -BackgroundColor DarkBlue; Write-Host ('  ' + $env:TAMPONNE_ANNONCE).PadRight($l) -ForegroundColor White -BackgroundColor DarkBlue; Write-Host $e -ForegroundColor White -BackgroundColor DarkBlue; Write-Host ''"
     uv sync
 ) else (
     uv sync
@@ -36,7 +43,7 @@ if not exist .venv (
 rem Un uv trop ancien ne connaît pas la version de Python demandée
 rem (required-version) : mis à jour, par l'installeur si l'API GitHub refuse.
 if errorlevel 1 (
-    echo Mise à jour de uv, le gestionnaire de Python de Tamponné…
+    set "TAMPONNE_ANNONCE=Mise à jour de uv, le gestionnaire de Python de Tamponné…" & powershell -NoProfile -Command "try { $l = [Console]::WindowWidth - 1 } catch { $l = 79 }; $e = ' ' * $l; Write-Host ''; Write-Host $e -ForegroundColor White -BackgroundColor DarkBlue; Write-Host ('  ' + $env:TAMPONNE_ANNONCE).PadRight($l) -ForegroundColor White -BackgroundColor DarkBlue; Write-Host $e -ForegroundColor White -BackgroundColor DarkBlue; Write-Host ''"
     uv self update || powershell -NoProfile -ExecutionPolicy ByPass -Command "irm https://astral.sh/uv/install.ps1 | iex"
     uv sync
 )
@@ -48,8 +55,15 @@ rem Le lanceur se relance sans console puis rend la main : cette fenêtre se fer
 rem après un délai au premier lancement, où l'ouverture est plus longue.
 .venv\Scripts\python.exe -m src.lanceur
 if defined TAMPONNE_PREMIER_LANCEMENT (
-    echo Installation terminée. Tamponné s'ouvre dans quelques instants ^(jusqu'à une minute la première fois^)…
+    set "TAMPONNE_ANNONCE=Installation terminée. Tamponné s'ouvre dans quelques instants (jusqu'à une minute la première fois)…" & powershell -NoProfile -Command "try { $l = [Console]::WindowWidth - 1 } catch { $l = 79 }; $e = ' ' * $l; Write-Host ''; Write-Host $e -ForegroundColor White -BackgroundColor DarkBlue; Write-Host ('  ' + $env:TAMPONNE_ANNONCE).PadRight($l) -ForegroundColor White -BackgroundColor DarkBlue; Write-Host $e -ForegroundColor White -BackgroundColor DarkBlue; Write-Host ''"
     timeout /t 15 /nobreak >nul 2>&1
+)
+exit /b
+)
+) || (
+    set "TAMPONNE_ANNONCE=Tamponné est déjà ouvert, ou en cours d'ouverture. Patientez quelques instants (jusqu'à une minute la première fois), ou cherchez sa fenêtre dans la barre des tâches." & powershell -NoProfile -Command "try { $l = [Console]::WindowWidth - 1 } catch { $l = 79 }; $e = ' ' * $l; Write-Host ''; Write-Host $e -ForegroundColor White -BackgroundColor DarkBlue; Write-Host ('  ' + $env:TAMPONNE_ANNONCE).PadRight($l) -ForegroundColor White -BackgroundColor DarkBlue; Write-Host $e -ForegroundColor White -BackgroundColor DarkBlue; Write-Host ''"
+    timeout /t 6 /nobreak >nul 2>&1
+    exit /b 0
 )
 exit /b
 )
