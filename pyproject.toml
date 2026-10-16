@@ -6,6 +6,7 @@ dependencies = [
     "beautifulsoup4>=4.12.0",
     "pyside6-essentials>=6.12.0",
     "truststore>=0.10.5",
+    "urllib3>=2.8.0",
 ]
 
 [project.gui-scripts]

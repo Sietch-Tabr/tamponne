@@ -1,18 +1,20 @@
 """Tests de src/sources/detail.py et des outils réseau de src/sources/base.py :
 fiche et disponibilité d'une offre selon son site (pas de réseau)."""
 
-import io
 from collections.abc import Callable
-import urllib.error
-import urllib.request
-from email.message import Message
 
 import pytest
+import urllib3
 
 from src.sources import base, detail
 from src.sources.base import PageIntrouvable, sur_domaine, valider_url
-from tests.sources.reponses import ReponseHttp
 from src.types import DetailOffre
+from tests.sources.reponses import (
+    Comportement,
+    ReponseHttp,
+    echec_reseau,
+    simuler_reseau,
+)
 
 FICHE: DetailOffre = {**detail.DETAIL_VIDE, "description": "Missions"}
 
@@ -165,14 +167,19 @@ def test_verifier_disponibilite_site_injoignable_propage(
 def test_consulter_page_rend_url_finale_et_titre(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(
-        urllib.request,
-        "urlopen",
-        lambda requete, timeout: ReponseHttp(
-            b"<html><title> Offre d\xc3\xa9publi\xc3\xa9e </title></html>",
-            "https://choisirleservicepublic.gouv.fr/offre-depubliee/",
-        ),
-    )
+    def comportement(
+        methode: str, url: str, corps: object, entetes: dict[str, str]
+    ) -> ReponseHttp:
+        if url.endswith("/x/"):
+            return ReponseHttp(
+                statut=302,
+                entetes={
+                    "Location": "https://choisirleservicepublic.gouv.fr/offre-depubliee/"
+                },
+            )
+        return ReponseHttp("<html><title> Offre dépubliée </title></html>")
+
+    simuler_reseau(monkeypatch, comportement)
     assert base.consulter_page("https://choisirleservicepublic.gouv.fr/x/") == (
         "https://choisirleservicepublic.gouv.fr/offre-depubliee/",
         "Offre dépubliée",
@@ -183,29 +190,24 @@ def test_consulter_page_rend_url_finale_et_titre(
 def test_consulter_page_404_et_410_page_introuvable(
     monkeypatch: pytest.MonkeyPatch, code: int
 ) -> None:
-    def erreur(requete: urllib.request.Request, timeout: float) -> None:
-        raise urllib.error.HTTPError(requete.full_url, code, "absent", Message(), None)
-
-    monkeypatch.setattr(urllib.request, "urlopen", erreur)
+    simuler_reseau(monkeypatch, ReponseHttp(statut=code))
     with pytest.raises(PageIntrouvable):
         base.consulter_page("https://emploi.fhf.fr/emploi/1")
 
 
 @pytest.mark.parametrize(
-    "erreur",
+    "comportement",
     [
-        urllib.error.HTTPError("https://x", 503, "indisponible", Message(), None),
-        urllib.error.URLError("hors ligne"),
-        TimeoutError("délai dépassé"),
+        lambda *_a: ReponseHttp(statut=503),
+        echec_reseau(urllib3.exceptions.HTTPError("hors ligne")),
+        echec_reseau(TimeoutError("délai dépassé")),
     ],
+    ids=["http", "reseau", "delai"],
 )
 def test_consulter_page_autres_echecs_runtime_error(
-    monkeypatch: pytest.MonkeyPatch, erreur: OSError
+    monkeypatch: pytest.MonkeyPatch, comportement: Comportement
 ) -> None:
-    def echec(requete: urllib.request.Request, timeout: float) -> None:
-        raise erreur
-
-    monkeypatch.setattr(urllib.request, "urlopen", echec)
+    simuler_reseau(monkeypatch, comportement)
     with pytest.raises(RuntimeError) as capture:
         base.consulter_page("https://emploi.fhf.fr/emploi/1")
     assert not isinstance(capture.value, PageIntrouvable)

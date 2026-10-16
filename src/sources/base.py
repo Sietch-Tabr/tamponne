@@ -1,20 +1,17 @@
 """Interface commune à toutes les sources d'offres."""
 
 import re
-lazy import urllib.error
-lazy import urllib.request
-lazy import zlib
 from collections.abc import Callable
-from typing import Any, Protocol
+from typing import Protocol
 from urllib.parse import urlparse
 
 lazy from bs4 import Tag
 
+from src.sources.reseau import ErreurHttp, Session
 from src.types import FicheFiltrage, FiltresRecherche, Offre
 
 # Sites sans WAF : User-Agent identifiant l'application et son dépôt.
 USER_AGENT_IDENTIFIE = "tamponne (+https://codeberg.org/Kwaite/tamponne)"
-_TIMEOUT = 30
 _RE_TITRE = re.compile(r"<title[^>]*>(.*?)</title>", re.S | re.I)
 _RE_ESPACES = re.compile(r"\s+")
 _RE_LIGNES_VIDES = re.compile(r"\n{3,}")
@@ -77,31 +74,6 @@ def valider_url(url: str, url_base: str, domaine: str) -> str:
     return ""
 
 
-EN_TETE_COMPRESSION = {"Accept-Encoding": "gzip"}
-"""Demande des pages compressées : 4,4 Mo deviennent 185 Ko chez
-choisirleservicepublic, 407 Ko deviennent 46 Ko chez Passerelles."""
-
-
-def lire_reponse(reponse: Any) -> bytes:
-    """Corps de la réponse HTTP `reponse`, décompressé s'il est en gzip.
-
-    Raises:
-        OSError: Corps compressé illisible (traité comme une erreur réseau).
-    """
-    corps = bytes(reponse.read())
-    if reponse.headers.get("Content-Encoding", "").lower() != "gzip":
-        return corps
-    try:
-        return zlib.decompress(corps, 16 + zlib.MAX_WBITS)
-    except zlib.error as erreur:
-        raise OSError(f"réponse compressée illisible ({erreur})") from erreur
-
-
-def lire_texte(reponse: Any) -> str:
-    """Corps de la réponse HTTP `reponse` en texte (UTF-8)."""
-    return lire_reponse(reponse).decode("utf-8", errors="replace")
-
-
 class PageIntrouvable(RuntimeError):
     """Le site répond que la page n'existe pas (HTTP 404 ou 410)."""
 
@@ -116,25 +88,16 @@ def consulter_page(url: str) -> tuple[str, str]:
         PageIntrouvable: HTTP 404 ou 410.
         RuntimeError: Autre code d'erreur HTTP, ou échec réseau.
     """
-    requete = urllib.request.Request(
-        url, headers={"User-Agent": USER_AGENT_IDENTIFIE, **EN_TETE_COMPRESSION}
-    )
     try:
-        with urllib.request.urlopen(requete, timeout=_TIMEOUT) as reponse:
-            url_finale = reponse.geturl()
-            html = lire_texte(reponse)
-    except urllib.error.HTTPError as erreur:
-        if erreur.code in (404, 410):
-            raise PageIntrouvable(f"Page introuvable (HTTP {erreur.code})") from erreur
-        raise RuntimeError(
-            f"Erreur HTTP {erreur.code} lors du chargement de {url}"
-        ) from erreur
-    except OSError as erreur:
-        raise RuntimeError(
-            f"Erreur réseau lors du chargement de {url}\u00a0: {erreur}"
-        ) from erreur
-    titre = _RE_TITRE.search(html)
-    return url_finale, titre.group(1).strip() if titre else ""
+        reponse = Session({"User-Agent": USER_AGENT_IDENTIFIE}).lire(url)
+    except ErreurHttp as erreur:
+        if erreur.statut in (404, 410):
+            raise PageIntrouvable(
+                f"Page introuvable (HTTP {erreur.statut})"
+            ) from erreur
+        raise
+    titre = _RE_TITRE.search(reponse.texte())
+    return reponse.url, titre.group(1).strip() if titre else ""
 
 
 def deduplique_offres(offres: list[Offre]) -> list[Offre]:

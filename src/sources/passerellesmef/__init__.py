@@ -13,12 +13,12 @@ from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from typing import cast
 
-lazy import urllib.request
 
 from src.filtres import libelle_lieu, lieu_correspond, numero_departement_texte
 from src.sources.base import CacheFiches
 from src.sources.choisirleservicepublic.extraction import DETAIL_VIDE
 from src.sources.fiches import LECTEURS, lire_fiches
+from src.sources.reseau import Session
 from src.sources.passerellesmef.api import (
     construire_url_recherche,
     construire_url_resultats,
@@ -87,8 +87,8 @@ class PasserellesMef:
             return [], 1, False  # aucune organisation de ce portail demandée
 
         localisations = filtres.get("localisations", [])
-        opener = nouvelle_session()
-        premiere, appliques = self._rechercher_sur_le_site(opener, filtres)
+        session = nouvelle_session()
+        premiere, appliques = self._rechercher_sur_le_site(session, filtres)
         # Ce que le site a appliqué n'est pas revérifié sur les fiches.
         restants: FiltresRecherche = cast(
             FiltresRecherche,
@@ -96,7 +96,7 @@ class PasserellesMef:
         )
         lire_les_fiches = fiche_necessaire(restants)
         offres, nb_pages, arret_anticipe = self._lire_liste(
-            opener,
+            session,
             filtres.get("query", ""),
             (
                 MAX_PAGES_FILTREE
@@ -145,7 +145,7 @@ class PasserellesMef:
 
     @staticmethod
     def _rechercher_sur_le_site(
-        opener: urllib.request.OpenerDirector, filtres: FiltresRecherche
+        session: Session, filtres: FiltresRecherche
     ) -> tuple[PageAPI | None, frozenset[str]]:
         """Première page des résultats filtrés par le site et critères qu'il
         a appliqués ; `(None, ∅)` si rien ne lui est demandé ou si le site
@@ -155,7 +155,7 @@ class PasserellesMef:
             for c in ("categories", "domaines", "organisations", "localisations")
         ):
             return None, frozenset()
-        formulaire = analyser_formulaire(obtenir_formulaire(opener))
+        formulaire = analyser_formulaire(obtenir_formulaire(session))
         if not formulaire.exploitable():
             journal.warning("Passerelles\u00a0: formulaire de recherche introuvable")
             return None, frozenset()
@@ -168,7 +168,7 @@ class PasserellesMef:
             return None, frozenset()
         champs.update(formulaire.caches)
         champs[formulaire.bouton[0]] = formulaire.bouton[1]
-        reponse = envoyer_recherche(opener, champs)
+        reponse = envoyer_recherche(session, champs)
         if "Tout afficher" in reponse["title"]:
             journal.warning("Passerelles\u00a0: le site n'a pas appliqué les critères")
             return None, frozenset()
@@ -176,7 +176,7 @@ class PasserellesMef:
 
     def _lire_liste(
         self,
-        opener: urllib.request.OpenerDirector,
+        session: Session,
         query: str,
         max_pages: int,
         on_page: Callable[[int, int], None] | None,
@@ -187,7 +187,7 @@ class PasserellesMef:
         url_page: Callable[[int], str]
         if premiere is None:
             reponse = obtenir_page_recherche(
-                opener, construire_url_recherche(query=query, page=1)
+                session, construire_url_recherche(query=query, page=1)
             )
             url_page = lambda numero: construire_url_recherche(query, numero)
         else:
@@ -207,7 +207,7 @@ class PasserellesMef:
         def _page(numero: int) -> list[Offre]:
             time.sleep(_DELAI_COURTOISIE)
             offres_page = extraire_offres(
-                obtenir_page_recherche(opener, url_page(numero)).get("html", "")
+                obtenir_page_recherche(session, url_page(numero)).get("html", "")
             )
             with verrou:
                 lues[0] += 1
@@ -239,9 +239,9 @@ def recuperer_detail_offre(url: str) -> DetailOffre:
     Ne lève jamais d'exception : retourne un `DetailOffre` vide si le
     téléchargement échoue.
     """
-    opener = nouvelle_session()
+    session = nouvelle_session()
     try:
-        html = obtenir_fiche_offre(opener, url)
+        html = obtenir_fiche_offre(session, url)
     except RuntimeError:
         return DETAIL_VIDE
     return extraire_detail_offre(html)

@@ -23,7 +23,7 @@ CHEMIN_DETAILS = DATA / "details.json"
 TTL_ORGANISATIONS = 7 * 24 * 3600  # 7 jours en secondes
 TTL_OFFRES = 30 * 24 * 3600  # 30 jours en secondes
 TTL_FICHES = 30 * 24 * 3600  # 30 jours en secondes
-TTL_DETAILS = 30 * 24 * 3600  # 30 jours en secondes
+TTL_DETAILS = 24 * 3600  # 1 jour : une offre pourvue est dépubliée
 MAXIMUM_DETAILS = 300
 
 
@@ -350,9 +350,10 @@ class CacheFichesDisque(_CacheTemporel):
 
 
 class CacheDetailsDisque(_CacheTemporel):
-    """Fiches de poste déjà consultées, gardées `TTL_DETAILS` dans
-    `data/details.json` (les `MAXIMUM_DETAILS` plus récentes) : rouvrir une
-    offre, ou la préparer dès sa sélection, n'attend plus le site.
+    """Fiches de poste déjà consultées, gardées `TTL_DETAILS` (un jour : une
+    offre pourvue est dépubliée) dans `data/details.json`, les `MAXIMUM_DETAILS`
+    plus récentes : rouvrir une offre, ou la préparer dès sa sélection,
+    n'attend plus le site.
 
     Seul le texte est gardé, jamais la page (`page_html` vidé).
     """

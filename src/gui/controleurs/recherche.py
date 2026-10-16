@@ -715,8 +715,9 @@ class ControleurRecherche(QObject):
             if (connu := self._cache_details.lire(url)) is not None:
                 return connu
             detail = recuperer_detail_offre(url)
-            # Une fiche vide est un échec de lecture : à retenter, pas à garder.
-            if detail["page_html"]:
+            # Une fiche sans description est un échec de lecture ou une offre
+            # dépubliée : à relire, jamais à garder.
+            if detail["page_html"] and detail["description"]:
                 self._cache_details.ecrire(url, detail)
                 self._cache_details.enregistrer()
             return detail

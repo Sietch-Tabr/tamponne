@@ -5,46 +5,24 @@ comme choisirleservicepublic. Pagination GET simple, page 0-indexée.
 """
 
 import re
-lazy import urllib.error
 import urllib.parse
-lazy import urllib.request
 
-from src.sources.base import (
-    EN_TETE_COMPRESSION,
-    USER_AGENT_IDENTIFIE,
-    lire_texte,
-)
+from src.sources.base import USER_AGENT_IDENTIFIE
+from src.sources.reseau import Session
 from src.types import PageAPI
 
 URL_SITE = "https://emploi.fhf.fr"
 URL_RECHERCHE = f"{URL_SITE}/emploi/search"
 
-_TIMEOUT = 30
 _HEADERS = {
     "User-Agent": USER_AGENT_IDENTIFIE,
     "Accept-Language": "fr-FR,fr;q=0.9",
-    **EN_TETE_COMPRESSION,
 }
 
 
-def nouvelle_session() -> urllib.request.OpenerDirector:
-    """Session dédiée à une recherche — pas de dépendance de session
-    serveur ici (recherche par GET stateless)."""
-    return urllib.request.build_opener()
-
-
-def _requete(opener: urllib.request.OpenerDirector, url: str) -> str:
-    requete = urllib.request.Request(url, headers=_HEADERS)
-    try:
-        with opener.open(requete, timeout=_TIMEOUT) as reponse:
-            return lire_texte(reponse)
-    except urllib.error.HTTPError as e:
-        raise RuntimeError(f"Erreur HTTP {e.code} lors du chargement de {url}") from e
-    # Délai dépassé en pleine lecture : TimeoutError, pas URLError.
-    except OSError as e:
-        raise RuntimeError(
-            f"Erreur réseau lors du chargement de {url}\u00a0: {getattr(e, 'reason', e)}"
-        ) from e
+def nouvelle_session() -> Session:
+    """Session dédiée à une recherche (les connexions sont partagées)."""
+    return Session(_HEADERS)
 
 
 DEPARTEMENTS_SITE = frozenset(
@@ -77,13 +55,13 @@ def construire_url_recherche(
     return f"{URL_RECHERCHE}?{urllib.parse.urlencode(params)}"
 
 
-def obtenir_page_recherche(opener: urllib.request.OpenerDirector, url: str) -> PageAPI:
+def obtenir_page_recherche(session: Session, url: str) -> PageAPI:
     """Télécharge une page de résultats."""
-    html = _requete(opener, url)
+    html = session.lire(url).texte()
     title_m = re.search(r"<title>(.*?)</title>", html, re.S)
     return {"html": html, "title": title_m.group(1).strip() if title_m else ""}
 
 
-def obtenir_fiche_offre(opener: urllib.request.OpenerDirector, url: str) -> str:
+def obtenir_fiche_offre(session: Session, url: str) -> str:
     """Télécharge le HTML complet d'une fiche offre."""
-    return _requete(opener, url)
+    return session.lire(url).texte()
