@@ -77,8 +77,10 @@ ApplicationWindow {
     onOngletCourantChanged: {
         if (ongletCourant === 0)
             pont.profils.rafraichir()
-        else if (ongletCourant === 2)
+        else if (ongletCourant === 2) {
             pont.suivi.rafraichir()
+            pont.suivi.verifier_si_necessaire()
+        }
         else if (ongletCourant === 4)
             pont.reglages.actualiser_exports()
     }

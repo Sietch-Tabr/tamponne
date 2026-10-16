@@ -219,7 +219,7 @@ Item {
                     Terme { text: "Relance suggérée" }
                     Definition { text: "Post-it collé quand rien ne s'est passé depuis 3 semaines et que le dossier n'est pas clos (réponse positive ou refus)." }
                     Terme { text: "Offre dépubliée" }
-                    Definition { text: "«\u00a0Vérifier les offres\u00a0» interroge les sites pour chaque dossier\u00a0: une offre disparue est marquée dépubliée, sa copie archivée reste consultable. Les offres que le site n'a pas pu confirmer sont signalées à part." }
+                    Definition { text: "Les offres des dossiers ouverts sont vérifiées automatiquement à l'ouverture du Suivi, une fois par jour\u00a0; «\u00a0Vérifier les offres\u00a0» les vérifie toutes à la demande. Une offre disparue est marquée dépubliée à la date du constat, sa copie archivée reste consultable. Sur un dossier encore ouvert, un post-it prévient que le poste est probablement pourvu, et un tampon gris date la dépublication sans changer le statut. Les offres que le site n'a pas pu confirmer sont signalées à part." }
                     Terme { text: "Tampons" }
                     Definition { text: "Un clic sur un tampon de l'historique permet de modifier ou de supprimer l'événement\u00a0; un même événement ne peut pas être tamponné deux fois à la même date." }
                     Terme { text: "Clavier" }

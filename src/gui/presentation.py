@@ -10,6 +10,8 @@ from typing import Final
 
 from src.donnees.candidatures import (
     TYPES_EVENEMENT,
+    date_depublication,
+    depublication_a_signaler,
     dernier_evenement,
     relance_suggeree,
 )
@@ -55,7 +57,10 @@ class TamponHistorique:
     positif: bool
     """Réponse positive : encre verte."""
     indice: int
-    """Position de l'événement dans l'historique enregistré (modification)."""
+    """Position de l'événement dans l'historique enregistré (modification) ;
+    -1 pour le tampon d'information de la dépublication, non modifiable."""
+    information: bool = False
+    """Constat du site (offre dépubliée), pas un événement de la candidature."""
 
 
 @dataclass(frozen=True)
@@ -73,6 +78,11 @@ class ContenuDossier:
     jours_sans_nouvelles: int | None
     """Renseigné seulement si une relance est suggérée (post-it)."""
     disponible: bool
+    depublication_a_signaler: bool
+    """Offre retirée d'un dossier encore ouvert : post-it « poste probablement
+    pourvu » (un dossier clos n'a plus besoin de cet avertissement)."""
+    depubliee_le: str
+    """Date courte JJ/MM/AA de la dépublication, vide si l'offre est en ligne."""
 
 
 def _phrase_statut(candidature: Candidature, archive_presente: bool) -> str:
@@ -85,7 +95,10 @@ def _phrase_statut(candidature: Candidature, archive_presente: bool) -> str:
         if dernier.get("note"):
             phrase += f" ({dernier['note']})"
     if not candidature.get("disponible", True):
+        depuis = date_depublication(candidature)
         phrase += " · offre dépubliée"
+        if depuis:
+            phrase += f" le {reformater_date_iso(depuis)}"
         if archive_presente:
             phrase += ", archive PDF conservée"
     return phrase
@@ -127,6 +140,25 @@ def contenu_dossier(
         for rang, (indice, evenement) in enumerate(historique)
     )
 
+    depuis = date_depublication(candidature)
+    if depuis:
+        # Constat daté, rangé parmi les événements sans en être un : il ne
+        # change ni le statut, ni la relance, ni le tampon courant.
+        position = sum(1 for _, e in historique if e["date"] <= depuis)
+        tampons = (
+            *tampons[:position],
+            TamponHistorique(
+                libelle="Offre dépubliée",
+                date=reformater_date_iso(depuis, annee_courte=True),
+                courant=False,
+                refus=False,
+                positif=False,
+                indice=-1,
+                information=True,
+            ),
+            *tampons[position:],
+        )
+
     jours: int | None = None
     if relance_suggeree(candidature) and historique:
         jours = (aujourd_hui - date.fromisoformat(historique[-1][1]["date"])).days
@@ -141,6 +173,8 @@ def contenu_dossier(
         tampons=tampons,
         jours_sans_nouvelles=jours,
         disponible=candidature.get("disponible", True),
+        depublication_a_signaler=depublication_a_signaler(candidature),
+        depubliee_le=reformater_date_iso(depuis, annee_courte=True) if depuis else "",
     )
 
 

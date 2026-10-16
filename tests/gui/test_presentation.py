@@ -377,3 +377,73 @@ def test_texte_exports_en_mo_virgule_decimale() -> None:
 def test_texte_confirmation_exports_singulier_et_pluriel() -> None:
     assert "l'export de recherche\u00a0?" in texte_confirmation_exports(1)
     assert "les 12\u00a0exports de recherche\u00a0?" in texte_confirmation_exports(12)
+
+
+def test_contenu_dossier_depublie_date_la_depublication_sans_toucher_au_statut() -> (
+    None
+):
+    candidature = _candidature(
+        [
+            _evt("2026-09-05", "candidature_envoyee"),
+            _evt("2026-09-26", "entretien_planifie"),
+        ],
+        disponible=False,
+    )
+    candidature["depubliee_le"] = "2026-10-01"
+    contenu = contenu_dossier(
+        "REF", candidature, aujourd_hui=date(2026, 10, 4), archive_presente=False
+    )
+
+    assert contenu.statut == (
+        "entretien planifié le 26/09/2026 · offre dépubliée le 01/10/2026"
+    )
+    assert contenu.depubliee_le == "01/10/26"
+    assert contenu.depublication_a_signaler is True
+    libelles = [
+        (t.libelle, t.courant, t.information, t.indice) for t in contenu.tampons
+    ]
+    assert libelles == [
+        ("Envoyée", False, False, 0),
+        ("Entretien", True, False, 1),
+        ("Offre dépubliée", False, True, -1),
+    ]
+
+
+def test_contenu_dossier_depublication_se_range_a_sa_date_parmi_les_evenements() -> (
+    None
+):
+    candidature = _candidature(
+        [_evt("2026-09-05", "candidature_envoyee"), _evt("2026-10-03", "relance")],
+        disponible=False,
+    )
+    candidature["depubliee_le"] = "2026-09-20"
+    contenu = contenu_dossier(
+        "REF", candidature, aujourd_hui=date(2026, 10, 4), archive_presente=False
+    )
+    assert [t.libelle for t in contenu.tampons] == [
+        "Envoyée",
+        "Offre dépubliée",
+        "Relance",
+    ]
+    assert [t.courant for t in contenu.tampons] == [False, False, True]
+
+
+def test_contenu_dossier_clos_depublie_n_est_pas_a_signaler() -> None:
+    candidature = _candidature([_evt("2026-09-26", "refus")], disponible=False)
+    candidature["depubliee_le"] = "2026-10-01"
+    contenu = contenu_dossier(
+        "REF", candidature, aujourd_hui=date(2026, 10, 4), archive_presente=False
+    )
+    assert contenu.depublication_a_signaler is False
+    assert contenu.tampons[-1].information is True
+
+
+def test_contenu_dossier_en_ligne_n_a_pas_de_tampon_de_depublication() -> None:
+    contenu = contenu_dossier(
+        "REF",
+        _candidature([_evt("2026-09-26", "relance")]),
+        aujourd_hui=date(2026, 10, 4),
+        archive_presente=False,
+    )
+    assert contenu.depubliee_le == ""
+    assert all(not t.information for t in contenu.tampons)

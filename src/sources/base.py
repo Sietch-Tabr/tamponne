@@ -1,6 +1,8 @@
 """Interface commune à toutes les sources d'offres."""
 
 import re
+import threading
+import time
 from collections.abc import Callable
 from typing import Protocol
 from urllib.parse import urlparse
@@ -167,3 +169,43 @@ class SourceOffres(Protocol):
             ou boucle détectée).
         """
         ...
+
+
+MARQUEURS_PANNE = ("maintenance", "indisponible", "erreur", "error", "temporairement")
+"""Mots d'un titre de page qui annoncent une panne du site, pas une offre retirée."""
+DUREE_CONTROLE = 300
+"""Secondes pendant lesquelles le bon état d'un site est retenu."""
+
+_verrou_controle = threading.Lock()
+_controles: dict[str, tuple[float, str]] = {}
+
+
+def controler_site(url: str) -> None:
+    """Vérifie que le site de `url` répond normalement avant de conclure
+    qu'une offre y est retirée, ou qu'une recherche n'y a rien trouvé : un site
+    en panne ou en maintenance répond parfois 404 (ou une page vide) à toutes
+    ses pages. Le résultat est retenu `DUREE_CONTROLE` par site.
+
+    Raises:
+        RuntimeError: La page d'accueil ne répond pas normalement.
+    """
+    morceaux = urlparse(url)
+    racine = f"{morceaux.scheme}://{morceaux.netloc}/"
+    with _verrou_controle:
+        vu = _controles.get(racine)
+        if vu is not None and time.monotonic() - vu[0] < DUREE_CONTROLE:
+            if vu[1]:
+                raise RuntimeError(vu[1])
+            return
+    probleme = ""
+    try:
+        _, titre = consulter_page(racine)
+    except RuntimeError as erreur:
+        probleme = f"Le site {morceaux.netloc} ne répond pas normalement ({erreur})"
+    else:
+        if any(mot in titre.lower() for mot in MARQUEURS_PANNE):
+            probleme = f"Le site {morceaux.netloc} annonce une panne ({titre.strip()})"
+    with _verrou_controle:
+        _controles[racine] = (time.monotonic(), probleme)
+    if probleme:
+        raise RuntimeError(probleme)

@@ -299,20 +299,68 @@ def statut_libelle(candidature: Candidature) -> str:
 
 
 def marquer_disponibilite(reference: str, disponible: bool) -> None:
-    """Persiste le résultat d'une vérification de disponibilité."""
+    """Persiste le résultat d'une vérification de disponibilité. La date de
+    dépublication est celle de la première vérification qui la constate."""
     candidatures = charger_candidatures()
     if reference not in candidatures:
         return
-    candidatures[reference]["disponible"] = disponible
-    candidatures[reference]["derniere_verification"] = date.today().isoformat()
+    candidature = candidatures[reference]
+    aujourd_hui = date.today().isoformat()
+    candidature["disponible"] = disponible
+    candidature["derniere_verification"] = aujourd_hui
+    if disponible:
+        candidature.pop("depubliee_le", None)
+    else:
+        candidature.setdefault("depubliee_le", aujourd_hui)
     sauvegarder_candidatures(candidatures)
+
+
+def date_depublication(candidature: Candidature) -> str:
+    """Date ISO de la dépublication de l'offre, chaîne vide si elle est en
+    ligne. Les offres marquées avant l'enregistrement de cette date prennent
+    celle de leur dernière vérification."""
+    if candidature.get("disponible", True):
+        return ""
+    return candidature.get("depubliee_le") or candidature.get(
+        "derniere_verification", ""
+    )
+
+
+JOURS_REVERIFICATION = 3
+"""Jours pendant lesquels une offre fraîchement dépubliée est revérifiée par la
+vérification automatique : un site en panne peut répondre « introuvable » à tort."""
+
+
+def a_reverifier(candidature: Candidature, aujourd_hui: date) -> bool:
+    """Vrai si l'offre d'un dossier ouvert, dépubliée depuis peu, doit être
+    revue : une fausse dépublication ne doit pas rester définitive."""
+    depuis = date_depublication(candidature)
+    if not depuis or dossier_clos(candidature):
+        return False
+    try:
+        return (aujourd_hui - date.fromisoformat(depuis)).days <= JOURS_REVERIFICATION
+    except ValueError:
+        return False
+
+
+def dossier_clos(candidature: Candidature) -> bool:
+    """Vrai si l'issue est connue (réponse positive ou refus) : l'offre
+    n'intéresse plus le suivi."""
+    dernier = dernier_evenement(candidature)
+    return dernier is not None and dernier["type"] in _TYPES_CLOTURANTS
+
+
+def depublication_a_signaler(candidature: Candidature) -> bool:
+    """Vrai si l'offre d'une candidature encore ouverte a disparu du site :
+    le poste est probablement pourvu, l'issue ne tardera pas."""
+    return not candidature.get("disponible", True) and not dossier_clos(candidature)
 
 
 def relance_suggeree(candidature: Candidature) -> bool:
     """True si aucun événement depuis plus de `SEUIL_RELANCE_JOURS` et
     que la candidature n'est pas déjà close (réponse positive/refus)."""
     dernier = dernier_evenement(candidature)
-    if dernier is None or dernier["type"] in _TYPES_CLOTURANTS:
+    if dernier is None or dossier_clos(candidature):
         return False
     try:
         jours_ecoules = (date.today() - date.fromisoformat(dernier["date"])).days
