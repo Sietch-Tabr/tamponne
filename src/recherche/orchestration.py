@@ -87,7 +87,7 @@ def construire_source(
     if cle == "passerellesmef":
         return PasserellesMef(cache_fiches)
     if cle == "fhf":
-        return Fhf(cache_fiches)
+        return Fhf()
     return None
 
 
