@@ -288,3 +288,54 @@ def test_les_cookies_suivent_une_redirection_sur_le_vrai_serveur(
     reponse = Session({}).lire(f"{base}/redirige")
     assert reponse.url == f"{base}/page"
     assert site_local.cookies_vus == ["", "s=1"]
+
+
+# --- robustesse (revue de code) ---
+
+
+def test_une_redirection_vers_un_schema_inconnu_est_une_erreur_reseau(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def comportement(
+        methode: str, url: str, corps: object, entetes: dict[str, str]
+    ) -> ReponseHttp:
+        if url.startswith("https://exemple.test"):
+            return ReponseHttp(statut=302, entetes={"Location": "ftp://pirate.test/x"})
+        raise urllib3.exceptions.URLSchemeUnknown("ftp")
+
+    simuler_reseau(monkeypatch, comportement)
+    with pytest.raises(RuntimeError, match="Erreur réseau"):
+        Session({}).lire("https://exemple.test/")
+
+
+def test_une_reponse_trop_volumineuse_est_refusee_et_la_connexion_fermee(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(reseau, "TAILLE_MAX_REPONSE", 100_000)
+    reponse = ReponseHttp(b"x" * 300_000)
+    simuler_reseau(monkeypatch, reponse)
+
+    with pytest.raises(RuntimeError, match="trop volumineuse"):
+        Session({}).lire("https://exemple.test/")
+    assert reponse.fermee is True
+
+
+def test_la_connexion_est_rendue_a_la_reserve_apres_lecture(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    reponse = ReponseHttp("page")
+    simuler_reseau(monkeypatch, reponse)
+    assert Session({}).lire("https://exemple.test/").texte() == "page"
+    assert reponse.rendue is True and reponse.fermee is False
+
+
+def test_max_age_l_emporte_sur_expires_quel_que_soit_l_ordre() -> None:
+    passe = "Thu, 01 Jan 1970 00:00:01 GMT"
+    futur = "Fri, 01 Jan 2100 00:00:01 GMT"
+    assert reseau._cookie_expire(f"a=1; Expires={passe}; Max-Age=3600") is False
+    assert reseau._cookie_expire(f"a=1; Max-Age=3600; Expires={passe}") is False
+    assert reseau._cookie_expire(f"a=1; Expires={futur}; Max-Age=0") is True
+    assert reseau._cookie_expire("a=1; Max-Age=-1") is True
+    assert reseau._cookie_expire("a=1; Max-Age=abc") is False
+    assert reseau._cookie_expire(f"a=1; Expires={futur}") is False
+    assert reseau._cookie_expire("a=1") is False

@@ -5,7 +5,7 @@ import logging
 import threading
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 lazy from bs4 import BeautifulSoup, Tag
 
@@ -27,19 +27,26 @@ TTL_DETAILS = 24 * 3600  # 1 jour : une offre pourvue est dépubliée
 MAXIMUM_DETAILS = 300
 
 
-def _charger_cache() -> dict[str, Any]:
-    """Charge le cache JSON depuis le disque."""
-    if not CHEMIN_CACHE.exists():
+def _lire_json_dict(chemin: Path) -> dict[str, Any]:
+    """Objet JSON de `chemin`, `{}` s'il est absent, illisible ou d'un autre
+    type (liste, `null`) : un cache abîmé se reconstruit, il ne fait pas échouer."""
+    if not chemin.exists():
         return {}
     try:
-        return json.loads(CHEMIN_CACHE.read_text(encoding="utf-8"))
+        donnees = json.loads(chemin.read_text(encoding="utf-8"))
     except json.JSONDecodeError, OSError:
+        donnees = None
+    if not isinstance(donnees, dict):
         # Journal plutôt qu'un message d'interface : ce module n'est lié à
         # aucune interface particulière.
-        journal.warning(
-            "%s illisible ou corrompu, cache réinitialisé.", CHEMIN_CACHE.name
-        )
+        journal.warning("%s illisible ou corrompu, cache réinitialisé.", chemin.name)
         return {}
+    return donnees
+
+
+def _charger_cache() -> dict[str, Any]:
+    """Charge le cache JSON depuis le disque."""
+    return _lire_json_dict(CHEMIN_CACHE)
 
 
 def _sauvegarder_cache(cache: dict[str, Any]) -> None:
@@ -50,7 +57,7 @@ def _sauvegarder_cache(cache: dict[str, Any]) -> None:
 def _organisations_expirees(cache: dict[str, Any]) -> bool:
     """Retourne True si le cache organisations est absent ou expiré."""
     entree = cache.get("organisations")
-    if not entree:
+    if not isinstance(entree, dict) or not isinstance(entree.get("data"), dict):
         return True
     try:
         cached_at = datetime.fromisoformat(entree["cached_at"])
@@ -138,15 +145,7 @@ def obtenir_organisations(forcer: bool = False) -> Organisations:
 
 def _charger_offres() -> dict[str, dict[str, OffreCache]]:
     """Charge le cache des offres depuis le disque."""
-    if not CHEMIN_OFFRES.exists():
-        return {}
-    try:
-        return json.loads(CHEMIN_OFFRES.read_text(encoding="utf-8"))
-    except json.JSONDecodeError, OSError:
-        journal.warning(
-            "%s illisible ou corrompu, cache réinitialisé.", CHEMIN_OFFRES.name
-        )
-        return {}
+    return cast(dict[str, dict[str, OffreCache]], _lire_json_dict(CHEMIN_OFFRES))
 
 
 def _sauvegarder_offres(offres: dict[str, dict[str, OffreCache]]) -> None:
@@ -175,7 +174,9 @@ def maj_cache_offres(nom_profil: str, offres_fraiches: list[Offre]) -> set[str]:
     maintenant = datetime.now(UTC)
     maintenant_iso = maintenant.isoformat()
     toutes = _charger_offres()
-    cache_profil = toutes.get(nom_profil, {})
+    cache_profil = toutes.get(nom_profil)
+    if not isinstance(cache_profil, dict):
+        cache_profil = {}
 
     refs_fraiches = {o["reference"] for o in offres_fraiches if o.get("reference")}
     nouvelles: set[str] = set()

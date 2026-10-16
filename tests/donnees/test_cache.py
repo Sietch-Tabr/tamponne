@@ -364,3 +364,31 @@ def test_maj_cache_offres_rend_les_nouvelles_meme_si_l_ecriture_echoue(
 
     monkeypatch.setattr(cache, "_sauvegarder_offres", refuse)
     assert cache.maj_cache_offres("mon-profil", [_offre("REF1")]) == {"REF1"}
+
+
+@pytest.mark.parametrize("contenu", ["[1, 2]", "null", '"texte"', "pas du json"])
+def test_caches_json_d_un_autre_type_repartent_de_zero(contenu: str) -> None:
+    cache.CHEMIN_CACHE.write_text(contenu, encoding="utf-8")
+    cache.CHEMIN_OFFRES.write_text(contenu, encoding="utf-8")
+
+    assert cache.organisations_en_cache() == ({}, True)
+    assert cache.date_cache_organisations() is None
+    assert cache.maj_cache_offres("mon-profil", [_offre("REF1")]) == {"REF1"}
+
+
+def test_organisations_sans_donnees_sont_relues_sur_le_site(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cache.CHEMIN_CACHE.write_text(
+        json.dumps({"organisations": {"cached_at": _iso_il_y_a(5)}}), encoding="utf-8"
+    )
+    monkeypatch.setattr(
+        cache, "_scraper_organisations", lambda: {"Ministère": {"A": 1}}
+    )
+
+    assert cache.obtenir_organisations() == {"Ministère": {"A": 1}}
+
+
+def test_profil_du_cache_des_offres_au_mauvais_format_est_remplace() -> None:
+    cache.CHEMIN_OFFRES.write_text(json.dumps({"mon-profil": [1, 2]}), encoding="utf-8")
+    assert cache.maj_cache_offres("mon-profil", [_offre("REF1")]) == {"REF1"}
