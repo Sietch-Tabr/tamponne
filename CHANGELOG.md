@@ -4,6 +4,25 @@ Toutes les évolutions notables de Tamponné, de la plus récente à la plus
 ancienne. Le détail de chaque version est aussi publié sur la page
 [Releases](https://codeberg.org/Kwaite/tamponne/releases) du dépôt.
 
+## [1.6.2] — 2026-10-16
+
+### Corrections
+
+- Une erreur imprévue pendant une recherche, une vérification des offres, la vérification de mise à jour ou le chargement d'une fiche ne fige plus l'écran sur « en cours » : l'erreur est signalée et la recherche suivante reste possible
+- Un fichier de données tenu un instant par l'antivirus (Windows) ne fait plus échouer une recherche ni l'ouverture d'une fiche : l'écriture est retentée, puis reportée
+- Le préchargement d'une fiche de poste n'affiche plus de message d'erreur en cas d'échec ; la consultation demandée, elle, le signale toujours
+- Mise à jour : l'archive téléchargée doit rester sur Codeberg et ne pas dépasser 100 Mo, le marqueur de mise à jour est vérifié, les droits des fichiers extraits ne sortent plus de leur dossier, et `src/` n'est plus purgé si la publication n'en contient pas
+- Réseau : une redirection invalide ou une réponse démesurée donne une erreur lisible ; les cookies effacés par un site sont mieux pris en compte
+- Fichiers de données (`cache.json`, `offres.json`) abîmés ou d'un autre format : ils sont reconstruits au lieu de faire échouer l'application
+- Lanceur : le dossier personnel est masqué du journal quelle que soit la casse (Windows), et un programme introuvable donne un message clair
+- Export HTML : les liens s'ouvrent avec `rel="noopener noreferrer"`
+
+### En coulisses
+
+- Les fiches de poste consultées sont écrites par lots de dix sur le disque (et à la fermeture) au lieu de réécrire le fichier à chaque fiche
+- Une source en échec est identifiée par un signal dédié au lieu de relire le texte de l'avertissement
+- Fonctions trop longues découpées (orchestration de la recherche, résumé des filtres, fiches de profil, notes de version, lecture du formulaire de Passerelles), code mort retiré, style homogène
+
 ## [1.6.1] — 2026-10-16
 
 ### Nouveautés
