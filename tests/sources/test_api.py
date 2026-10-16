@@ -13,6 +13,7 @@ from src.sources.choisirleservicepublic import api as api_csp
 from src.sources.emploiterritorial import api as api_territorial
 from src.sources.fhf import api as api_fhf
 from src.sources.passerellesmef import api as api_mef
+from tests.sources.reponses import ReponseHttp
 
 ERREURS = [
     pytest.param(
@@ -32,10 +33,10 @@ class _Ouvreur:
         self.contenu = contenu
         self.erreur = erreur
 
-    def open(self, _requete: urllib.request.Request, timeout: float) -> io.BytesIO:
+    def open(self, _requete: urllib.request.Request, timeout: float) -> ReponseHttp:
         if self.erreur is not None:
             raise self.erreur
-        return io.BytesIO(self.contenu)
+        return ReponseHttp(self.contenu)
 
 
 APPELS_AVEC_OUVREUR: list[Callable[[object], object]] = [

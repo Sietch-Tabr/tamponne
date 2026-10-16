@@ -1,16 +1,23 @@
 """Tests du dédoublonnage multi-source (src/sources/base.py)."""
 
-import io
+import gzip
 import urllib.request
 from collections.abc import Callable
 
 import pytest
 
-from src.sources.base import USER_AGENT_IDENTIFIE, deduplique_offres
+from src.sources.base import (
+    EN_TETE_COMPRESSION,
+    USER_AGENT_IDENTIFIE,
+    deduplique_offres,
+    lire_reponse,
+    lire_texte,
+)
 from src.sources.choisirleservicepublic import api as api_csp
 from src.sources.fhf import api as api_fhf
 from src.sources.passerellesmef import api as api_mef
 from src.types import Offre
+from tests.sources.reponses import ReponseHttp
 
 
 def _offre(reference: str, titre: str = "x", source: str = "") -> Offre:
@@ -83,9 +90,9 @@ def test_choisirleservicepublic_envoie_le_user_agent_identifie(
 ) -> None:
     requetes: list[urllib.request.Request] = []
 
-    def urlopen_factice(requete: urllib.request.Request, timeout: float) -> io.BytesIO:
+    def urlopen_factice(requete: urllib.request.Request, timeout: float) -> ReponseHttp:
         requetes.append(requete)
-        return io.BytesIO(b"<title>t</title>")
+        return ReponseHttp(b"<title>t</title>")
 
     monkeypatch.setattr(urllib.request, "urlopen", urlopen_factice)
     telecharger()
@@ -97,3 +104,37 @@ def test_reseau_interdit_pendant_les_tests() -> None:
     """Garde-fou de conftest : un vrai appel réseau échoue tout de suite."""
     with pytest.raises(OSError, match="interdite"):
         urllib.request.urlopen("https://codeberg.org", timeout=5)
+
+
+def test_les_clients_demandent_des_pages_compressees(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    requetes: list[urllib.request.Request] = []
+
+    def urlopen_factice(requete: urllib.request.Request, timeout: float) -> ReponseHttp:
+        requetes.append(requete)
+        return ReponseHttp(b"<title>t</title>")
+
+    monkeypatch.setattr(urllib.request, "urlopen", urlopen_factice)
+    api_csp.telecharger_page_offres()
+
+    assert requetes[0].get_header("Accept-encoding") == "gzip"
+    assert EN_TETE_COMPRESSION == {"Accept-Encoding": "gzip"}
+
+
+def test_lire_texte_decompresse_une_reponse_gzip() -> None:
+    texte = "Chargé de mission numérique" * 50
+    reponse = ReponseHttp(
+        gzip.compress(texte.encode()), headers={"Content-Encoding": "gzip"}
+    )
+    assert lire_texte(reponse) == texte
+
+
+def test_lire_reponse_laisse_une_reponse_non_compressee_telle_quelle() -> None:
+    assert lire_reponse(ReponseHttp(b"abc")) == b"abc"
+
+
+def test_lire_reponse_gzip_illisible_est_une_erreur_reseau() -> None:
+    reponse = ReponseHttp(b"pas du gzip", headers={"Content-Encoding": "gzip"})
+    with pytest.raises(OSError, match="illisible"):
+        lire_reponse(reponse)

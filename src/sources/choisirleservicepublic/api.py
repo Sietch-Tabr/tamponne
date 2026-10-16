@@ -6,14 +6,19 @@ import urllib.parse
 lazy import urllib.request
 
 from src.filtres import VALEUR_TOGGLE_ACTIF
-from src.sources.base import USER_AGENT_IDENTIFIE
+from src.sources.base import (
+    EN_TETE_COMPRESSION,
+    USER_AGENT_IDENTIFIE,
+    lire_reponse,
+    lire_texte,
+)
 from src.types import PageAPI
 
 URL_SITE = "https://choisirleservicepublic.gouv.fr"
 URL_OFFRES = f"{URL_SITE}/nos-offres/"
 
 _TIMEOUT = 30
-_HEADERS = {"User-Agent": USER_AGENT_IDENTIFIE}
+_HEADERS = {"User-Agent": USER_AGENT_IDENTIFIE, **EN_TETE_COMPRESSION}
 
 # Ordre et nommage des filtres dans l'URL WordPress (issu de url_keywords côté JS)
 _URL_KEYWORD_MAP = [
@@ -94,7 +99,7 @@ def obtenir_page_offres(url: str) -> PageAPI:
     try:
         requete = urllib.request.Request(url, headers=_HEADERS)
         with urllib.request.urlopen(requete, timeout=_TIMEOUT) as reponse:
-            contenu = reponse.read().decode("utf-8", errors="replace")
+            contenu = lire_texte(reponse)
     except urllib.error.HTTPError as e:
         raise RuntimeError(f"Erreur HTTP {e.code} lors du chargement de {url}") from e
     # Délai dépassé en pleine lecture : TimeoutError, pas URLError.
@@ -114,7 +119,7 @@ def telecharger_binaire(url: str) -> bytes:
     try:
         requete = urllib.request.Request(url, headers=_HEADERS)
         with urllib.request.urlopen(requete, timeout=_TIMEOUT) as reponse:
-            return reponse.read()
+            return lire_reponse(reponse)
     except urllib.error.HTTPError as e:
         raise RuntimeError(f"Erreur HTTP {e.code} lors du chargement de {url}") from e
     # Délai dépassé en pleine lecture : TimeoutError, pas URLError.
@@ -129,7 +134,7 @@ def telecharger_page_offres() -> str:
     try:
         requete = urllib.request.Request(URL_OFFRES, headers=_HEADERS)
         with urllib.request.urlopen(requete, timeout=_TIMEOUT) as reponse:
-            return reponse.read().decode("utf-8", errors="replace")
+            return lire_texte(reponse)
     except urllib.error.HTTPError as e:
         raise RuntimeError(
             f"Erreur HTTP {e.code} lors du chargement de {URL_OFFRES}"

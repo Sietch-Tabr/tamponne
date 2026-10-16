@@ -3,8 +3,9 @@
 import re
 lazy import urllib.error
 lazy import urllib.request
+lazy import zlib
 from collections.abc import Callable
-from typing import Protocol
+from typing import Any, Protocol
 from urllib.parse import urlparse
 
 lazy from bs4 import Tag
@@ -76,6 +77,31 @@ def valider_url(url: str, url_base: str, domaine: str) -> str:
     return ""
 
 
+EN_TETE_COMPRESSION = {"Accept-Encoding": "gzip"}
+"""Demande des pages compressées : 4,4 Mo deviennent 185 Ko chez
+choisirleservicepublic, 407 Ko deviennent 46 Ko chez Passerelles."""
+
+
+def lire_reponse(reponse: Any) -> bytes:
+    """Corps de la réponse HTTP `reponse`, décompressé s'il est en gzip.
+
+    Raises:
+        OSError: Corps compressé illisible (traité comme une erreur réseau).
+    """
+    corps = bytes(reponse.read())
+    if reponse.headers.get("Content-Encoding", "").lower() != "gzip":
+        return corps
+    try:
+        return zlib.decompress(corps, 16 + zlib.MAX_WBITS)
+    except zlib.error as erreur:
+        raise OSError(f"réponse compressée illisible ({erreur})") from erreur
+
+
+def lire_texte(reponse: Any) -> str:
+    """Corps de la réponse HTTP `reponse` en texte (UTF-8)."""
+    return lire_reponse(reponse).decode("utf-8", errors="replace")
+
+
 class PageIntrouvable(RuntimeError):
     """Le site répond que la page n'existe pas (HTTP 404 ou 410)."""
 
@@ -90,11 +116,13 @@ def consulter_page(url: str) -> tuple[str, str]:
         PageIntrouvable: HTTP 404 ou 410.
         RuntimeError: Autre code d'erreur HTTP, ou échec réseau.
     """
-    requete = urllib.request.Request(url, headers={"User-Agent": USER_AGENT_IDENTIFIE})
+    requete = urllib.request.Request(
+        url, headers={"User-Agent": USER_AGENT_IDENTIFIE, **EN_TETE_COMPRESSION}
+    )
     try:
         with urllib.request.urlopen(requete, timeout=_TIMEOUT) as reponse:
             url_finale = reponse.geturl()
-            html = reponse.read().decode("utf-8", errors="replace")
+            html = lire_texte(reponse)
     except urllib.error.HTTPError as erreur:
         if erreur.code in (404, 410):
             raise PageIntrouvable(f"Page introuvable (HTTP {erreur.code})") from erreur

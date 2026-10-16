@@ -15,6 +15,7 @@ import urllib.parse
 lazy import urllib.request
 lazy from http.cookiejar import CookieJar
 
+from src.sources.base import EN_TETE_COMPRESSION, lire_texte
 from src.sources.emploiterritorial.filtres import VALEUR_OUI
 from src.types import PageAPI
 
@@ -29,6 +30,7 @@ _HEADERS = {
         "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     ),
     "Accept-Language": "fr-FR,fr;q=0.9",
+    **EN_TETE_COMPRESSION,
 }
 
 
@@ -45,7 +47,7 @@ def _requete(
     requete = urllib.request.Request(url, data=donnees, headers=_HEADERS)
     try:
         with opener.open(requete, timeout=_TIMEOUT) as reponse:
-            return reponse.read().decode("utf-8", errors="replace")
+            return lire_texte(reponse)
     except urllib.error.HTTPError as e:
         raise RuntimeError(f"Erreur HTTP {e.code} lors du chargement de {url}") from e
     # Délai dépassé en pleine lecture : TimeoutError, pas URLError.

@@ -11,6 +11,7 @@ import pytest
 
 from src.sources import base, detail
 from src.sources.base import PageIntrouvable, sur_domaine, valider_url
+from tests.sources.reponses import ReponseHttp
 from src.types import DetailOffre
 
 FICHE: DetailOffre = {**detail.DETAIL_VIDE, "description": "Missions"}
@@ -161,22 +162,13 @@ def test_verifier_disponibilite_site_injoignable_propage(
 # --- consulter_page ---
 
 
-class _Reponse(io.BytesIO):
-    def __init__(self, contenu: bytes, url: str) -> None:
-        super().__init__(contenu)
-        self._url = url
-
-    def geturl(self) -> str:
-        return self._url
-
-
 def test_consulter_page_rend_url_finale_et_titre(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
         urllib.request,
         "urlopen",
-        lambda requete, timeout: _Reponse(
+        lambda requete, timeout: ReponseHttp(
             b"<html><title> Offre d\xc3\xa9publi\xc3\xa9e </title></html>",
             "https://choisirleservicepublic.gouv.fr/offre-depubliee/",
         ),
