@@ -46,6 +46,7 @@ class Fhf:
         self,
         filtres: FiltresRecherche,
         on_page: Callable[[int, int], None] | None = None,
+        on_fiche: Callable[[int, int], None] | None = None,
     ) -> tuple[list[Offre], int, bool]:
         """Voir :meth:`SourceOffres.rechercher`.
 
@@ -64,7 +65,7 @@ class Fhf:
             return offres, nb_pages, arret_anticipe
 
         fiches = lire_fiches(
-            [o["url"] for o in offres], self._lire_fiche, self._cache_fiches
+            [o["url"] for o in offres], self._lire_fiche, self._cache_fiches, on_fiche
         )
         retenues: list[Offre] = []
         for offre in offres:

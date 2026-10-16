@@ -18,6 +18,7 @@ from src.gui.controleurs import recherche as controleur_recherche
 from src.gui.controleurs.recherche import ControleurRecherche
 from src.gui.modeles.offres import ProxyOffres
 from src.sources.choisirleservicepublic import ChoisirLeServicePublic
+from src.sources.choisirleservicepublic.extraction import DETAIL_VIDE
 from src.sources.emploiterritorial import EmploiTerritorial
 from src.types import FiltresRecherche, Offre
 
@@ -49,6 +50,7 @@ def _sources_factices(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         self: object,
         filtres: FiltresRecherche,
         on_page: Callable[[int, int], None] | None = None,
+        on_fiche: Callable[[int, int], None] | None = None,
     ) -> tuple[list[Offre], int, bool]:
         assert on_page is not None
         on_page(1, 2)
@@ -66,6 +68,7 @@ def _sources_factices(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         self: object,
         filtres: FiltresRecherche,
         on_page: Callable[[int, int], None] | None = None,
+        on_fiche: Callable[[int, int], None] | None = None,
     ) -> tuple[list[Offre], int, bool]:
         return (
             [
@@ -269,6 +272,28 @@ def test_consulter_et_tamponner_passent_par_un_thread(
     assert suivis == ["MINT_2026-1"]
 
 
+def test_consulter_ligne_ouvre_la_fiche_dans_l_application(
+    controleur: ControleurRecherche, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        controleur_recherche,
+        "recuperer_detail_offre",
+        lambda url: DETAIL_VIDE,
+    )
+    ouverts: list[object] = []
+    monkeypatch.setattr(
+        controleur_recherche.QDesktopServices, "openUrl", ouverts.append
+    )
+    controleur.lancer()
+    _attendre(controleur, qtbot)
+
+    with qtbot.waitSignal(controleur.detail_pret, timeout=5000):
+        controleur.consulter_ligne(0)
+
+    assert controleur.property("ligne_selectionnee") == 0
+    assert ouverts == []
+
+
 def test_versants_compatibles_lit_l_ancien_format_singulier() -> None:
     assert versants_compatibles({}) == ["etat"]
     assert versants_compatibles({"versants": ["territorial"]}) == ["territorial"]
@@ -449,3 +474,16 @@ def test_organisations_absentes_affichees_et_recherche_refusee(
     controleur.definir_chargement_organisations(False)
     assert controleur.property("etat_organisations") == ""
     controleur.arreter()
+
+
+def test_lecture_des_fiches_prolonge_la_progression_de_la_source(
+    controleur: ControleurRecherche,
+) -> None:
+    controleur._on_progression("MEF", 50, 50)
+    controleur._on_fiches("MEF", 30, 300)
+
+    assert controleur.property("avancement") == [
+        {"nom": "MEF", "etat": "fiches 30/300"}
+    ]
+    assert controleur._totaux_pages() == (80, 350)
+    assert controleur._lire_statut() == "Recherche en cours… étape 80/350"

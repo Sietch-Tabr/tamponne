@@ -37,6 +37,8 @@ class TravailleurRecherche(QObject):
 
     progression = Signal(str, int, int)
     """(nom affiché de la source, page chargée, nb pages à charger)."""
+    fiches = Signal(str, int, int)
+    """(nom affiché de la source, fiches lues, nb fiches à lire)."""
     resultat = Signal(list, int, bool)
     erreur = Signal(str)
     avertissement = Signal(str)
@@ -63,6 +65,7 @@ class TravailleurRecherche(QObject):
                 self._orgas_cache,
                 on_source_en_cours=self.source_en_cours.emit,
                 on_progression=self.progression.emit,
+                on_fiches=self.fiches.emit,
                 on_source_terminee=self.source_terminee.emit,
                 on_avertissement=self.avertissement.emit,
                 on_offres_source=self.offres_source.emit,

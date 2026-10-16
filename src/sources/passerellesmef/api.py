@@ -5,6 +5,7 @@ User-Agent identifié classique suffit, comme choisirleservicepublic.
 """
 
 import re
+lazy import http.cookiejar
 lazy import urllib.error
 import urllib.parse
 lazy import urllib.request
@@ -14,6 +15,7 @@ from src.types import PageAPI
 
 URL_SITE = "https://www.passerelles.economie.gouv.fr"
 URL_LISTE = f"{URL_SITE}/offre-de-emploi/liste-toutes-offres.aspx"
+URL_RESULTATS = f"{URL_SITE}/offre-de-emploi/liste-offres.aspx"
 
 _TIMEOUT = 30
 _HEADERS = {
@@ -23,14 +25,18 @@ _HEADERS = {
 
 
 def nouvelle_session() -> urllib.request.OpenerDirector:
-    """Session dédiée à une recherche — même interface que les autres
-    sources, pas de dépendance de session serveur ici (recherche par
-    GET stateless)."""
-    return urllib.request.build_opener()
+    """Session dédiée à une recherche. Les cookies servent à la recherche
+    par formulaire : le site garde les critères dans la session et les
+    pages de résultats les lui demandent."""
+    return urllib.request.build_opener(
+        urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar())
+    )
 
 
-def _requete(opener: urllib.request.OpenerDirector, url: str) -> str:
-    requete = urllib.request.Request(url, headers=_HEADERS)
+def _requete(
+    opener: urllib.request.OpenerDirector, url: str, donnees: bytes | None = None
+) -> str:
+    requete = urllib.request.Request(url, data=donnees, headers=_HEADERS)
     try:
         with opener.open(requete, timeout=_TIMEOUT) as reponse:
             return reponse.read().decode("utf-8", errors="replace")
@@ -65,3 +71,26 @@ def obtenir_page_recherche(opener: urllib.request.OpenerDirector, url: str) -> P
 def obtenir_fiche_offre(opener: urllib.request.OpenerDirector, url: str) -> str:
     """Télécharge le HTML complet d'une fiche offre."""
     return _requete(opener, url)
+
+
+def obtenir_formulaire(opener: urllib.request.OpenerDirector) -> str:
+    """Télécharge la page de recherche : son formulaire (jetons et champs)
+    et la session dont l'envoi dépend."""
+    return _requete(opener, construire_url_recherche())
+
+
+def construire_url_resultats(page: int) -> str:
+    """URL d'une page des résultats de la dernière recherche envoyée dans la
+    session (les pages sont indépendantes, vérifié)."""
+    return f"{URL_RESULTATS}?{urllib.parse.urlencode({'LCID': '1036', 'page': page})}"
+
+
+def envoyer_recherche(
+    opener: urllib.request.OpenerDirector, champs: dict[str, str]
+) -> PageAPI:
+    """Envoie le formulaire de recherche ; la réponse est la première page
+    des résultats (même forme que `obtenir_page_recherche`)."""
+    url = construire_url_recherche()
+    html = _requete(opener, url, urllib.parse.urlencode(champs).encode())
+    title_m = re.search(r"<title>(.*?)</title>", html, re.S)
+    return {"html": html, "title": title_m.group(1).strip() if title_m else ""}

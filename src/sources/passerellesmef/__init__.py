@@ -6,10 +6,14 @@ date, management et télétravail sont appliqués ici, sur la liste puis sur
 la fiche de chaque offre (voir `filtrage`).
 """
 
+import logging
 import threading
 import time
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
+from typing import cast
+
+lazy import urllib.request
 
 from src.filtres import libelle_lieu, lieu_correspond, numero_departement_texte
 from src.sources.base import CacheFiches
@@ -17,8 +21,11 @@ from src.sources.choisirleservicepublic.extraction import DETAIL_VIDE
 from src.sources.fiches import LECTEURS, lire_fiches
 from src.sources.passerellesmef.api import (
     construire_url_recherche,
+    construire_url_resultats,
+    envoyer_recherche,
     nouvelle_session,
     obtenir_fiche_offre,
+    obtenir_formulaire,
     obtenir_page_recherche,
 )
 from src.sources.passerellesmef.extraction import (
@@ -26,13 +33,19 @@ from src.sources.passerellesmef.extraction import (
     extraire_offres,
     extraire_totaux,
 )
+from src.sources.passerellesmef.formulaire import (
+    analyser_formulaire,
+    construire_recherche,
+)
 from src.sources.passerellesmef.filtrage import (
     extraire_fiche,
     fiche_correspond,
     fiche_necessaire,
     organisations_de_bercy,
 )
-from src.types import DetailOffre, FicheFiltrage, FiltresRecherche, Offre
+from src.types import DetailOffre, FicheFiltrage, FiltresRecherche, Offre, PageAPI
+
+journal = logging.getLogger(__name__)
 
 MAX_PAGES = 20
 MAX_PAGES_FILTREE = 100
@@ -58,28 +71,53 @@ class PasserellesMef:
         self,
         filtres: FiltresRecherche,
         on_page: Callable[[int, int], None] | None = None,
+        on_fiche: Callable[[int, int], None] | None = None,
     ) -> tuple[list[Offre], int, bool]:
         """Voir :meth:`SourceOffres.rechercher`.
 
-        Les pages sont indépendantes (pas cumulatives, vérifié) et lues en
-        parallèle. Localisation, catégorie, domaine, organisation,
-        expérience, management et télétravail sont appliqués ici ; la date
-        de publication l'est par l'appelant."""
+        Catégorie, domaine, organisation et région sont demandés au site
+        quand ils s'y rattachent sans ambiguïté (voir `formulaire`) : il
+        renvoie bien moins de pages et de fiches à lire. Le reste (département,
+        expérience, management, télétravail) est appliqué ici, sur la liste
+        puis sur la fiche. Les pages sont indépendantes (pas cumulatives,
+        vérifié) et lues en parallèle ; la date de publication l'est par
+        l'appelant."""
         organisations = filtres.get("organisations", [])
         if organisations and not organisations_de_bercy(organisations):
             return [], 1, False  # aucune organisation de ce portail demandée
 
         localisations = filtres.get("localisations", [])
-        lire_les_fiches = fiche_necessaire(filtres)
+        opener = nouvelle_session()
+        premiere, appliques = self._rechercher_sur_le_site(opener, filtres)
+        # Ce que le site a appliqué n'est pas revérifié sur les fiches.
+        restants: FiltresRecherche = cast(
+            FiltresRecherche,
+            {c: v for c, v in filtres.items() if c not in appliques},
+        )
+        lire_les_fiches = fiche_necessaire(restants)
         offres, nb_pages, arret_anticipe = self._lire_liste(
+            opener,
             filtres.get("query", ""),
-            MAX_PAGES_FILTREE if localisations or lire_les_fiches else MAX_PAGES,
+            (
+                MAX_PAGES_FILTREE
+                if localisations or lire_les_fiches or appliques
+                else MAX_PAGES
+            ),
             on_page,
+            premiere,
         )
         if not (localisations or lire_les_fiches):
             return offres, nb_pages, arret_anticipe
 
-        # Sans numéro dans la liste, le lieu ne se lit que sur la fiche.
+        # Un lieu de la liste hors de la demande écarte l'offre sans lire sa
+        # fiche ; sans numéro dans la liste, le lieu ne se lit que sur la fiche.
+        offres = [
+            o
+            for o in offres
+            if not localisations
+            or not (numero := _numero_liste(o["localisation"]))
+            or lieu_correspond(numero, localisations)
+        ]
         fiches = lire_fiches(
             [
                 o["url"]
@@ -88,6 +126,7 @@ class PasserellesMef:
             ],
             self._lire_fiche,
             self._cache_fiches,
+            on_fiche,
         )
         retenues: list[Offre] = []
         for offre in offres:
@@ -97,24 +136,63 @@ class PasserellesMef:
                 numero = numero or fiche["numero"]
                 if not offre["localisation"] and numero:
                     offre["localisation"] = libelle_lieu(numero)
-                if not fiche_correspond(fiche, filtres):
+                if not fiche_correspond(fiche, restants):
                     continue
             if localisations and not lieu_correspond(numero, localisations):
                 continue
             retenues.append(offre)
         return retenues, nb_pages, arret_anticipe
 
+    @staticmethod
+    def _rechercher_sur_le_site(
+        opener: urllib.request.OpenerDirector, filtres: FiltresRecherche
+    ) -> tuple[PageAPI | None, frozenset[str]]:
+        """Première page des résultats filtrés par le site et critères qu'il
+        a appliqués ; `(None, ∅)` si rien ne lui est demandé ou si le site
+        n'a pas filtré (la recherche se fait alors par mot-clé seul)."""
+        if not any(
+            filtres.get(c)
+            for c in ("categories", "domaines", "organisations", "localisations")
+        ):
+            return None, frozenset()
+        formulaire = analyser_formulaire(obtenir_formulaire(opener))
+        if not formulaire.exploitable():
+            journal.warning("Passerelles\u00a0: formulaire de recherche introuvable")
+            return None, frozenset()
+        champs, appliques = construire_recherche(
+            formulaire,
+            filtres,
+            organisations_de_bercy(filtres.get("organisations", [])),
+        )
+        if not champs:
+            return None, frozenset()
+        champs.update(formulaire.caches)
+        champs[formulaire.bouton[0]] = formulaire.bouton[1]
+        reponse = envoyer_recherche(opener, champs)
+        if "Tout afficher" in reponse["title"]:
+            journal.warning("Passerelles\u00a0: le site n'a pas appliqué les critères")
+            return None, frozenset()
+        return reponse, appliques
+
     def _lire_liste(
         self,
+        opener: urllib.request.OpenerDirector,
         query: str,
         max_pages: int,
         on_page: Callable[[int, int], None] | None,
+        premiere: PageAPI | None,
     ) -> tuple[list[Offre], int, bool]:
-        """Pages de résultats du mot-clé, jusqu'à `max_pages`."""
-        opener = nouvelle_session()
-        reponse = obtenir_page_recherche(
-            opener, construire_url_recherche(query=query, page=1)
-        )
+        """Pages de résultats, jusqu'à `max_pages` : celles du mot-clé, ou
+        celles de la recherche déjà envoyée au site (`premiere`)."""
+        url_page: Callable[[int], str]
+        if premiere is None:
+            reponse = obtenir_page_recherche(
+                opener, construire_url_recherche(query=query, page=1)
+            )
+            url_page = lambda numero: construire_url_recherche(query, numero)
+        else:
+            reponse = premiere
+            url_page = construire_url_resultats
         nb_offres_total, _ = extraire_totaux(reponse.get("title", ""))
         nb_pages = max(1, -(-nb_offres_total // _TAILLE_PAGE))
         pages_a_charger = min(nb_pages, max_pages)
@@ -128,9 +206,8 @@ class PasserellesMef:
 
         def _page(numero: int) -> list[Offre]:
             time.sleep(_DELAI_COURTOISIE)
-            url = construire_url_recherche(query=query, page=numero)
             offres_page = extraire_offres(
-                obtenir_page_recherche(opener, url).get("html", "")
+                obtenir_page_recherche(opener, url_page(numero)).get("html", "")
             )
             with verrou:
                 lues[0] += 1

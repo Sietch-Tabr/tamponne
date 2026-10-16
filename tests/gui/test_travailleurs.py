@@ -67,12 +67,16 @@ def test_executer_fusionne_les_resultats_de_deux_sources(
     monkeypatch.setattr(
         ChoisirLeServicePublic,
         "rechercher",
-        lambda self, filtres, on_page=None: ([_offre("O1")], 1, False),
+        lambda self, filtres, on_page=None, on_fiche=None: ([_offre("O1")], 1, False),
     )
     monkeypatch.setattr(
         EmploiTerritorial,
         "rechercher",
-        lambda self, filtres, on_page=None: ([_offre("O2", "Territorial")], 1, False),
+        lambda self, filtres, on_page=None, on_fiche=None: (
+            [_offre("O2", "Territorial")],
+            1,
+            False,
+        ),
     )
     resultats, avertissements, erreurs = _executer(TravailleurRecherche({}, {}))
     assert avertissements == []
@@ -87,13 +91,14 @@ def test_executer_avertissement_sur_echec_partiel_sans_bloquer(
     monkeypatch.setattr(
         ChoisirLeServicePublic,
         "rechercher",
-        lambda self, filtres, on_page=None: ([_offre("O1")], 1, False),
+        lambda self, filtres, on_page=None, on_fiche=None: ([_offre("O1")], 1, False),
     )
 
     def _echec(
         self: object,
         filtres: FiltresRecherche,
         on_page: Callable[[int, int], None] | None = None,
+        on_fiche: Callable[[int, int], None] | None = None,
     ) -> None:
         raise RuntimeError("Erreur réseau")
 
@@ -125,12 +130,16 @@ def test_executer_emet_source_en_cours(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         ChoisirLeServicePublic,
         "rechercher",
-        lambda self, filtres, on_page=None: ([_offre("O1")], 1, False),
+        lambda self, filtres, on_page=None, on_fiche=None: ([_offre("O1")], 1, False),
     )
     monkeypatch.setattr(
         EmploiTerritorial,
         "rechercher",
-        lambda self, filtres, on_page=None: ([_offre("O2", "Territorial")], 1, False),
+        lambda self, filtres, on_page=None, on_fiche=None: (
+            [_offre("O2", "Territorial")],
+            1,
+            False,
+        ),
     )
     travailleur = TravailleurRecherche({}, {})
     sources_vues: list[str] = []
@@ -149,6 +158,7 @@ def test_executer_emet_progression_nommee_et_source_terminee(
         self: object,
         filtres: FiltresRecherche,
         on_page: Callable[[int, int], None] | None = None,
+        on_fiche: Callable[[int, int], None] | None = None,
     ) -> tuple[list[Offre], int, bool]:
         assert on_page is not None
         on_page(1, 2)
@@ -159,7 +169,7 @@ def test_executer_emet_progression_nommee_et_source_terminee(
     monkeypatch.setattr(
         EmploiTerritorial,
         "rechercher",
-        lambda self, filtres, on_page=None: ([], 1, False),
+        lambda self, filtres, on_page=None, on_fiche=None: ([], 1, False),
     )
     travailleur = TravailleurRecherche({}, {})
     progressions: list[tuple[object, ...]] = []
@@ -184,6 +194,7 @@ def test_executer_source_en_echec_est_aussi_signalee_terminee(
         self: object,
         filtres: FiltresRecherche,
         on_page: Callable[[int, int], None] | None = None,
+        on_fiche: Callable[[int, int], None] | None = None,
     ) -> None:
         raise RuntimeError("HTTP 503")
 
@@ -191,7 +202,7 @@ def test_executer_source_en_echec_est_aussi_signalee_terminee(
     monkeypatch.setattr(
         EmploiTerritorial,
         "rechercher",
-        lambda self, filtres, on_page=None: ([_offre("O2")], 1, False),
+        lambda self, filtres, on_page=None, on_fiche=None: ([_offre("O2")], 1, False),
     )
     travailleur = TravailleurRecherche({}, {})
     terminees: list[str] = []

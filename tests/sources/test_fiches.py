@@ -77,3 +77,15 @@ def test_lire_fiches_sans_cache_et_urls_en_double() -> None:
 
     assert len(lire_fiches(["https://x/1", "https://x/1"], lire)) == 1
     assert appels == ["https://x/1"]
+
+
+def test_lire_fiches_signale_chaque_fiche_lue_sans_compter_le_cache() -> None:
+    cache = _Cache({"https://x/1": _fiche("75")})
+    suivi: list[tuple[int, int]] = []
+    lire_fiches(
+        ["https://x/1", "https://x/2", "https://x/3"],
+        lambda _u: _fiche("93"),
+        cache,
+        lambda lues, total: suivi.append((lues, total)),
+    )
+    assert suivi == [(1, 2), (2, 2)]

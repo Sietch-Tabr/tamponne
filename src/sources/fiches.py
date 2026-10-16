@@ -18,10 +18,14 @@ def lire_fiches(
     urls: Iterable[str],
     lire: Callable[[str], FicheFiltrage | None],
     cache: CacheFiches | None = None,
+    on_fiche: Callable[[int, int], None] | None = None,
 ) -> dict[str, FicheFiltrage]:
     """Fiches de `urls`, depuis `cache` quand elles y sont, sinon lues par
     `lire` (`None` si la fiche est illisible : absente du résultat, et
-    non mémorisée pour être retentée à la prochaine recherche)."""
+    non mémorisée pour être retentée à la prochaine recherche).
+
+    `on_fiche(lues, total)` est appelé après chaque fiche lue sur le site
+    (celles du cache n'y comptent pas)."""
     fiches: dict[str, FicheFiltrage] = {}
     a_lire: list[str] = []
     for url in dict.fromkeys(urls):
@@ -38,7 +42,9 @@ def lire_fiches(
         return url, fiche
 
     with ThreadPoolExecutor(max_workers=LECTEURS) as pool:
-        for url, fiche in pool.map(_lire, a_lire):
+        for rang, (url, fiche) in enumerate(pool.map(_lire, a_lire), start=1):
             if fiche is not None:
                 fiches[url] = fiche
+            if on_fiche:
+                on_fiche(rang, len(a_lire))
     return fiches

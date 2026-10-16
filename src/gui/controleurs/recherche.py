@@ -137,6 +137,7 @@ class ControleurRecherche(QObject):
         self._avertissements: list[str] = []
         self._sources: dict[str, str] = {}
         self._pages: dict[str, tuple[int, int]] = {}
+        self._pages_liste: dict[str, int] = {}
         self._nb_nouvelles = 0
         self._nb_pages = 1
         self._ligne_selectionnee = -1
@@ -165,12 +166,14 @@ class ControleurRecherche(QObject):
     def _lire_texte_bouton(self) -> str:
         if self._thread is not None:
             pages, total = self._totaux_pages()
-            return f"Page {pages}/{total}…" if total > 1 else "Recherche en cours…"
+            if total <= 1:
+                return "Recherche en cours…"
+            return f"{self._unite_progression().capitalize()} {pages}/{total}…"
         return LIBELLE_MODIFIER if self._edition else LIBELLE_LANCER
 
     def _lire_statut(self) -> str:
         pages, total = self._totaux_pages()
-        suffixe = f" page {pages}/{total}" if total > 1 else ""
+        suffixe = f" {self._unite_progression()} {pages}/{total}" if total > 1 else ""
         return f"Recherche en cours…{suffixe}"
 
     def _lire_avancement(self) -> list[dict[str, str]]:
@@ -446,6 +449,10 @@ class ControleurRecherche(QObject):
 
     # --- Recherche ---
 
+    def _unite_progression(self) -> str:
+        """« page » tant qu'aucune source n'a commencé à lire des fiches."""
+        return "étape" if self._pages_liste else "page"
+
     def _totaux_pages(self) -> tuple[int, int]:
         return (
             sum(page for page, _ in self._pages.values()),
@@ -475,6 +482,7 @@ class ControleurRecherche(QObject):
         self._grades_superieurs = bool(self._etat["grades_superieurs"])
         self._sources = {}
         self._pages = {}
+        self._pages_liste = {}
         self._avertissements = []
         self._erreur = ""
         self._phase = "en_cours"
@@ -485,6 +493,7 @@ class ControleurRecherche(QObject):
         self._thread.started.connect(self._travailleur.executer)
         self._travailleur.source_en_cours.connect(self._on_source_en_cours)
         self._travailleur.progression.connect(self._on_progression)
+        self._travailleur.fiches.connect(self._on_fiches)
         self._travailleur.offres_source.connect(self._on_offres_source)
         self._travailleur.avertissement.connect(self._on_avertissement)
         self._travailleur.resultat.connect(self._on_resultat)
@@ -503,6 +512,13 @@ class ControleurRecherche(QObject):
         self._pages[nom] = (page, total)
         if total > 1:
             self._sources[nom] = f"page {page}/{total}"
+        self.etat_change.emit()
+
+    def _on_fiches(self, nom: str, lues: int, total: int) -> None:
+        pages, _ = self._pages.get(nom, (0, 0))
+        base = self._pages_liste.setdefault(nom, pages)
+        self._pages[nom] = (base + lues, base + total)
+        self._sources[nom] = f"fiches {lues}/{total}"
         self.etat_change.emit()
 
     def _on_offres_source(self, nom: str, nombre: int) -> None:
@@ -630,12 +646,11 @@ class ControleurRecherche(QObject):
         return self._modele.offre(source.row()) if source.isValid() else None
 
     @Slot(int)
-    def ouvrir_en_ligne(self, ligne: int) -> None:
-        """Ouvre l'offre de la ligne dans le navigateur (double-clic)."""
+    def consulter_ligne(self, ligne: int) -> None:
+        """Sélectionne la ligne puis ouvre sa fiche de poste dans
+        l'application (double-clic, Entrée)."""
         self.selectionner(ligne)
-        offre = self._offre_selectionnee()
-        if offre is not None and offre["url"].startswith("https://"):
-            QDesktopServices.openUrl(QUrl(offre["url"]))
+        self.consulter()
 
     def _lancer_tache(
         self, fonction: Callable[[], object], suite: Callable[[object], None]

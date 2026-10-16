@@ -154,6 +154,7 @@ class SourceOffres(Protocol):
         self,
         filtres: FiltresRecherche,
         on_page: Callable[[int, int], None] | None = None,
+        on_fiche: Callable[[int, int], None] | None = None,
     ) -> tuple[list[Offre], int, bool]:
         """Retourne (offres de toutes les pages chargées, nb_pages, arret_anticipe).
 
@@ -163,6 +164,9 @@ class SourceOffres(Protocol):
                 avec (page_courante, nb_pages_a_charger), pour permettre
                 à l'appelant d'afficher une progression sans coupler
                 cette méthode à une bibliothèque d'UI particulière.
+            on_fiche: Callback optionnel appelé après chaque fiche lue
+                pour filtrer (sources qui le font), avec (fiches lues,
+                fiches à lire) ; ignoré par les autres.
 
         Returns:
             Tuple ``(offres, nb_pages, arret_anticipe)`` où ``nb_pages``
