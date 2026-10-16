@@ -16,6 +16,21 @@ ApplicationWindow {
     /*! Index de l'onglet actif : 0 Profils, 1 Recherche, 2 Suivi, 3 Aide, 4 Réglages. */
     property int ongletCourant: 0
 
+    /*! Nombre d'écrans créés en avance après la première image (les autres
+        le sont à la première visite). */
+    property int ecransEnAvance: 0
+
+    function ecranChargeJusqua(index: int): bool {
+        return ongletCourant === index || ecransEnAvance > index
+    }
+
+    Timer {
+        interval: 40
+        running: fenetre.ecransEnAvance < 5
+        repeat: true
+        onTriggered: fenetre.ecransEnAvance++
+    }
+
     width: 1280
     height: 900
     minimumWidth: 900
@@ -34,6 +49,21 @@ ApplicationWindow {
             fenetre.ongletCourant = 1
             fenetre.pont.recherche.modifier_profil(nom)
         }
+    }
+
+    // La question du raccourci est posée au démarrage, avant que l'écran
+    // Réglages (créé plus tard) puisse l'entendre : elle vit donc ici.
+    Connections {
+        target: fenetre.pont.reglages
+        function onQuestion_raccourci(question: string) { dialogueRaccourci.demander(question) }
+    }
+
+    DialogueRaccourci {
+        id: dialogueRaccourci
+        objectName: "dialogueRaccourci"
+        onAjoutDemande: fenetre.pont.reglages.ajouter_raccourci()
+        onRetraitDemande: fenetre.pont.reglages.retirer_raccourci()
+        onRefus: fenetre.pont.reglages.refuser_raccourci()
     }
 
     Connections {
@@ -136,26 +166,43 @@ ApplicationWindow {
                 anchors.fill: parent
                 currentIndex: fenetre.ongletCourant
 
-                EcranProfils {
-                    objectName: "ecranProfils"
-                    profils: fenetre.pont.profils
-                    onNouvelleFiche: fenetre.nouvelleRecherche()
+                // L'écran de l'onglet actif est créé tout de suite, les autres
+                // un par un après la première image : la fenêtre s'ouvre plus vite.
+                Loader {
+                    active: fenetre.ecranChargeJusqua(0)
+                    sourceComponent: EcranProfils {
+                        objectName: "ecranProfils"
+                        profils: fenetre.pont.profils
+                        onNouvelleFiche: fenetre.nouvelleRecherche()
+                    }
                 }
-                EcranRecherche {
-                    objectName: "ecranRecherche"
-                    recherche: fenetre.pont.recherche
-                    suivi: fenetre.pont.suivi
-                    onSuiviDemande: fenetre.ongletCourant = 2
+                Loader {
+                    active: fenetre.ecranChargeJusqua(1)
+                    sourceComponent: EcranRecherche {
+                        objectName: "ecranRecherche"
+                        recherche: fenetre.pont.recherche
+                        suivi: fenetre.pont.suivi
+                        onSuiviDemande: fenetre.ongletCourant = 2
+                    }
                 }
-                EcranSuivi {
-                    objectName: "ecranSuivi"
-                    suivi: fenetre.pont.suivi
+                Loader {
+                    active: fenetre.ecranChargeJusqua(2)
+                    sourceComponent: EcranSuivi {
+                        objectName: "ecranSuivi"
+                        suivi: fenetre.pont.suivi
+                    }
                 }
-                EcranAide { objectName: "ecranAide" }
-                EcranReglages {
-                    objectName: "ecranReglages"
-                    reglages: fenetre.pont.reglages
-                    onModeThemeChoisi: mode => fenetre.pont.enregistrer_mode_theme(mode)
+                Loader {
+                    active: fenetre.ecranChargeJusqua(3)
+                    sourceComponent: EcranAide { objectName: "ecranAide" }
+                }
+                Loader {
+                    active: fenetre.ecranChargeJusqua(4)
+                    sourceComponent: EcranReglages {
+                        objectName: "ecranReglages"
+                        reglages: fenetre.pont.reglages
+                        onModeThemeChoisi: mode => fenetre.pont.enregistrer_mode_theme(mode)
+                    }
                 }
             }
         }

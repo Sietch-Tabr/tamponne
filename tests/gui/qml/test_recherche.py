@@ -32,6 +32,7 @@ def moteur(qapp: QApplication) -> Iterator[QQmlApplicationEngine]:
     moteur.load(
         QUrl.fromLocalFile(str(application.DOSSIER_QML / "Tamponne" / "Fenetre.qml"))
     )
+    moteur.rootObjects()[0].setProperty("ecransEnAvance", 5)
     qapp.processEvents()
     yield moteur
     del moteur

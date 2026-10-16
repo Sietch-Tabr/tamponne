@@ -487,3 +487,21 @@ def test_lecture_des_fiches_prolonge_la_progression_de_la_source(
     ]
     assert controleur._totaux_pages() == (80, 350)
     assert controleur._lire_statut() == "Recherche en cours… étape 80/350"
+
+
+def test_selection_et_progression_n_emettent_que_leur_signal(
+    controleur: ControleurRecherche,
+) -> None:
+    emis: list[str] = []
+    controleur.etat_change.connect(lambda: emis.append("etat"))
+    controleur.progression_change.connect(lambda: emis.append("progression"))
+    controleur.selection_change.connect(lambda: emis.append("selection"))
+
+    controleur.selectionner(-1)
+    controleur._on_progression("MEF", 1, 3)
+    controleur._on_fiches("MEF", 2, 9)
+    assert emis == ["selection", "progression", "progression"]
+
+    emis.clear()
+    controleur.definir("mot_cle", "réseau")
+    assert emis == ["etat"]

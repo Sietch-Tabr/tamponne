@@ -105,7 +105,11 @@ class ControleurRecherche(QObject):
     """Actions et états de l'écran Recherche (objet `pont.recherche`)."""
 
     etat_change = Signal()
-    """Formulaire, avancement ou registre modifié."""
+    """Formulaire, phase, résumé ou erreur modifiés."""
+    progression_change = Signal()
+    """Avancement de la recherche en cours (émis à chaque page ou fiche lue)."""
+    selection_change = Signal()
+    """Ligne sélectionnée du registre (émis à chaque clic)."""
     detail_pret = Signal(dict)
     """Fiche de poste d'une offre, à afficher (même format que le Suivi)."""
     suivi_termine = Signal(str)
@@ -234,9 +238,9 @@ class ControleurRecherche(QObject):
     """Registre trié et filtré (`ProxyOffres` sur `ModeleRegistre`)."""
     phase = Property(str, _lire_phase, notify=etat_change)
     """« vide », « en_cours », « resultats », « aucun » ou « erreur »."""
-    texte_bouton = Property(str, _lire_texte_bouton, notify=etat_change)
-    statut = Property(str, _lire_statut, notify=etat_change)
-    avancement = Property(list, _lire_avancement, notify=etat_change)
+    texte_bouton = Property(str, _lire_texte_bouton, notify=progression_change)
+    statut = Property(str, _lire_statut, notify=progression_change)
+    avancement = Property(list, _lire_avancement, notify=progression_change)
     """Une entrée `{nom, etat}` par source interrogée."""
     resume = Property(str, _lire_resume, notify=etat_change)
     avertissements = Property(str, _lire_avertissements, notify=etat_change)
@@ -249,11 +253,20 @@ class ControleurRecherche(QObject):
     peut_filtrer_nouvelles = Property(
         bool, _lire_peut_filtrer_nouvelles, notify=etat_change
     )
-    ligne_selectionnee = Property(int, _lire_ligne_selectionnee, notify=etat_change)
+    ligne_selectionnee = Property(
+        int, _lire_ligne_selectionnee, notify=selection_change
+    )
     """Ligne du registre (après tri et filtre) sélectionnée, -1 sinon."""
-    numero_selection = Property(str, _lire_numero_selection, notify=etat_change)
+    numero_selection = Property(str, _lire_numero_selection, notify=selection_change)
     """N° (colonne du registre) de l'offre sélectionnée, vide sinon."""
     choix = Property(dict, _lire_choix, constant=True)
+
+    def _tout_change(self) -> None:
+        """Signale un changement qui touche plusieurs groupes de propriétés
+        (rare) ; les chemins fréquents n'émettent que leur signal."""
+        self.etat_change.emit()
+        self.progression_change.emit()
+        self.selection_change.emit()
 
     # --- Formulaire ---
 
@@ -328,7 +341,7 @@ class ControleurRecherche(QObject):
     def reinitialiser(self) -> None:
         """Remet le formulaire à son état par défaut (bouton RAZ)."""
         self._etat = _etat_initial()
-        self.etat_change.emit()
+        self._tout_change()
 
     def construire_filtres(self) -> FiltresRecherche:
         """Filtres de recherche correspondant au formulaire."""
@@ -399,7 +412,7 @@ class ControleurRecherche(QObject):
         if self._thread is not None or not self._charger_profil(nom):
             return
         self._edition = True
-        self.etat_change.emit()
+        self._tout_change()
 
     @Slot()
     def nouvelle_recherche(self) -> None:
@@ -409,14 +422,14 @@ class ControleurRecherche(QObject):
         self._etat = _etat_initial()
         self._nom_profil = None
         self._edition = False
-        self.etat_change.emit()
+        self._tout_change()
 
     @Slot()
     def annuler_edition(self) -> None:
         """Quitte le mode édition sans enregistrer."""
         self._edition = False
         self._nom_profil = None
-        self.etat_change.emit()
+        self._tout_change()
         self.retour_profils.emit()
 
     @Slot()
@@ -426,7 +439,7 @@ class ControleurRecherche(QObject):
         if self._edition and self._nom_profil is not None:
             modifier_profil(self._nom_profil, self.construire_filtres())
             self._edition = False
-            self.etat_change.emit()
+            self._tout_change()
             self.retour_profils.emit()
             return
         self.lancer()
@@ -470,7 +483,7 @@ class ControleurRecherche(QObject):
             # Sans la liste, le filtre serait abandonné sans rien dire.
             self._phase = "erreur"
             self._erreur = MESSAGE_ORGANISATIONS_ABSENTES
-            self.etat_change.emit()
+            self._tout_change()
             return
         self._filtres_lances = filtres
         self._profil_lance = (
@@ -501,36 +514,36 @@ class ControleurRecherche(QObject):
         self._travailleur.resultat.connect(self._thread.quit)
         self._travailleur.erreur.connect(self._thread.quit)
         self._thread.finished.connect(self._on_thread_termine)
-        self.etat_change.emit()
+        self._tout_change()
         self._thread.start()
 
     def _on_source_en_cours(self, nom: str) -> None:
         self._sources[nom] = "en cours…"
-        self.etat_change.emit()
+        self.progression_change.emit()
 
     def _on_progression(self, nom: str, page: int, total: int) -> None:
         self._pages[nom] = (page, total)
         if total > 1:
             self._sources[nom] = f"page {page}/{total}"
-        self.etat_change.emit()
+        self.progression_change.emit()
 
     def _on_fiches(self, nom: str, lues: int, total: int) -> None:
         pages, _ = self._pages.get(nom, (0, 0))
         base = self._pages_liste.setdefault(nom, pages)
         self._pages[nom] = (base + lues, base + total)
         self._sources[nom] = f"fiches {lues}/{total}"
-        self.etat_change.emit()
+        self.progression_change.emit()
 
     def _on_offres_source(self, nom: str, nombre: int) -> None:
         self._sources[nom] = f"terminé · {nombre} offre{'s' if nombre > 1 else ''}"
-        self.etat_change.emit()
+        self.progression_change.emit()
 
     def _on_avertissement(self, message: str) -> None:
         self._avertissements.append(message)
         nom = message.split(" indisponible", 1)[0]
         if nom in self._sources:
             self._sources[nom] = "indisponible"
-        self.etat_change.emit()
+        self._tout_change()
 
     def _on_resultat(
         self, offres: list[Offre], nb_pages: int, arret_anticipe: bool
@@ -557,29 +570,29 @@ class ControleurRecherche(QObject):
             datetime.now(),
         )
         self._phase = "resultats" if resultat["offres"] else "aucun"
-        self.etat_change.emit()
+        self._tout_change()
 
     def _on_erreur(self, message: str) -> None:
         self._erreur = message
         self._phase = "erreur"
-        self.etat_change.emit()
+        self._tout_change()
 
     def _on_thread_termine(self) -> None:
         self._thread = None
         self._travailleur = None
-        self.etat_change.emit()
+        self._tout_change()
 
     def remplacer_organisations(self, organisations: Organisations) -> None:
         """Nouveau cache des organisations (Réglages › Rafraîchir le cache,
         ou au lancement), utilisé dès la prochaine sélection ou recherche."""
         self._orgas_cache = organisations
-        self.etat_change.emit()
+        self._tout_change()
 
     def definir_chargement_organisations(self, en_cours: bool) -> None:
         """Signale un chargement de la liste des organisations en cours."""
         if en_cours != self._chargement_organisations:
             self._chargement_organisations = en_cours
-            self.etat_change.emit()
+            self._tout_change()
 
     def arreter(self) -> None:
         """Attend la fin d'une recherche ou d'un appel réseau en cours :
@@ -599,14 +612,14 @@ class ControleurRecherche(QObject):
         """Filtre le registre sur toutes les colonnes, sans relancer."""
         self._proxy.setFilterFixedString(texte)
         self._ligne_selectionnee = -1
-        self.etat_change.emit()
+        self._tout_change()
 
     @Slot(bool)
     def nouvelles_seulement(self, actif: bool) -> None:
         """Restreint le registre aux offres nouvelles."""
         self._proxy.definir_nouvelles_seulement(actif)
         self._ligne_selectionnee = -1
-        self.etat_change.emit()
+        self._tout_change()
 
     @Slot(int)
     def trier(self, colonne: int) -> None:
@@ -620,7 +633,7 @@ class ControleurRecherche(QObject):
         )
         self._proxy.sort(colonne, ordre)
         self._ligne_selectionnee = -1
-        self.etat_change.emit()
+        self._tout_change()
 
     def _lire_tri(self) -> dict[str, int]:
         return {
@@ -635,7 +648,7 @@ class ControleurRecherche(QObject):
     def selectionner(self, ligne: int) -> None:
         """Sélectionne une ligne du registre (-1 pour aucune)."""
         self._ligne_selectionnee = ligne if 0 <= ligne < self._proxy.rowCount() else -1
-        self.etat_change.emit()
+        self.selection_change.emit()
 
     def _offre_selectionnee(self) -> Offre | None:
         if self._ligne_selectionnee < 0:

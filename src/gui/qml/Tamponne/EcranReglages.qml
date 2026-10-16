@@ -62,19 +62,10 @@ Item {
 
     Connections {
         target: racine.reglages
-        function onQuestion_raccourci(question: string) { dialogueRaccourci.demander(question) }
         function onErreur_signalee(message: string) {
             avisErreur.message = message
             avisErreur.open()
         }
-    }
-
-    DialogueRaccourci {
-        id: dialogueRaccourci
-        objectName: "dialogueRaccourci"
-        onAjoutDemande: racine.reglages.ajouter_raccourci()
-        onRetraitDemande: racine.reglages.retirer_raccourci()
-        onRefus: racine.reglages.refuser_raccourci()
     }
 
     FileDialog {

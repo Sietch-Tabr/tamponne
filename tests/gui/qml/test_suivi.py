@@ -30,6 +30,7 @@ def _charger(qapp: QApplication) -> tuple[QQmlApplicationEngine, Pont, list[str]
     moteur.load(
         QUrl.fromLocalFile(str(application.DOSSIER_QML / "Tamponne" / "Fenetre.qml"))
     )
+    moteur.rootObjects()[0].setProperty("ecransEnAvance", 5)
     moteur.rootObjects()[0].setProperty("ongletCourant", ONGLET_SUIVI)
     qapp.processEvents()
     return moteur, pont, avertissements
