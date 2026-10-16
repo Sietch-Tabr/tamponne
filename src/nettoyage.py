@@ -12,6 +12,7 @@ from pathlib import Path
 
 journal = logging.getLogger(__name__)
 
+# Recalculée ici (comme dans `src.maj`) : module d'amorçage, indépendant de `chemins`.
 CHEMIN_RACINE = Path(__file__).parent.parent
 
 FICHIERS_OBSOLETES: tuple[str, ...] = (

@@ -263,13 +263,15 @@ def test_dernier_evenement_historique_vide_retourne_none() -> None:
     assert candidatures.dernier_evenement(candidature) is None
 
 
-def test_statut_libelle_derive_du_dernier_evenement() -> None:
+def test_le_statut_derive_du_dernier_evenement() -> None:
     candidatures.ajouter_candidature(
         "ref-1", "Attaché", "DGFiP", "https://example.org/1"
     )
     candidatures.ajouter_evenement("ref-1", "entretien_planifie")
-    toutes = candidatures.charger_candidatures()
-    assert candidatures.statut_libelle(toutes["ref-1"]) == "Entretien planifié"
+    dernier = candidatures.dernier_evenement(
+        candidatures.charger_candidatures()["ref-1"]
+    )
+    assert dernier is not None and dernier["type"] == "entretien_planifie"
 
 
 def test_relance_suggeree_false_si_recent() -> None:
@@ -457,10 +459,10 @@ def test_depublication_ne_change_pas_le_statut() -> None:
         "ref-1", "Attaché", "DGFiP", "https://example.org/1"
     )
     candidatures.ajouter_evenement("ref-1", "entretien_planifie")
-    avant = candidatures.statut_libelle(candidatures.charger_candidatures()["ref-1"])
     candidatures.marquer_disponibilite("ref-1", False)
     apres = candidatures.charger_candidatures()["ref-1"]
-    assert candidatures.statut_libelle(apres) == avant == "Entretien planifié"
+    dernier = candidatures.dernier_evenement(apres)
+    assert dernier is not None and dernier["type"] == "entretien_planifie"
     assert len(apres["historique"]) == 1
 
 

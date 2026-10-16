@@ -133,7 +133,7 @@ def test_maj_cache_offres_purge_offre_disparue_depuis_longtemps() -> None:
     }
     cache._sauvegarder_offres(toutes)
     cache.maj_cache_offres("mon-profil", [])
-    assert cache.obtenir_offres_cachetees("mon-profil") == {}
+    assert cache._charger_offres().get("mon-profil") == {}
 
 
 def test_maj_cache_offres_conserve_offre_disparue_recemment() -> None:
@@ -148,7 +148,7 @@ def test_maj_cache_offres_conserve_offre_disparue_recemment() -> None:
     }
     cache._sauvegarder_offres(toutes)
     cache.maj_cache_offres("mon-profil", [])
-    assert "REF1" in cache.obtenir_offres_cachetees("mon-profil")
+    assert "REF1" in cache._charger_offres().get("mon-profil", {})
 
 
 def test_maj_cache_offres_purge_immediate_si_derniere_vue_non_parsable() -> None:
@@ -163,7 +163,7 @@ def test_maj_cache_offres_purge_immediate_si_derniere_vue_non_parsable() -> None
     }
     cache._sauvegarder_offres(toutes)
     cache.maj_cache_offres("mon-profil", [])
-    assert cache.obtenir_offres_cachetees("mon-profil") == {}
+    assert cache._charger_offres().get("mon-profil") == {}
 
 
 def test_maj_cache_offres_ignore_offres_sans_reference() -> None:
@@ -171,7 +171,7 @@ def test_maj_cache_offres_ignore_offres_sans_reference() -> None:
     offre_sans_ref["reference"] = ""
     nouvelles = cache.maj_cache_offres("mon-profil", [offre_sans_ref])
     assert nouvelles == set()
-    assert cache.obtenir_offres_cachetees("mon-profil") == {}
+    assert cache._charger_offres().get("mon-profil") == {}
 
 
 # --- organisations_en_cache ---

@@ -64,7 +64,7 @@ def exporter_html(
         lignes_offres.append(
             f"<tr>"
             f"<td>{i}</td>"
-            f'<td><a href="{url}" target="_blank">{titre_echappe}</a>'
+            f'<td><a href="{url}" target="_blank" rel="noopener noreferrer">{titre_echappe}</a>'
             f'<br><span class="ref">{ref}</span></td>'
             f"<td>{employeur}</td>"
             f"<td>{localisation}</td>"

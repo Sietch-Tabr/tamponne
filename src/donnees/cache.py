@@ -220,11 +220,6 @@ def maj_cache_offres(nom_profil: str, offres_fraiches: list[Offre]) -> set[str]:
     return nouvelles
 
 
-def obtenir_offres_cachetees(nom_profil: str) -> dict[str, OffreCache]:
-    """Retourne les offres en cache pour un profil (référence → données)."""
-    return _charger_offres().get(nom_profil, {})
-
-
 # --- Cache des organisations ---
 
 

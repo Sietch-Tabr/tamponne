@@ -529,3 +529,36 @@ def test_principal_lance_une_fois_et_libere_le_verrou(
     assert lanceur.principal() == 7
     assert pendant == [False]
     assert lanceur.verrou_libre()
+
+
+def test_anonymiser_ignore_la_casse_sous_windows(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(lanceur.Path, "home", lambda: Path("/Users/Cedric"))
+    monkeypatch.setattr(lanceur.sys, "platform", "win32")
+    assert lanceur.anonymiser("/users/CEDRIC/data et /Users/Cedric/x") == (
+        "~/data et ~/x"
+    )
+
+
+def test_anonymiser_respecte_la_casse_hors_windows(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(lanceur.Path, "home", lambda: Path("/home/Cedric"))
+    monkeypatch.setattr(lanceur.sys, "platform", "linux")
+    assert lanceur.anonymiser("/home/cedric/x et /home/Cedric/y") == (
+        "/home/cedric/x et ~/y"
+    )
+
+
+def test_executer_commande_introuvable_rend_un_code_d_echec_et_le_journalise(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(lanceur, "_sortie", sys.stdout)
+    code = lanceur._executer(["programme-qui-n-existe-pas", "--option"])
+
+    assert code == lanceur.CODE_LANCEMENT_IMPOSSIBLE
+    assert "Impossible de lancer programme-qui-n-existe-pas" in capsys.readouterr().out
+    assert "Impossible de lancer programme-qui-n-existe-pas" in (
+        lanceur.CHEMIN_JOURNAL.read_text(encoding="utf-8")
+    )

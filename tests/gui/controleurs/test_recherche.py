@@ -378,7 +378,7 @@ def test_fiche_lancee_telle_quelle_note_son_lancement(
         profils.charger_profils()["f"].get("dernier_lancement")
         == date.today().isoformat()
     )
-    assert cache.obtenir_offres_cachetees("f")
+    assert cache._charger_offres().get("f", {})
 
 
 def test_fiche_aux_criteres_modifies_n_est_pas_touchee(
@@ -397,7 +397,7 @@ def test_fiche_aux_criteres_modifies_n_est_pas_touchee(
     controleur.lancer()
     _attendre(controleur, qtbot)
     assert profils.charger_profils()["f"].get("dernier_lancement") == "2000-01-01"
-    assert cache.obtenir_offres_cachetees("f") == {}
+    assert cache._charger_offres().get("f", {}) == {}
     assert "nouvelle" not in controleur.property("resume")
 
 

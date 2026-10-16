@@ -507,9 +507,17 @@ def test_telecharger_abandonne_une_archive_trop_volumineuse(
         )
 
 
-def test_marqueur_incomplet_ou_de_mauvais_type_est_ignore() -> None:
+def test_marqueur_incomplet_est_complete_par_des_valeurs_vides() -> None:
     maj.CHEMIN_MARQUEUR.write_text('{"version": "1.1.0"}', encoding="utf-8")
-    assert maj.lire_maj_disponible() is None
+    assert maj.lire_maj_disponible() == {
+        "version": "1.1.0",
+        "notes": "",
+        "url_zip": "",
+        "url_publication": "",
+    }
+
+
+def test_marqueur_de_mauvais_type_est_ignore() -> None:
     maj.CHEMIN_MARQUEUR.write_text("[1, 2]", encoding="utf-8")
     assert maj.lire_maj_disponible() is None
     maj.CHEMIN_MARQUEUR.write_text(

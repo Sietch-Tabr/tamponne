@@ -23,7 +23,6 @@ from datetime import date
 from pathlib import Path
 from typing import cast
 
-from src.chemins import RACINE
 from src.types import EchecMaj, InfoMaj
 from src.utils import ecriture_atomique
 
@@ -39,7 +38,9 @@ TAILLE_MAX_ARCHIVE = 100 * 1024 * 1024
 """Octets au-delà desquels le téléchargement est abandonné (une publication
 pèse quelques Mo)."""
 _CLES_INFO_MAJ = ("version", "notes", "url_zip", "url_publication")
-CHEMIN_RACINE = RACINE
+# Recalculée ici, pas lue dans `src.chemins` : l'ancien lanceur, resté en mémoire
+# pendant une mise à jour, ne doit dépendre d'aucun module qui pourrait changer.
+CHEMIN_RACINE = Path(__file__).parent.parent
 CHEMIN_PYPROJECT = CHEMIN_RACINE / "pyproject.toml"
 CHEMIN_MARQUEUR = CHEMIN_RACINE / "data" / "maj_disponible.json"
 CHEMIN_ECHEC = CHEMIN_RACINE / "data" / "maj_echouee.json"
@@ -143,10 +144,11 @@ def lire_maj_disponible() -> InfoMaj | None:
     except json.JSONDecodeError, OSError:
         return None
     if not isinstance(donnees, dict) or not all(
-        isinstance(donnees.get(cle), str) for cle in _CLES_INFO_MAJ
+        isinstance(donnees.get(cle, ""), str) for cle in _CLES_INFO_MAJ
     ):
         return None
-    return cast(InfoMaj, donnees)
+    # Une clé absente vaut « vide » : `appliquer_maj` refuse alors l'archive.
+    return cast(InfoMaj, {cle: donnees.get(cle, "") for cle in _CLES_INFO_MAJ})
 
 
 def ecrire_maj_disponible(info: InfoMaj) -> None:
