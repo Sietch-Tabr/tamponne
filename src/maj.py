@@ -21,7 +21,9 @@ lazy import urllib.request
 lazy import zipfile
 from datetime import date
 from pathlib import Path
+from typing import cast
 
+from src.chemins import RACINE
 from src.types import EchecMaj, InfoMaj
 from src.utils import ecriture_atomique
 
@@ -31,7 +33,13 @@ URL_API_RELEASES = (
 )
 PREFIXE_ARCHIVES = "https://codeberg.org/Kwaite/tamponne/"
 """Seules les archives du dépôt sont téléchargées, quoi que dise l'API."""
-CHEMIN_RACINE = Path(__file__).parent.parent
+HOTE_ARCHIVES = "https://codeberg.org/"
+"""Adresse que doit encore avoir le téléchargement après d'éventuelles redirections."""
+TAILLE_MAX_ARCHIVE = 100 * 1024 * 1024
+"""Octets au-delà desquels le téléchargement est abandonné (une publication
+pèse quelques Mo)."""
+_CLES_INFO_MAJ = ("version", "notes", "url_zip", "url_publication")
+CHEMIN_RACINE = RACINE
 CHEMIN_PYPROJECT = CHEMIN_RACINE / "pyproject.toml"
 CHEMIN_MARQUEUR = CHEMIN_RACINE / "data" / "maj_disponible.json"
 CHEMIN_ECHEC = CHEMIN_RACINE / "data" / "maj_echouee.json"
@@ -131,9 +139,14 @@ def lire_maj_disponible() -> InfoMaj | None:
     if not CHEMIN_MARQUEUR.exists():
         return None
     try:
-        return json.loads(CHEMIN_MARQUEUR.read_text(encoding="utf-8"))
+        donnees = json.loads(CHEMIN_MARQUEUR.read_text(encoding="utf-8"))
     except json.JSONDecodeError, OSError:
         return None
+    if not isinstance(donnees, dict) or not all(
+        isinstance(donnees.get(cle), str) for cle in _CLES_INFO_MAJ
+    ):
+        return None
+    return cast(InfoMaj, donnees)
 
 
 def ecrire_maj_disponible(info: InfoMaj) -> None:
@@ -229,12 +242,26 @@ def valider_maj() -> None:
 
 def _telecharger(url: str, destination: Path) -> None:
     """Enregistre `url` dans `destination`, sans jamais attendre plus de
-    `_TIMEOUT_TELECHARGEMENT` secondes une réponse ou des données."""
+    `_TIMEOUT_TELECHARGEMENT` secondes une réponse ou des données.
+
+    Raises:
+        RuntimeError: Redirigé hors de Codeberg, ou archive plus grosse que
+            `TAILLE_MAX_ARCHIVE`.
+    """
     with (
         urllib.request.urlopen(url, timeout=_TIMEOUT_TELECHARGEMENT) as reponse,
         destination.open("wb") as fichier,
     ):
-        shutil.copyfileobj(reponse, fichier)
+        if not reponse.geturl().startswith(HOTE_ARCHIVES):
+            raise RuntimeError(
+                "Archive de mise à jour redirigée hors de Codeberg, refusée."
+            )
+        recu = 0
+        while morceau := reponse.read(1024 * 1024):
+            recu += len(morceau)
+            if recu > TAILLE_MAX_ARCHIVE:
+                raise RuntimeError("Archive de mise à jour trop volumineuse.")
+            fichier.write(morceau)
 
 
 def appliquer_maj(info: InfoMaj) -> None:
@@ -249,8 +276,8 @@ def appliquer_maj(info: InfoMaj) -> None:
 
     Raises:
         RuntimeError: Archive hors du dépôt, téléchargement, extraction ou
-            sauvegarde impossible, rien n'est installé — l'appelant décide de continuer avec la
-            version actuelle plutôt que bloquer.
+            sauvegarde impossible, rien n'est installé : l'appelant décide de
+            continuer avec la version actuelle plutôt que bloquer.
     """
     if not info["url_zip"]:
         raise RuntimeError("URL de l'archive de mise à jour manquante.")
@@ -267,10 +294,13 @@ def appliquer_maj(info: InfoMaj) -> None:
                 archive.extractall(dossier_tmp)
                 # extractall() n'applique pas les bits Unix (rwx) codés dans
                 # l'archive : sans ça, Tamponne.command perd son +x à chaque maj.
+                racine_tmp = Path(dossier_tmp).resolve()
                 for membre in archive.infolist():
                     permissions = (membre.external_attr >> 16) & 0o777
-                    if permissions:
-                        (Path(dossier_tmp) / membre.filename).chmod(permissions)
+                    cible = (racine_tmp / membre.filename).resolve()
+                    # Un nom d'archive piégé (`../`) ne doit pas viser hors du dossier.
+                    if permissions and cible.is_relative_to(racine_tmp):
+                        cible.chmod(permissions)
         except (OSError, zipfile.BadZipFile) as e:
             raise RuntimeError(
                 f"Impossible de télécharger ou d'extraire la mise à jour\u00a0: {e}"
@@ -330,7 +360,10 @@ def _purger(racine: Path, fichiers_publies: set[Path]) -> None:
     """Supprime sous `DOSSIERS_PURGES` ce que la publication ne contient plus."""
     for nom in DOSSIERS_PURGES:
         dossier = racine / nom
-        if not dossier.is_dir():
+        # Une publication sans ce dossier est anormale : ne rien y supprimer.
+        if not dossier.is_dir() or not any(
+            p.parts[:1] == (nom,) for p in fichiers_publies
+        ):
             continue
         for cache in sorted(dossier.rglob("__pycache__"), reverse=True):
             shutil.rmtree(cache, ignore_errors=True)
