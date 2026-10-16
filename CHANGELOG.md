@@ -4,6 +4,29 @@ Toutes les évolutions notables de Tamponné, de la plus récente à la plus
 ancienne. Le détail de chaque version est aussi publié sur la page
 [Releases](https://codeberg.org/Kwaite/tamponne/releases) du dépôt.
 
+## [1.5.0] — 2026-10-16
+
+### Nouveautés
+
+- Avis de mise à jour : les notes réunissent toutes les versions publiées depuis celle installée, et non plus seulement la dernière
+- Localisation : un département se trouve aussi par son numéro (« 75 », « 92 ») et s'affiche « Paris (75) »
+- Lanceurs : les messages de Tamponné (installation ou mise à jour de uv, téléchargement de Python) s'affichent en bandeau bleu, bien distincts des sorties de uv
+- Lanceurs : Tamponné ne s'ouvre plus qu'une fois à la fois ; un double-clic répété ou un clic de trop prévient que l'application est déjà ouverte au lieu de relancer l'installation ou d'ouvrir une deuxième fenêtre
+
+### Corrections
+
+- Recherche : Passerelles (Bercy) et FHF ne renvoyaient pas seulement les offres du lieu, de la catégorie et du domaine demandés ; ces critères sont maintenant appliqués par Tamponné, d'après la liste et la fiche de chaque offre (département, catégorie, domaine, direction, expérience, management, télétravail)
+- Recherche : le lieu d'une offre que le site n'indique pas dans sa liste est lu sur sa fiche
+- Recherche : Emploi territorial ignorait une région choisie comme localisation ; elle est remplacée par ses départements
+- Recherche : la date de publication est appliquée aux sources dont le site ne sait pas la filtrer
+- Recherche : une source n'est jamais écartée pour un critère qu'elle ne sait pas appliquer, une ligne du résumé prévient que ses offres ne sont pas triées dessus
+- Grades supérieurs : les titres « IP/AP » et « IP/IDIV » sont maintenant reconnus et masqués par défaut
+- Fiche en modification : le bouton « Enregistrer la fiche » devient « Modifier la fiche », qui ne laisse plus croire à la création d'une nouvelle fiche
+
+### En coulisses
+
+- Les fiches lues pour filtrer sont lues en parallèle et gardées 30 jours dans `data/fiches.json` (hors export des données) : une même recherche est environ deux fois plus rapide la seconde fois
+
 ## [1.4.2] — 2026-10-15
 
 ### Corrections
