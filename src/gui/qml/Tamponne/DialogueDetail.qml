@@ -93,30 +93,6 @@ Dialogue {
                 color: Theme.encre2
                 lineHeight: Math.round(16 * 1.6)
             }
-            Flow {
-                Layout.fillWidth: true
-                spacing: 14
-
-                BoutonTampon {
-                    text: "Postuler"
-                    enabled: racine.fiche.peutPostuler === true
-                    onClicked: racine.postuler(racine.fiche.reference)
-                }
-                BoutonEtiquette {
-                    text: "Consulter en ligne"
-                    // Sans style désactivé, un bouton inopérant paraîtrait cliquable.
-                    visible: racine.fiche.enLigne === true
-                    onClicked: racine.consulterEnLigne(racine.fiche.reference)
-                }
-                BoutonEtiquette {
-                    text: "Voir la copie archivée"
-                    visible: racine.fiche.archivePresente === true
-                    ToolTip.visible: hovered
-                    ToolTip.text: "PDF autonome de la fiche telle qu'elle était au moment du suivi, consultable hors ligne ou après dépublication"
-                    onClicked: racine.voirArchive(racine.fiche.reference)
-                }
-            }
-
             Rubrique {
                 visible: (racine.fiche.description || "") !== ""
                 titreRubrique: "Description du poste"
@@ -200,6 +176,24 @@ Dialogue {
     }
 
     boutons: [
+        BoutonTampon {
+            text: "Postuler"
+            enabled: racine.fiche.peutPostuler === true
+            onClicked: racine.postuler(racine.fiche.reference)
+        },
+        BoutonEtiquette {
+            text: "Consulter en ligne"
+            // Sans style désactivé, un bouton inopérant paraîtrait cliquable.
+            visible: racine.fiche.enLigne === true
+            onClicked: racine.consulterEnLigne(racine.fiche.reference)
+        },
+        BoutonEtiquette {
+            text: "Voir la copie archivée"
+            visible: racine.fiche.archivePresente === true
+            ToolTip.visible: hovered
+            ToolTip.text: "PDF autonome de la fiche telle qu'elle était au moment du suivi, consultable hors ligne ou après dépublication"
+            onClicked: racine.voirArchive(racine.fiche.reference)
+        },
         BoutonEtiquette {
             id: boutonFermer
             text: "Fermer"

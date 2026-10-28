@@ -145,7 +145,7 @@ Item {
                     Terme { text: "Type de poste" }
                     Definition { text: "Par défaut, seuls les postes ouverts aux titulaires sont affichés (titulaires + postes ouverts aux deux statuts). «\u00a0Titulaire uniquement\u00a0» et «\u00a0Contractuel uniquement\u00a0» resserrent, «\u00a0Tous (y compris contractuels)\u00a0» ajoute les postes réservés aux contractuels." }
                     Terme { text: "Options" }
-                    Definition { text: "Management et Télétravail\u00a0: cochés = seulement les postes concernés. Le mot-clé est transmis tel quel au moteur de recherche de chaque site." }
+                    Definition { text: "Management et Télétravail\u00a0: cochés = seulement les postes concernés. Le mot-clé est transmis tel quel au moteur de recherche de chaque site, qui classe par pertinence sans exiger le mot exact\u00a0: une recherche «\u00a0SI1\u00a0» place les offres «\u00a0SI1\u00a0» en tête, puis propose des offres «\u00a0SI\u00a0», «\u00a0SI3\u00a0» ou «\u00a0SIC\u00a0»." }
                     Terme { text: "Expérience et date de publication" }
                     Definition { text: "Expérience souhaitée (débutant, confirmé, expert) et ancienneté de l'offre (48\u00a0heures, 7 ou 14\u00a0jours)\u00a0; «\u00a0Indifférente\u00a0» ne filtre pas." }
                     Terme { text: "RAZ" }
