@@ -161,7 +161,7 @@ def contenu_dossier(
         )
 
     jours: int | None = None
-    if relance_suggeree(candidature) and historique:
+    if relance_suggeree(candidature, aujourd_hui) and historique:
         jours = (aujourd_hui - date.fromisoformat(historique[-1][1]["date"])).days
 
     lieu = candidature.get("offre_localisation") or ""
