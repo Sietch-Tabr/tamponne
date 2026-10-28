@@ -4,6 +4,21 @@ Toutes les évolutions notables de Tamponné, de la plus récente à la plus
 ancienne. Le détail de chaque version est aussi publié sur la page
 [Releases](https://codeberg.org/Kwaite/tamponne/releases) du dépôt.
 
+## [1.7.0] — 2026-10-28
+
+### Nouveautés
+
+- Fiche de poste : Postuler, Consulter en ligne et Voir la copie archivée passent dans le pied de la fenêtre, à côté de Fermer, et restent visibles pendant le défilement ; la fiche gagne la place qu'ils occupaient
+- Aide : précise que le mot-clé est transmis tel quel au moteur de chaque site, qui classe par pertinence sans exiger le mot exact (« SI1 » place les offres « SI1 » en tête, puis propose « SI », « SI3 » ou « SIC »)
+
+### Corrections
+
+- Suivi : la suggestion de relance se calcule sur la date fournie à l'écran au lieu de la date réelle du jour, ce qui rendait un test dépendant de la date
+
+### En coulisses
+
+- Mise à jour des dépendances : soupsieve 3.0.4, pytest 9.2.0, pluggy 1.7.0, ast-serialize 0.13.1
+
 ## [1.6.2] — 2026-10-16
 
 ### Corrections

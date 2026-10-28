@@ -348,14 +348,19 @@ def depublication_a_signaler(candidature: Candidature) -> bool:
     return not candidature.get("disponible", True) and not dossier_clos(candidature)
 
 
-def relance_suggeree(candidature: Candidature) -> bool:
+def relance_suggeree(
+    candidature: Candidature, aujourd_hui: date | None = None
+) -> bool:
     """True si aucun événement depuis plus de `SEUIL_RELANCE_JOURS` et
-    que la candidature n'est pas déjà close (réponse positive/refus)."""
+    que la candidature n'est pas déjà close (réponse positive/refus).
+    `aujourd_hui` vaut la date du jour par défaut."""
     dernier = dernier_evenement(candidature)
     if dernier is None or dossier_clos(candidature):
         return False
     try:
-        jours_ecoules = (date.today() - date.fromisoformat(dernier["date"])).days
+        jours_ecoules = (
+            (aujourd_hui or date.today()) - date.fromisoformat(dernier["date"])
+        ).days
     except ValueError:
         return False
     return jours_ecoules >= SEUIL_RELANCE_JOURS
