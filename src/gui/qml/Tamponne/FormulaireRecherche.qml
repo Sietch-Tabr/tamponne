@@ -5,7 +5,7 @@ import QtQuick.Layouts
 import Tamponne
 
 /*! Formulaire « Demande de recherche » (cases façon Cerfa) ou, en mode
-    édition, « Modification de fiche ». L'état vit dans le contrôleur. */
+    édition, « Modification de demande ». L'état vit dans le contrôleur. */
 Feuille {
     id: racine
 
@@ -23,7 +23,7 @@ Feuille {
     implicitHeight: colonne.implicitHeight + 36
 
     Accessible.role: Accessible.Form
-    Accessible.name: recherche.edition ? "Modification de fiche" : "Critères de recherche"
+    Accessible.name: recherche.edition ? "Modification de demande" : "Critères de recherche"
 
     component Champ: ColumnLayout {
         id: champ
@@ -55,7 +55,7 @@ Feuille {
                 width: parent.width
                 Texte {
                     Layout.fillWidth: true
-                    text: racine.recherche.edition ? "Modification de fiche" : "Demande de recherche"
+                    text: racine.recherche.edition ? "Modification de demande" : "Demande de recherche"
                     font.pixelSize: 18
                     font.capitalization: Font.AllUppercase
                     font.letterSpacing: 0.6
@@ -84,7 +84,7 @@ Feuille {
         Texte {
             Layout.fillWidth: true
             visible: racine.recherche.edition
-            text: "Fiche «\u00a0" + racine.recherche.intitule_edition + "\u00a0»\u00a0: les cases ci-dessous remplacent ses critères."
+            text: "Demande «\u00a0" + racine.recherche.intitule_edition + "\u00a0»\u00a0: les cases ci-dessous remplacent ses critères."
             font.pixelSize: 15
             lineHeight: Math.round(15 * 1.55)
         }
@@ -272,7 +272,7 @@ Feuille {
 
             BoutonEtiquette {
                 Layout.fillWidth: true
-                text: "Créer une fiche"
+                text: "Créer une demande"
                 onClicked: racine.classementDemande()
             }
             BoutonEtiquette {

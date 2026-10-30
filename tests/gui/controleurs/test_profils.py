@@ -39,7 +39,7 @@ def _valeur(controleur: ControleurProfils, ligne: int, nom: bytes) -> object:
 @pytest.mark.usefixtures("deux_fiches")
 def test_fiches_exposent_intitule_et_resume(qapp: QApplication) -> None:
     controleur = ControleurProfils(qapp)
-    assert controleur.property("texte_nombre") == "2 fiches classées"
+    assert controleur.property("texte_nombre") == "2 demandes classées"
     assert _valeur(controleur, 0, b"intitule") == "Attaché, Paris et petite couronne"
     assert _valeur(controleur, 1, b"intitule") == "hospitalier-achats"
     assert _valeur(controleur, 1, b"lignes") == [
@@ -54,14 +54,14 @@ def test_dupliquer_refuse_nom_vide_ou_existant(qapp: QApplication) -> None:
     controleur = ControleurProfils(qapp)
     assert (
         controleur.dupliquer("attache-paris", "  ", "")
-        == "Donner un nom à la nouvelle fiche."
+        == "Donner un nom à la nouvelle demande."
     )
     assert controleur.dupliquer("attache-paris", "hospitalier-achats", "") == (
-        "Une fiche porte déjà ce nom."
+        "Une demande porte déjà ce nom."
     )
     assert (
         controleur.dupliquer("absente", "copie", "")
-        == "La fiche d'origine n'existe plus."
+        == "La demande d'origine n'existe plus."
     )
     assert controleur.dupliquer("attache-paris", " attache-copie ", "") == ""
     assert "attache-copie" in profils.charger_profils()

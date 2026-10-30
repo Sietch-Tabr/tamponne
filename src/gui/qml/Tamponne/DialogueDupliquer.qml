@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import Tamponne
 
-/*! « Dupliquer la fiche » : nom et intitulé de la copie, proposés
+/*! « Dupliquer la demande » : nom et intitulé de la copie, proposés
     « <nom>-copie » et « <intitulé> (copie) ». */
 Dialogue {
     id: racine
@@ -15,7 +15,7 @@ Dialogue {
         `refuser()` ou ferme la fenêtre. */
     signal duplique(string nom, string nouveauNom, string intituleCopie)
 
-    titre: "Dupliquer la fiche"
+    titre: "Dupliquer la demande"
     width: 470
 
     function ouvrirPour(nomFiche: string, intituleFiche: string) {
@@ -45,12 +45,12 @@ Dialogue {
     ColumnLayout {
         Layout.fillWidth: true
         spacing: 4
-        EtiquetteChamp { text: "Nom de la nouvelle fiche" }
+        EtiquetteChamp { text: "Nom de la nouvelle demande" }
         ChampSouligne {
             id: champNom
             objectName: "champNom"
             Layout.fillWidth: true
-            Accessible.name: "Nom de la nouvelle fiche"
+            Accessible.name: "Nom de la nouvelle demande"
             onAccepted: racine.duplique(racine.nom, text, champIntitule.text)
         }
         Item { Layout.preferredHeight: 10 }

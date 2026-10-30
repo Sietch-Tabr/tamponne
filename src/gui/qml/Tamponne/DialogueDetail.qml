@@ -19,6 +19,7 @@ Dialogue {
     signal postuler(string reference)
     signal consulterEnLigne(string reference)
     signal voirArchive(string reference)
+    signal suivre(string reference)
 
     titre: ""
     width: Math.min(860, parent ? parent.width - 56 : 860)
@@ -178,14 +179,21 @@ Dialogue {
     boutons: [
         BoutonTampon {
             text: "Postuler"
-            enabled: racine.fiche.peutPostuler === true
+            // Sans lien de candidature propre (Passerelles, ou lien identique à
+            // l'offre), « Postuler sur le site » ci-dessous ouvre la page de l'offre.
+            visible: racine.fiche.peutPostuler === true
             onClicked: racine.postuler(racine.fiche.reference)
         },
         BoutonEtiquette {
-            text: "Consulter en ligne"
-            // Sans style désactivé, un bouton inopérant paraîtrait cliquable.
+            text: racine.fiche.peutPostuler === true ? "Consulter en ligne" : "Postuler sur le site"
             visible: racine.fiche.enLigne === true
             onClicked: racine.consulterEnLigne(racine.fiche.reference)
+        },
+        BoutonEtiquette {
+            text: racine.fiche.dejaSuivie === true ? "Dossier ouvert" : "Tamponner pour suivi"
+            visible: racine.fiche.suivable === true
+            enabled: racine.fiche.dejaSuivie !== true
+            onClicked: racine.suivre(racine.fiche.reference)
         },
         BoutonEtiquette {
             text: "Voir la copie archivée"

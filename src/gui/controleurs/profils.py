@@ -131,11 +131,11 @@ class ControleurProfils(QObject):
         nouveau_nom = nouveau_nom.strip()
         profils = charger_profils()
         if not nouveau_nom:
-            return "Donner un nom à la nouvelle fiche."
+            return "Donner un nom à la nouvelle demande."
         if nouveau_nom in profils:
-            return "Une fiche porte déjà ce nom."
+            return "Une demande porte déjà ce nom."
         if nom not in profils:
-            return "La fiche d'origine n'existe plus."
+            return "La demande d'origine n'existe plus."
         dupliquer_profil(nom, nouveau_nom, intitule.strip() or None)
         self.rafraichir()
         return ""

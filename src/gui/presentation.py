@@ -18,6 +18,8 @@ from src.donnees.candidatures import (
 from src.filtres import LIBELLES_CATEGORIES, categorie_normalisee, premier_et_reste
 from src.types import Candidature, DetailOffre, Profil
 
+lazy import urllib.parse
+
 LIBELLES_TAMPON: Final[Mapping[str, str]] = {
     "candidature_envoyee": "Envoyée",
     "accuse_reception": "Accusé de réception",
@@ -195,10 +197,27 @@ class ContenuDetail:
     """(titre, texte) affichés après les informations : « Qui sommes-nous ? »
     puis les sections complémentaires de l'offre."""
     lien_postuler: str
-    """Portail de candidature, vide s'il n'est pas en https."""
+    """Portail de candidature, vide s'il n'est pas en https ou s'il mène à la
+    page de l'offre elle-même (le bouton « Postuler » serait un doublon)."""
     url: str
     """Offre en ligne, vide si elle n'est pas en https."""
     archive_presente: bool
+
+
+def _meme_adresse(a: str, b: str) -> bool:
+    """Vrai si deux liens désignent la même page (casse du domaine, `/` final
+    et ancre ignorés)."""
+
+    def normalisee(lien: str) -> tuple[str, str, str, str]:
+        morceaux = urllib.parse.urlsplit(lien.strip())
+        return (
+            morceaux.scheme.lower(),
+            morceaux.netloc.lower(),
+            morceaux.path.rstrip("/"),
+            morceaux.query,
+        )
+
+    return normalisee(a) == normalisee(b)
 
 
 def contenu_detail(
@@ -221,7 +240,8 @@ def contenu_detail(
 
     Returns:
         Description, informations non vides, rubriques suivantes et liens
-        utilisables (https uniquement).
+        utilisables (https uniquement) ; le lien de candidature est vide s'il
+        mène à la page de l'offre.
     """
     rubriques: list[tuple[str, str]] = []
     informations = tuple(
@@ -240,6 +260,8 @@ def contenu_detail(
         rubriques.append(("Qui sommes-nous\u00a0?", detail["a_propos_employeur"]))
     rubriques.extend((detail.get("sections_complementaires") or {}).items())
     lien = detail.get("lien_postuler") or ""
+    if _meme_adresse(lien, url):
+        lien = ""
     return ContenuDetail(
         reference=reference,
         titre=titre,
@@ -324,10 +346,8 @@ def lignes_fiche(profil: Profil) -> list[str]:
 
 
 def texte_nombre_fiches(nombre: int) -> str:
-    """Compteur sous le titre « Mes fiches de recherche »."""
-    return (
-        f"{nombre} fiche{'s' if nombre > 1 else ''} classée{'s' if nombre > 1 else ''}"
-    )
+    """Compteur sous le titre « Mes demandes de recherche »."""
+    return f"{nombre} demande{'s' if nombre > 1 else ''} classée{'s' if nombre > 1 else ''}"
 
 
 def libelle_selection(selection: list[str]) -> str:
@@ -585,5 +605,5 @@ def texte_confirmation_exports(nombre: int) -> str:
     )
     return (
         f"Supprimer définitivement {cible}\u00a0? "
-        "Les fiches et le suivi ne sont pas touchés."
+        "Les demandes et le suivi ne sont pas touchés."
     )

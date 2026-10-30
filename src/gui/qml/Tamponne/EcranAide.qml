@@ -182,7 +182,7 @@ Item {
                     Terme { text: "Filtrer · Nouvelles seulement" }
                     Definition { text: "Filtrer garde les lignes qui contiennent le texte saisi, dans n'importe quelle colonne. «\u00a0Nouvelles seulement\u00a0» ne montre que les offres marquées «\u00a0Nouveau\u00a0»." }
                     Terme { text: "Consulter · Exporter" }
-                    Definition { text: "Consulter affiche la fiche de poste, avec «\u00a0Postuler\u00a0» quand le site le permet. Double-clic ou Entrée sur une offre fait de même ; «\u00a0Consulter en ligne\u00a0» ouvre alors le site dans le navigateur. Exporter enregistre le registre affiché (tri et filtre compris) en page HTML dans le dossier «\u00a0exports\u00a0»." }
+                    Definition { text: "Consulter affiche la fiche de poste. «\u00a0Postuler\u00a0» apparaît quand le site donne un lien de candidature propre, sinon «\u00a0Postuler sur le site\u00a0» ouvre la page de l'offre ; «\u00a0Tamponner pour suivi\u00a0» ouvre un dossier depuis la fiche. Double-clic ou Entrée sur une offre fait de même. Exporter enregistre le registre affiché (tri et filtre compris) en page HTML dans le dossier «\u00a0exports\u00a0»." }
                 }
 
                 FeuilleNotice {
@@ -199,14 +199,14 @@ Item {
                 }
 
                 FeuilleNotice {
-                    titre: "Les fiches de recherche"
-                    Definition { text: "Une fiche, c'est une demande de recherche enregistrée sous un nom, avec «\u00a0Créer une fiche\u00a0» dans l'écran Recherche. «\u00a0Nouvelle fiche\u00a0» ouvre un formulaire vierge." }
+                    titre: "Les demandes de recherche"
+                    Definition { text: "Une demande classée est une recherche enregistrée sous un nom, avec «\u00a0Créer une demande\u00a0» dans l'écran Recherche. «\u00a0Nouvelle demande\u00a0» ouvre un formulaire vierge." }
                     Terme { text: "Lancer" }
-                    Definition { text: "Lance la recherche immédiatement (double-clic sur la fiche aussi)." }
+                    Definition { text: "Lance la recherche immédiatement (double-clic sur la demande aussi)." }
                     Terme { text: "Offres nouvelles" }
-                    Definition { text: "Une recherche lancée depuis une fiche marque «\u00a0Nouveau\u00a0» les offres jamais vues pour cette fiche. Si les cases ont été changées entre-temps, rien n'est marqué. Une offre absente des résultats pendant 30\u00a0jours redevient nouvelle." }
+                    Definition { text: "Une recherche lancée depuis une demande classée marque «\u00a0Nouveau\u00a0» les offres jamais vues pour cette demande. Si les cases ont été changées entre-temps, rien n'est marqué. Une offre absente des résultats pendant 30\u00a0jours redevient nouvelle." }
                     Terme { text: "modifier · dupliquer · supprimer" }
-                    Definition { text: "Modifier rouvre le formulaire\u00a0: «\u00a0Modifier la fiche\u00a0» garde les nouvelles cases sans lancer, «\u00a0Annuler\u00a0» revient aux fiches. Dupliquer copie la fiche sous un autre nom, supprimer la jette (confirmation demandée)." }
+                    Definition { text: "Modifier rouvre le formulaire\u00a0: «\u00a0Modifier la demande\u00a0» garde les nouvelles cases sans lancer, «\u00a0Annuler\u00a0» revient aux demandes. Dupliquer copie la demande sous un autre nom, supprimer la jette (confirmation demandée)." }
                 }
 
                 FeuilleNotice {
@@ -233,7 +233,7 @@ Item {
                     Terme { text: "Raccourci" }
                     Definition { text: "Ajoute Tamponné au menu des applications (question posée au premier lancement). Si le dossier de Tamponné est déplacé, le raccourci se met à jour d'un clic." }
                     Terme { text: "Sauvegarde" }
-                    Definition { text: "Exporter réunit fiches, dossiers suivis, offres vues et réglages dans un fichier .zip\u00a0; Importer remplace toutes les données par celles d'un tel fichier, après confirmation, et garde une copie des anciennes." }
+                    Definition { text: "Exporter réunit demandes, dossiers suivis, offres vues et réglages dans un fichier .zip\u00a0; Importer remplace toutes les données par celles d'un tel fichier, après confirmation, et garde une copie des anciennes." }
                     Terme { text: "Maintenance" }
                     Definition { text: "Exports de recherche\u00a0: nombre et taille des pages HTML exportées depuis le registre, avec de quoi ouvrir leur dossier ou les supprimer toutes." }
                     Terme { text: "Classement" }

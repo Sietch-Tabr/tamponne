@@ -122,7 +122,7 @@ Item {
                     x: 4
                     y: 4
                     text: "Lancer"
-                    Accessible.name: "Lancer la fiche «\u00a0" + racine.intitule + "\u00a0»"
+                    Accessible.name: "Lancer la demande «\u00a0" + racine.intitule + "\u00a0»"
                     onClicked: racine.lancer(racine.nom)
                 }
             }

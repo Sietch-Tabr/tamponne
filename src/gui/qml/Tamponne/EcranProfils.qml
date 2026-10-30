@@ -4,15 +4,15 @@ import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import Tamponne
 
-/*! Écran Profils (« Mes fiches de recherche ») : une fiche bristol par
-    profil enregistré, plus la carte « Nouvelle fiche ». */
+/*! Écran Profils (« Mes demandes de recherche ») : une fiche bristol par
+    profil enregistré, plus la carte « Nouvelle demande ». */
 Item {
     id: racine
 
     /*! `ControleurProfils` (src/gui/controleur_profils.py). */
     required property var profils
 
-    /*! Recherche vierge demandée (carte « Nouvelle fiche »). */
+    /*! Recherche vierge demandée (carte « Nouvelle demande »). */
     signal nouvelleFiche()
 
     function ouvrirDuplication(nom: string) {
@@ -21,8 +21,8 @@ Item {
 
     function demanderSuppression(nom: string) {
         confirmation.action = () => racine.profils.supprimer(nom)
-        confirmation.demander("Supprimer la fiche",
-            "Supprimer la fiche «\u00a0" + profils.intitule(nom) + "\u00a0»\u00a0?")
+        confirmation.demander("Supprimer la demande",
+            "Supprimer la demande «\u00a0" + profils.intitule(nom) + "\u00a0»\u00a0?")
     }
 
     DialogueDupliquer {
@@ -53,7 +53,7 @@ Item {
             spacing: 18
 
             Texte {
-                text: "Mes fiches de recherche"
+                text: "Mes demandes de recherche"
                 color: Theme.texteKraft
                 font.pixelSize: 40
                 font.capitalization: Font.AllUppercase
@@ -120,7 +120,7 @@ Item {
                     implicitHeight: 240
                     hoverEnabled: true
                     focusPolicy: Qt.StrongFocus
-                    text: "Nouvelle fiche"
+                    text: "Nouvelle demande"
                     Accessible.role: Accessible.Button
                     Accessible.name: text
                     onClicked: racine.nouvelleFiche()
@@ -191,11 +191,11 @@ Item {
                         width: parent.width
                         horizontalAlignment: Text.AlignHCenter
                         lineHeight: 24
-                        text: "Aucune fiche classée.\nLancer une recherche puis «\u00a0Créer une fiche\u00a0»."
+                        text: "Aucune demande classée.\nLancer une recherche puis «\u00a0Créer une demande\u00a0»."
                     }
                     BoutonEtiquette {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        text: "Nouvelle fiche"
+                        text: "Nouvelle demande"
                         onClicked: racine.nouvelleFiche()
                     }
                 }
