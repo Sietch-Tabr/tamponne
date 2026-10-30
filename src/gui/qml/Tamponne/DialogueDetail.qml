@@ -190,9 +190,10 @@ Dialogue {
             onClicked: racine.consulterEnLigne(racine.fiche.reference)
         },
         BoutonTampon {
-            text: racine.fiche.dejaSuivie === true ? "Dossier ouvert" : "Tamponner pour suivi"
-            visible: racine.fiche.suivable === true
-            enabled: racine.fiche.dejaSuivie !== true
+            // Masqué une fois le dossier ouvert : avec la copie archivée, le pied
+            // compterait 5 boutons et dépasserait la fenêtre.
+            text: "Tamponner pour suivi"
+            visible: racine.fiche.suivable === true && racine.fiche.dejaSuivie !== true
             onClicked: racine.suivre(racine.fiche.reference)
         },
         BoutonEtiquette {
