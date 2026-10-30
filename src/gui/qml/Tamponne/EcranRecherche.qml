@@ -87,6 +87,10 @@ Item {
         onPostuler: racine.recherche.ouvrir_lien(detail.fiche.lienPostuler || "")
         onConsulterEnLigne: racine.recherche.ouvrir_lien(detail.fiche.url || "")
         onVoirArchive: (reference) => racine.suivi.voir_archive(reference)
+        onSuivre: {
+            close()
+            racine.recherche.tamponner_pour_suivi()
+        }
     }
 
     DialogueAvis {

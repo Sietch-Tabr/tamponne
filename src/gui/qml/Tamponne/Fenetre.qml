@@ -72,7 +72,7 @@ ApplicationWindow {
     }
 
     // Les écrans relisent leurs données à chaque retour : une recherche
-    // met à jour les nouvelles d'une fiche, « Tamponner pour suivi » ajoute un dossier,
+    // met à jour les nouvelles d'une demande, « Tamponner pour suivi » ajoute un dossier,
     // un export de recherche s'ajoute au dossier des exports.
     onOngletCourantChanged: {
         if (ongletCourant === 0)

@@ -84,14 +84,14 @@ def test_ecran_profils_expose_fiches_et_actions(
     racine, _ = _fenetre_et_ecran(moteur)
     noms = _noms_accessibles(racine)
     assert avertissements == []
-    assert "Mes fiches de recherche" in noms
-    assert "2 fiches classées" in noms
+    assert "Mes demandes de recherche" in noms
+    assert "2 demandes classées" in noms
     assert "Attaché, Paris et petite couronne" in noms
     # Pas de compteur de nouvelles sur les fiches ; l'Aide parle des
     # offres nouvelles, d'où la recherche d'un nombre.
     assert not any(re.search(r"\d\s+nouvelle", nom) for nom in noms)
-    assert "Lancer la fiche «\u00a0Hospitalier, achats\u00a0»" in noms
-    assert "Nouvelle fiche" in noms
+    assert "Lancer la demande «\u00a0Hospitalier, achats\u00a0»" in noms
+    assert "Nouvelle demande" in noms
 
 
 def test_lancer_une_fiche_ouvre_l_onglet_recherche(
@@ -125,7 +125,7 @@ def test_dupliquer_cree_la_copie_et_refuse_un_doublon(
     )
     assert dialogue.property("opened") is True
     dialogue.duplique.emit("attache-paris", "hospitalier-achats", "")  # type: ignore[attr-defined]
-    assert dialogue.property("erreur") == "Une fiche porte déjà ce nom."
+    assert dialogue.property("erreur") == "Une demande porte déjà ce nom."
     assert dialogue.property("opened") is True
     dialogue.duplique.emit("attache-paris", "attache-paris-copie", "Copie de test")  # type: ignore[attr-defined]
     qapp.processEvents()
@@ -139,5 +139,5 @@ def test_ecran_profils_vide_affiche_le_message(qapp: QApplication) -> None:
     moteur, avertissements = _charger(qapp)
     noms = _noms_accessibles(moteur.rootObjects()[0])
     assert avertissements == []
-    assert any(n.startswith("Aucune fiche classée.") for n in noms)
+    assert any(n.startswith("Aucune demande classée.") for n in noms)
     del moteur

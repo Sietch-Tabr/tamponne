@@ -102,7 +102,7 @@ def test_ecran_aide_expose_ses_rubriques(
         "Grades supérieurs de la DGFiP",
         "La recherche et le registre",
         "Les sources consultées",
-        "Les fiches de recherche",
+        "Les demandes de recherche",
         "Les dossiers de suivi",
         "Les réglages",
         "Raccourcis et données",

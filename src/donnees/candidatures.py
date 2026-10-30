@@ -348,9 +348,7 @@ def depublication_a_signaler(candidature: Candidature) -> bool:
     return not candidature.get("disponible", True) and not dossier_clos(candidature)
 
 
-def relance_suggeree(
-    candidature: Candidature, aujourd_hui: date | None = None
-) -> bool:
+def relance_suggeree(candidature: Candidature, aujourd_hui: date | None = None) -> bool:
     """True si aucun événement depuis plus de `SEUIL_RELANCE_JOURS` et
     que la candidature n'est pas déjà close (réponse positive/refus).
     `aujourd_hui` vaut la date du jour par défaut."""

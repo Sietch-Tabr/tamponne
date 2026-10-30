@@ -166,3 +166,72 @@ def test_detail_se_ferme_si_le_telechargement_echoue(
     qapp.processEvents()
     assert dialogue.property("opened") is False
     del racine
+
+
+def _boutons_visibles(item: Any) -> dict[str, bool]:
+    """Texte → actif, pour les boutons du pied de la fenêtre de détail."""
+    trouves: dict[str, bool] = {}
+
+    def parcourir(element: Any) -> None:
+        for enfant in element.childItems():
+            texte = enfant.property("text")
+            if (
+                texte in ("Postuler", "Consulter en ligne", "Postuler sur le site")
+                or texte in ("Tamponner pour suivi", "Dossier ouvert")
+            ) and enfant.metaObject().indexOfMethod("clicked()") >= 0:
+                if enfant.isVisible():
+                    trouves[texte] = bool(enfant.property("enabled"))
+            parcourir(enfant)
+
+    parcourir(item)
+    return trouves
+
+
+def _ouvrir_fiche(
+    moteur: QQmlApplicationEngine, qapp: QApplication, fiche: dict[str, Any]
+) -> tuple[Any, QObject]:
+    racine, recherche, dialogue = _fenetre_detail(moteur)
+    recherche.detail_attendu.emit({"reference": "R1", "titre": "A", "sousTitre": ""})
+    qapp.processEvents()
+    recherche.detail_pret.emit({"reference": "R1", "titre": "A", **fiche})
+    qapp.processEvents()
+    return racine, dialogue
+
+
+@pytest.mark.parametrize(
+    ("fiche", "attendus"),
+    [
+        (
+            {"peutPostuler": True, "enLigne": True},
+            {"Postuler": True, "Consulter en ligne": True},
+        ),
+        ({"peutPostuler": False, "enLigne": True}, {"Postuler sur le site": True}),
+        ({"peutPostuler": False, "enLigne": False}, {}),
+    ],
+)
+def test_detail_ne_propose_pas_deux_boutons_vers_la_meme_page(
+    moteur: QQmlApplicationEngine,
+    qapp: QApplication,
+    fiche: dict[str, Any],
+    attendus: dict[str, bool],
+) -> None:
+    racine, dialogue = _ouvrir_fiche(moteur, qapp, fiche)
+    assert _boutons_visibles(dialogue.property("contentItem")) == attendus
+
+
+@pytest.mark.parametrize(
+    ("fiche", "attendus"),
+    [
+        ({"suivable": True, "dejaSuivie": False}, {"Tamponner pour suivi": True}),
+        ({"suivable": True, "dejaSuivie": True}, {"Dossier ouvert": False}),
+        ({}, {}),
+    ],
+)
+def test_detail_propose_le_suivi_depuis_la_recherche(
+    moteur: QQmlApplicationEngine,
+    qapp: QApplication,
+    fiche: dict[str, Any],
+    attendus: dict[str, bool],
+) -> None:
+    racine, dialogue = _ouvrir_fiche(moteur, qapp, fiche)
+    assert _boutons_visibles(dialogue.property("contentItem")) == attendus

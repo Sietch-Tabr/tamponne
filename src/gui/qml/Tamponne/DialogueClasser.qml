@@ -2,8 +2,8 @@ import QtQuick
 import QtQuick.Layouts
 import Tamponne
 
-/*! « Créer une fiche » : la demande de recherche actuelle devient une
-    fiche (nom interne et intitulé affiché). */
+/*! « Créer une demande » : la demande de recherche actuelle est enregistrée
+    sous un nom (nom interne et intitulé affiché). */
 Dialogue {
     id: racine
 
@@ -11,7 +11,7 @@ Dialogue {
 
     signal classe(string nom, string intitule)
 
-    titre: "Créer une fiche"
+    titre: "Créer une demande"
     width: 470
 
     function ouvrir() {
@@ -29,7 +29,7 @@ Dialogue {
 
     Texte {
         Layout.fillWidth: true
-        text: "La demande de recherche actuelle devient une fiche."
+        text: "La demande de recherche actuelle est enregistrée sous un nom."
         color: Theme.encre2
         font.family: Theme.policeMono
         font.pixelSize: 14
@@ -38,12 +38,12 @@ Dialogue {
     ColumnLayout {
         Layout.fillWidth: true
         spacing: 4
-        EtiquetteChamp { text: "Nom de la fiche" }
+        EtiquetteChamp { text: "Nom de la demande" }
         ChampSouligne {
             id: champNom
             Layout.fillWidth: true
             placeholderText: "ex. dgal-paris"
-            Accessible.name: "Nom de la fiche"
+            Accessible.name: "Nom de la demande"
             onAccepted: racine.classe(text, champIntitule.text)
         }
         Item { Layout.preferredHeight: 10 }

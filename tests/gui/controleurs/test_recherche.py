@@ -203,8 +203,8 @@ def test_classer_en_profil_refuse_nom_vide_ou_existant(
     controleur: ControleurRecherche,
 ) -> None:
     profils.sauvegarder_profils({"existante": {}})
-    assert controleur.classer("  ", "") == "Donner un nom à la fiche."
-    assert controleur.classer("existante", "") == "Une fiche porte déjà ce nom."
+    assert controleur.classer("  ", "") == "Donner un nom à la demande."
+    assert controleur.classer("existante", "") == "Une demande porte déjà ce nom."
     controleur.basculer("categories", "A", True)
     assert controleur.classer("nouvelle", "Mon intitulé") == ""
     fiche = profils.charger_profils()["nouvelle"]
@@ -222,7 +222,7 @@ def test_edition_enregistre_la_fiche_et_retourne_aux_profils(
     controleur.retour_profils.connect(lambda: retours.append(True))
     controleur.modifier_profil("fiche")
     assert controleur.property("edition") is True
-    assert controleur.property("texte_bouton") == "Modifier la fiche"
+    assert controleur.property("texte_bouton") == "Modifier la demande"
     assert controleur.property("intitule_edition") == "Ma fiche"
     assert controleur.property("etat")["versants"] == []
     controleur.basculer("categories", "B", True)
@@ -729,3 +729,30 @@ def test_fiches_de_poste_ecrites_par_lots_et_a_l_arret(
     assert not cache.CHEMIN_DETAILS.exists()
     controleur.arreter()
     assert cache.CHEMIN_DETAILS.exists()
+
+
+def test_consulter_signale_une_offre_deja_suivie(
+    controleur: ControleurRecherche, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        controleur_recherche, "recuperer_detail_offre", lambda url: _detail_lu()
+    )
+    fiches: list[dict[str, object]] = []
+    controleur.detail_pret.connect(fiches.append)
+    controleur.lancer()
+    _attendre(controleur, qtbot)
+    controleur.selectionner(0)
+
+    with qtbot.waitSignal(controleur.detail_pret, timeout=5000):
+        controleur.consulter()
+    assert fiches[-1]["suivable"] is True
+    assert fiches[-1]["dejaSuivie"] is False
+
+    monkeypatch.setattr(
+        controleur_recherche,
+        "charger_candidatures",
+        lambda: {fiches[-1]["reference"]: {}},
+    )
+    with qtbot.waitSignal(controleur.detail_pret, timeout=5000):
+        controleur.consulter()
+    assert fiches[-1]["dejaSuivie"] is True

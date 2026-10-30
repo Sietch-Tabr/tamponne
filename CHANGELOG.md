@@ -4,6 +4,17 @@ Toutes les évolutions notables de Tamponné, de la plus récente à la plus
 ancienne. Le détail de chaque version est aussi publié sur la page
 [Releases](https://codeberg.org/Kwaite/tamponne/releases) du dépôt.
 
+## [1.7.2] — 2026-10-30
+
+### Nouveautés
+
+- Fiche de poste : « Tamponner pour suivi » ouvre un dossier depuis la fiche, comme dans le registre ; il devient « Dossier ouvert » (grisé) quand l'offre est déjà suivie, ce qui évite de repartir d'un historique vierge
+
+### Corrections
+
+- Fiche de poste : « Postuler » et « Consulter en ligne » ne mènent plus à la même page ; sans lien de candidature propre (Passerelles) ou si ce lien est celui de l'offre, un seul bouton « Postuler sur le site » ouvre la page de l'offre
+- Une « fiche » ne désigne plus que la fiche de poste : la recherche enregistrée devient une « demande » (« Créer une demande », « Mes demandes de recherche », « Nouvelle demande », « Modifier la demande », « Dupliquer la demande »), dans l'interface, l'aide et la maquette
+
 ## [1.7.1] — 2026-10-30
 
 ### Corrections

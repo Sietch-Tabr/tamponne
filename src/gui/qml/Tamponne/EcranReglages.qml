@@ -367,7 +367,7 @@ Item {
                             TitreFeuille { text: "Sauvegarde" }
 
                             Paragraphe {
-                                text: "Fiches, dossiers suivis et réglages réunis dans un fichier, à garder ou à reprendre sur un autre ordinateur."
+                                text: "Demandes, dossiers suivis et réglages réunis dans un fichier, à garder ou à reprendre sur un autre ordinateur."
                                 lineHeight: 24
                             }
 

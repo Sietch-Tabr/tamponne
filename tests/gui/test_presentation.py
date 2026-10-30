@@ -2,6 +2,8 @@
 
 from datetime import UTC, date, datetime
 
+import pytest
+
 from src.gui import presentation
 from src.gui.presentation import (
     contenu_detail,
@@ -175,6 +177,27 @@ def test_contenu_detail_refuse_liens_non_https() -> None:
     assert contenu.url == ""
 
 
+@pytest.mark.parametrize(
+    "lien",
+    [
+        "https://example.org/offre",
+        "https://EXAMPLE.org/offre/",
+        "https://example.org/offre#postuler",
+        "",
+    ],
+)
+def test_contenu_detail_ecarte_un_lien_de_candidature_identique_a_l_offre(
+    lien: str,
+) -> None:
+    detail = _candidature([])["detail"]
+    detail["lien_postuler"] = lien
+    contenu = contenu_detail(
+        "R", "T", [], detail, "https://example.org/offre", archive_presente=False
+    )
+    assert contenu.lien_postuler == ""
+    assert contenu.url == "https://example.org/offre"
+
+
 def test_lignes_fiche_regroupe_comme_la_maquette() -> None:
     profil: Profil = {
         "categories": ["A+ (direction)", "A"],
@@ -218,8 +241,8 @@ def test_lignes_fiche_profil_vide() -> None:
 
 
 def test_texte_nombre_de_fiches_accorde() -> None:
-    assert texte_nombre_fiches(1) == "1 fiche classée"
-    assert texte_nombre_fiches(2) == "2 fiches classées"
+    assert texte_nombre_fiches(1) == "1 demande classée"
+    assert texte_nombre_fiches(2) == "2 demandes classées"
 
 
 def test_libelle_selection_tous_unique_ou_nombre() -> None:

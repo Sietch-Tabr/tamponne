@@ -23,7 +23,11 @@ from PySide6.QtGui import QDesktopServices
 from PySide6.QtQml import QJSValue
 
 from src.donnees.cache import CacheDetailsDisque
-from src.donnees.candidatures import chemin_archive_pdf, suivre_offre
+from src.donnees.candidatures import (
+    charger_candidatures,
+    chemin_archive_pdf,
+    suivre_offre,
+)
 from src.donnees.profils import (
     ajouter_profil,
     categories_compatibles,
@@ -71,7 +75,7 @@ TYPES_POSTE: list[tuple[str, list[str] | str | None]] = [
 """(libellé, valeur de `FiltresRecherche.types_poste`)."""
 
 LIBELLE_LANCER = "Lancer la recherche"
-LIBELLE_MODIFIER = "Modifier la fiche"
+LIBELLE_MODIFIER = "Modifier la demande"
 MESSAGE_ORGANISATIONS_ABSENTES = (
     "La liste des organisations n'est pas encore chargée\u00a0: relancez la "
     "recherche dans un instant, ou rafraîchissez-la dans Réglages."
@@ -476,9 +480,9 @@ class ControleurRecherche(QObject):
         """
         nom = nom.strip()
         if not nom:
-            return "Donner un nom à la fiche."
+            return "Donner un nom à la demande."
         if nom in charger_profils():
-            return "Une fiche porte déjà ce nom."
+            return "Une demande porte déjà ce nom."
         filtres = self.construire_filtres()
         ajouter_profil(nom, cast(Profil, {**filtres, "label": intitule.strip() or nom}))
         return ""
@@ -734,7 +738,7 @@ class ControleurRecherche(QObject):
             suite(resultat)
 
     def _on_tache_echouee(self, message: str) -> None:
-        journal.warning("Fiche ou suivi impossible\u00a0: %s", message)
+        journal.warning("Demande ou suivi impossible\u00a0: %s", message)
         identifiant = id(self.sender())
         self._suites.pop(identifiant, None)
         if identifiant in self._silencieuses:
@@ -855,6 +859,8 @@ class ControleurRecherche(QObject):
                     "enLigne": bool(contenu.url),
                     "url": contenu.url,
                     "archivePresente": contenu.archive_presente,
+                    "suivable": True,
+                    "dejaSuivie": offre["reference"] in charger_candidatures(),
                 }
             )
 
