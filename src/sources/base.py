@@ -52,8 +52,14 @@ def texte_lisible(bloc: Tag) -> str:
     for element in bloc.find_all("li"):
         element.insert(0, "• ")
         element.append(_SAUT)
+    for titre in bloc.find_all(["h1", "h2", "h3", "h4", "h5", "h6"]):
+        titre.insert(0, _SAUT * 2)
+        titre.append(_SAUT * 2)
     for paragraphe in bloc.find_all("p"):
-        paragraphe.append(_SAUT * 2)
+        if paragraphe.find_parent("li") is None:
+            paragraphe.append(_SAUT * 2)
+        if getattr(paragraphe.previous_sibling, "name", None) in ("ul", "ol"):
+            paragraphe.insert(0, _SAUT)
     texte = _RE_ESPACES.sub(" ", bloc.get_text())
     lignes = [ligne.strip() for ligne in texte.split(_SAUT)]
     return _RE_LIGNES_VIDES.sub("\n\n", "\n".join(lignes).strip())
