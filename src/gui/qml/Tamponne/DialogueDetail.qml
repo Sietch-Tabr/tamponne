@@ -189,7 +189,7 @@ Dialogue {
             visible: racine.fiche.enLigne === true
             onClicked: racine.consulterEnLigne(racine.fiche.reference)
         },
-        BoutonEtiquette {
+        BoutonTampon {
             text: racine.fiche.dejaSuivie === true ? "Dossier ouvert" : "Tamponner pour suivi"
             visible: racine.fiche.suivable === true
             enabled: racine.fiche.dejaSuivie !== true

@@ -200,7 +200,7 @@ Item {
 
                 FeuilleNotice {
                     titre: "Les demandes de recherche"
-                    Definition { text: "Une demande classée est une recherche enregistrée sous un nom, avec «\u00a0Créer une demande\u00a0» dans l'écran Recherche. «\u00a0Nouvelle demande\u00a0» ouvre un formulaire vierge." }
+                    Definition { text: "Une demande classée est une recherche enregistrée sous un nom, avec «\u00a0Classer\u00a0» dans l'écran Recherche. «\u00a0Nouvelle demande\u00a0» ouvre un formulaire vierge." }
                     Terme { text: "Lancer" }
                     Definition { text: "Lance la recherche immédiatement (double-clic sur la demande aussi)." }
                     Terme { text: "Offres nouvelles" }

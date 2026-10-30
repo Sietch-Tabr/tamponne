@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import Tamponne
 
-/*! « Créer une demande » : la demande de recherche actuelle est enregistrée
+/*! « Classer » : la demande de recherche actuelle est enregistrée
     sous un nom (nom interne et intitulé affiché). */
 Dialogue {
     id: racine
@@ -11,7 +11,7 @@ Dialogue {
 
     signal classe(string nom, string intitule)
 
-    titre: "Créer une demande"
+    titre: "Classer la demande"
     width: 470
 
     function ouvrir() {

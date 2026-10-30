@@ -4,6 +4,17 @@ Toutes les évolutions notables de Tamponné, de la plus récente à la plus
 ancienne. Le détail de chaque version est aussi publié sur la page
 [Releases](https://codeberg.org/Kwaite/tamponne/releases) du dépôt.
 
+## [1.7.3] — 2026-10-30
+
+### Corrections
+
+- Recherche : le bouton « Créer une demande » débordait de sa place ; il devient « Classer » (avec une infobulle), à sa taille naturelle à côté de « RAZ », et la fenêtre qu'il ouvre s'appelle « Classer la demande »
+- Fiche de poste : « Tamponner pour suivi » reprend le style tampon (violet, légèrement penché) du registre
+
+### En coulisses
+
+- Outil de comparaison de la maquette : arrête les tâches en cours avant de quitter, ce qui évitait un plantage de Qt à la sortie
+
 ## [1.7.2] — 2026-10-30
 
 ### Nouveautés
