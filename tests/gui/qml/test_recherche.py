@@ -9,6 +9,7 @@ from typing import Any
 import pytest
 from PySide6.QtCore import Q_ARG, QMetaObject, QObject, QUrl
 from PySide6.QtQml import QQmlApplicationEngine, QQmlComponent
+from PySide6.QtQuick import QQuickItem
 from PySide6.QtWidgets import QApplication
 
 from src.donnees import parametres_sources
@@ -177,7 +178,7 @@ def _boutons_visibles(item: Any) -> dict[str, bool]:
             texte = enfant.property("text")
             if (
                 texte in ("Postuler", "Consulter en ligne", "Postuler sur le site")
-                or texte in ("Tamponner pour suivi", "Dossier ouvert")
+                or texte == "Tamponner pour suivi"
             ) and enfant.metaObject().indexOfMethod("clicked()") >= 0:
                 if enfant.isVisible():
                     trouves[texte] = bool(enfant.property("enabled"))
@@ -223,7 +224,7 @@ def test_detail_ne_propose_pas_deux_boutons_vers_la_meme_page(
     ("fiche", "attendus"),
     [
         ({"suivable": True, "dejaSuivie": False}, {"Tamponner pour suivi": True}),
-        ({"suivable": True, "dejaSuivie": True}, {"Dossier ouvert": False}),
+        ({"suivable": True, "dejaSuivie": True}, {}),
         ({}, {}),
     ],
 )
@@ -235,3 +236,52 @@ def test_detail_propose_le_suivi_depuis_la_recherche(
 ) -> None:
     racine, dialogue = _ouvrir_fiche(moteur, qapp, fiche)
     assert _boutons_visibles(dialogue.property("contentItem")) == attendus
+
+
+def test_detail_ne_depasse_pas_quatre_boutons_dans_le_pied(
+    moteur: QQmlApplicationEngine, qapp: QApplication
+) -> None:
+    """Au-delà, le pied dépasse la fenêtre (5 boutons mesurés trop larges)."""
+    racine, dialogue = _ouvrir_fiche(
+        moteur,
+        qapp,
+        {
+            "peutPostuler": True,
+            "enLigne": True,
+            "suivable": True,
+            "dejaSuivie": True,
+            "archivePresente": True,
+        },
+    )
+    noms = ("Postuler", "Consulter en ligne", "Voir la copie archivée", "Fermer")
+    visibles = [
+        e
+        for e in dialogue.findChildren(QQuickItem)
+        if e.property("text") in noms
+        and e.metaObject().indexOfMethod("clicked()") >= 0
+        and e.isVisible()
+    ]
+    assert len(visibles) == 4
+    assert _boutons_visibles(dialogue.property("contentItem")) == {
+        "Postuler": True,
+        "Consulter en ligne": True,
+    }
+
+
+def test_detail_se_ferme_par_la_croix(
+    moteur: QQmlApplicationEngine, qapp: QApplication
+) -> None:
+    racine, dialogue = _ouvrir_fiche(moteur, qapp, {})
+    assert dialogue.property("opened") is True
+    croix = [
+        e
+        for e in dialogue.findChildren(QQuickItem)
+        if e.width() == 26
+        and e.height() == 24
+        and e.isVisible()
+        and e.metaObject().indexOfMethod("clicked()") >= 0
+    ]
+    assert len(croix) == 1
+    QMetaObject.invokeMethod(croix[0], "clicked")
+    qapp.processEvents()
+    assert dialogue.property("opened") is False

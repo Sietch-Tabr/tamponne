@@ -176,36 +176,47 @@ Dialogue {
         }
     }
 
+    croixFermeture: true
+    ressortManuel: true
     boutons: [
-        BoutonTampon {
-            text: "Postuler"
-            // Sans lien de candidature propre (Passerelles, ou lien identique à
-            // l'offre), « Postuler sur le site » ci-dessous ouvre la page de l'offre.
-            visible: racine.fiche.peutPostuler === true
-            onClicked: racine.postuler(racine.fiche.reference)
-        },
-        BoutonEtiquette {
-            text: racine.fiche.peutPostuler === true ? "Consulter en ligne" : "Postuler sur le site"
-            visible: racine.fiche.enLigne === true
-            onClicked: racine.consulterEnLigne(racine.fiche.reference)
-        },
-        BoutonTampon {
-            text: racine.fiche.dejaSuivie === true ? "Dossier ouvert" : "Tamponner pour suivi"
-            visible: racine.fiche.suivable === true
-            enabled: racine.fiche.dejaSuivie !== true
-            onClicked: racine.suivre(racine.fiche.reference)
-        },
-        BoutonEtiquette {
-            text: "Voir la copie archivée"
-            visible: racine.fiche.archivePresente === true
-            ToolTip.visible: hovered
-            ToolTip.text: "PDF autonome de la fiche telle qu'elle était au moment du suivi, consultable hors ligne ou après dépublication"
-            onClicked: racine.voirArchive(racine.fiche.reference)
-        },
-        BoutonEtiquette {
-            id: boutonFermer
-            text: "Fermer"
-            onClicked: racine.close()
+        // Déclarés de droite à gauche (Fermer d'abord) : si le pied ne tient pas
+        // sur une ligne, ce sont les boutons d'action qui passent à la ligne.
+        Flow {
+            Layout.fillWidth: true
+            Layout.preferredHeight: childrenRect.height
+            layoutDirection: Qt.RightToLeft
+            spacing: 14
+
+            BoutonEtiquette {
+                id: boutonFermer
+                text: "Fermer"
+                onClicked: racine.close()
+            }
+            BoutonEtiquette {
+                text: "Voir la copie archivée"
+                visible: racine.fiche.archivePresente === true
+                ToolTip.visible: hovered
+                ToolTip.text: "PDF autonome de la fiche telle qu'elle était au moment du suivi, consultable hors ligne ou après dépublication"
+                onClicked: racine.voirArchive(racine.fiche.reference)
+            }
+            BoutonTampon {
+                // Masqué une fois le dossier ouvert : la copie archivée prend sa place.
+                text: "Tamponner pour suivi"
+                visible: racine.fiche.suivable === true && racine.fiche.dejaSuivie !== true
+                onClicked: racine.suivre(racine.fiche.reference)
+            }
+            BoutonEtiquette {
+                text: racine.fiche.peutPostuler === true ? "Consulter en ligne" : "Postuler sur le site"
+                visible: racine.fiche.enLigne === true
+                onClicked: racine.consulterEnLigne(racine.fiche.reference)
+            }
+            BoutonTampon {
+                text: "Postuler"
+                // Sans lien de candidature propre (Passerelles, ou lien identique à
+                // l'offre), « Postuler sur le site » ci-dessus ouvre la page de l'offre.
+                visible: racine.fiche.peutPostuler === true
+                onClicked: racine.postuler(racine.fiche.reference)
+            }
         }
     ]
 
