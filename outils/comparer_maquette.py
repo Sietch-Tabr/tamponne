@@ -192,6 +192,8 @@ def capturer_qml(onglet: int, nuit: bool, hauteur: int, action: str) -> QImage:
         for _ in range(30):
             app.processEvents()
     image = fenetre.grabWindow()
+    # Sans cet arrêt, la vérification du Suivi encore en cours fait avorter Qt à la sortie.
+    pont.arreter()
     fenetre.close()
     del fenetre
     return image

@@ -235,4 +235,3 @@ def test_detail_propose_le_suivi_depuis_la_recherche(
 ) -> None:
     racine, dialogue = _ouvrir_fiche(moteur, qapp, fiche)
     assert _boutons_visibles(dialogue.property("contentItem")) == attendus
-

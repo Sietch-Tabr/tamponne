@@ -271,7 +271,6 @@ Feuille {
             visible: !racine.recherche.edition
 
             BoutonEtiquette {
-                Layout.fillWidth: true
                 text: "Classer"
                 ToolTip.visible: hovered
                 ToolTip.text: "Enregistre cette recherche sous un nom, dans Mes demandes de recherche"
