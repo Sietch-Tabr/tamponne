@@ -9,7 +9,7 @@ from typing import Final
 lazy from bs4 import BeautifulSoup, Tag
 
 from src.filtres import RE_GRADE_SUPERIEUR
-from src.sources.base import valider_url
+from src.sources.base import texte_lisible, valider_url
 from src.types import DetailOffre, Offre
 
 journal = logging.getLogger(__name__)
@@ -165,35 +165,6 @@ DETAIL_VIDE: DetailOffre = {
 (src/donnees/candidatures.py) quand aucun détail n'a pu être récupéré."""
 
 
-_RE_ESPACES_HORIZ = re.compile(r"[ \t]+")
-
-
-def _texte_multiligne(bloc: Tag) -> str:
-    """Texte d'un bloc, en convertissant les `<br>` en véritables sauts
-    de ligne (au lieu de les perdre silencieusement comme le ferait
-    `get_text(" ")`) — vérifié sur une offre réelle : le contenu de la
-    fiche de poste est un unique `<p>` truffé de `<br>` pour séparer les
-    paragraphes et les items de liste, sans autre balisage. Les lignes
-    vides consécutives sont réduites à une seule, pour ne pas laisser de
-    grands blancs entre deux `<br><br>`."""
-    for br in bloc.find_all("br"):
-        br.replace_with("\n")
-    lignes = [
-        _RE_ESPACES_HORIZ.sub(" ", ligne).strip()
-        for ligne in bloc.get_text().split("\n")
-    ]
-    resultat: list[str] = []
-    ligne_vide_precedente = False
-    for ligne in lignes:
-        if ligne:
-            resultat.append(ligne)
-            ligne_vide_precedente = False
-        elif not ligne_vide_precedente:
-            resultat.append("")
-            ligne_vide_precedente = True
-    return "\n".join(resultat).strip()
-
-
 def _extraire_description_poste(soup: BeautifulSoup) -> str:
     """Description structurée du poste (« Vos missions en quelques
     mots »), avec ses sauts de ligne d'origine conservés.
@@ -211,7 +182,13 @@ def _extraire_description_poste(soup: BeautifulSoup) -> str:
     titre = bloc.find("h2")
     if isinstance(titre, Tag):
         titre.decompose()
-    return _texte_multiligne(bloc)
+    # Le bouton « Afficher la suite » n'est que l'interface du site.
+    for bouton in bloc.select("button.text-clamp--cta"):
+        bouton.decompose()
+    # Tableau « libellé / valeur » : sans séparateur, les deux se collent.
+    for libelle in bloc.select(".block-table li strong"):
+        libelle.append(" : ")
+    return texte_lisible(bloc)
 
 
 def _extraire_a_propos_employeur(soup: BeautifulSoup) -> str:
@@ -229,7 +206,7 @@ def _extraire_a_propos_employeur(soup: BeautifulSoup) -> str:
     titre = bloc.find("h2")
     if isinstance(titre, Tag):
         titre.decompose()
-    return _texte_multiligne(bloc)
+    return texte_lisible(bloc)
 
 
 def _extraire_sections_complementaires(soup: BeautifulSoup) -> dict[str, str]:
@@ -247,7 +224,7 @@ def _extraire_sections_complementaires(soup: BeautifulSoup) -> dict[str, str]:
             continue
         label = bouton.get_text(strip=True)
         if label and isinstance(contenu, Tag):
-            sections[label] = _texte_multiligne(contenu)
+            sections[label] = texte_lisible(contenu)
     return sections
 
 

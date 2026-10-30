@@ -4,6 +4,16 @@ Toutes les évolutions notables de Tamponné, de la plus récente à la plus
 ancienne. Le détail de chaque version est aussi publié sur la page
 [Releases](https://codeberg.org/Kwaite/tamponne/releases) du dépôt.
 
+## [1.7.1] — 2026-10-30
+
+### Corrections
+
+- Fiche de poste (Choisir le service public) : les listes à puces sont rendues, les titres de section (« Profil recherché », « Niveau d'études minimum requis », « Éléments de candidature ») sont sur leur propre ligne, le tableau niveau/spécialisation se lit « Niveau : … » et le texte du bouton « Afficher la suite » n'apparaît plus dans la description
+
+### En coulisses
+
+- Mise à jour des dépendances : mypy 2.4.1
+
 ## [1.7.0] — 2026-10-28
 
 ### Nouveautés
