@@ -272,7 +272,9 @@ Feuille {
 
             BoutonEtiquette {
                 Layout.fillWidth: true
-                text: "Créer une demande"
+                text: "Classer"
+                ToolTip.visible: hovered
+                ToolTip.text: "Enregistre cette recherche sous un nom, dans Mes demandes de recherche"
                 onClicked: racine.classementDemande()
             }
             BoutonEtiquette {

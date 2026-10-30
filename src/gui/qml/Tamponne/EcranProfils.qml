@@ -191,7 +191,7 @@ Item {
                         width: parent.width
                         horizontalAlignment: Text.AlignHCenter
                         lineHeight: 24
-                        text: "Aucune demande classée.\nLancer une recherche puis «\u00a0Créer une demande\u00a0»."
+                        text: "Aucune demande classée.\nLancer une recherche puis «\u00a0Classer\u00a0»."
                     }
                     BoutonEtiquette {
                         anchors.horizontalCenter: parent.horizontalCenter
