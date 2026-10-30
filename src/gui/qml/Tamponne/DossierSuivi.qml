@@ -41,7 +41,7 @@ Feuille {
     readonly property color fondDossier: disponible ? Theme.papier : Theme.papierGrise
 
     couleur: fondDossier
-    implicitHeight: Math.max(colonne.implicitHeight, historique.implicitHeight) + 36
+    implicitHeight: entete.implicitHeight + 4 + Math.max(colonne.implicitHeight, historique.implicitHeight + 8) + 18
 
     Accessible.role: Accessible.Grouping
     Accessible.name: titre
@@ -65,13 +65,45 @@ Feuille {
         border.width: 3
     }
 
-    RowLayout {
+    ColumnLayout {
         anchors.fill: parent
-        anchors.topMargin: 18
-        anchors.bottomMargin: 18
+        anchors.topMargin: 14
+        anchors.bottomMargin: 4
         anchors.leftMargin: 20
         anchors.rightMargin: 20
-        spacing: 24
+        spacing: 4
+
+        // Titre à gauche, référence à droite comme sur la couverture d'un dossier ;
+        // à gauche du post-it quand il y en a un.
+        RowLayout {
+            id: entete
+            Layout.fillWidth: true
+            Layout.rightMargin: racine.postitVisible ? 190 : 0
+            spacing: 24
+
+            Texte {
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignTop
+                text: racine.titre
+                font.pixelSize: 22
+                font.variableAxes: { "wdth": 90, "wght": 800 }
+                Accessible.role: Accessible.Heading
+            }
+            Texte {
+                Layout.alignment: Qt.AlignTop
+                Layout.topMargin: 5
+                text: "Réf. " + racine.reference
+                color: Theme.encre2
+                font.family: Theme.policeMono
+                font.pixelSize: 14
+            }
+        }
+
+        RowLayout {
+            id: corps
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            spacing: 24
 
         ColumnLayout {
             id: colonne
@@ -79,21 +111,8 @@ Feuille {
             Layout.minimumWidth: 320
             Layout.alignment: Qt.AlignTop
             Layout.rightMargin: racine.postitVisible ? 170 : 0
-            spacing: 6
+            spacing: 2
 
-            Texte {
-                text: "Réf. " + racine.reference
-                color: Theme.encre2
-                font.family: Theme.policeMono
-                font.pixelSize: 14
-            }
-            Texte {
-                Layout.fillWidth: true
-                text: racine.titre
-                font.pixelSize: 22
-                font.variableAxes: { "wdth": 90, "wght": 800 }
-                Accessible.role: Accessible.Heading
-            }
             Texte {
                 Layout.fillWidth: true
                 text: racine.employeurLieu
@@ -136,7 +155,8 @@ Feuille {
 
         Flow {
             id: historique
-            Layout.alignment: Qt.AlignVCenter
+            Layout.alignment: Qt.AlignBottom
+            Layout.bottomMargin: 8
             Layout.maximumWidth: 520
             spacing: 14
 
@@ -185,6 +205,7 @@ Feuille {
                     }
                 }
             }
+        }
         }
     }
 

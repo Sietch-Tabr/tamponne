@@ -266,3 +266,22 @@ def test_detail_ne_depasse_pas_quatre_boutons_dans_le_pied(
         "Postuler": True,
         "Consulter en ligne": True,
     }
+
+
+def test_detail_se_ferme_par_la_croix(
+    moteur: QQmlApplicationEngine, qapp: QApplication
+) -> None:
+    racine, dialogue = _ouvrir_fiche(moteur, qapp, {})
+    assert dialogue.property("opened") is True
+    croix = [
+        e
+        for e in dialogue.findChildren(QQuickItem)
+        if e.width() == 26
+        and e.height() == 24
+        and e.isVisible()
+        and e.metaObject().indexOfMethod("clicked()") >= 0
+    ]
+    assert len(croix) == 1
+    QMetaObject.invokeMethod(croix[0], "clicked")
+    qapp.processEvents()
+    assert dialogue.property("opened") is False

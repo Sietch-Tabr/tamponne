@@ -19,6 +19,9 @@ Popup {
     /*! Vrai si l'appelant place lui-même un ressort parmi ses boutons
         (bouton détaché à gauche). */
     property bool ressortManuel: false
+    /*! Croix en haut à droite : une fenêtre dont le pied déborderait reste
+        fermable. */
+    property bool croixFermeture: false
 
     parent: Overlay.overlay
     anchors.centerIn: parent
@@ -59,6 +62,34 @@ Popup {
             width: parent.width
             height: 6
             color: Theme.kraft
+        }
+        AbstractButton {
+            visible: racine.croixFermeture
+            x: parent.width - width - 4
+            y: 8
+            width: 26
+            height: 24
+            hoverEnabled: true
+            focusPolicy: Qt.StrongFocus
+            Accessible.role: Accessible.Button
+            Accessible.name: "Fermer la fenêtre"
+            onClicked: racine.close()
+
+            contentItem: Text {
+                text: "\u2715"
+                color: Theme.encre
+                opacity: parent.hovered || parent.visualFocus ? 1 : 0.65
+                font.family: Theme.policeTexte
+                font.pixelSize: 15
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+            }
+            background: Rectangle {
+                color: "transparent"
+                border.color: Theme.tampon
+                border.width: parent.visualFocus ? 2 : 0
+                radius: 3
+            }
         }
     }
 

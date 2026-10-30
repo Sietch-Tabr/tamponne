@@ -4,6 +4,18 @@ Toutes les évolutions notables de Tamponné, de la plus récente à la plus
 ancienne. Le détail de chaque version est aussi publié sur la page
 [Releases](https://codeberg.org/Kwaite/tamponne/releases) du dépôt.
 
+## [1.7.4] — 2026-10-30
+
+### Nouveautés
+
+- Suivi : les dossiers en cours sont plus compacts (le titre à gauche et la référence alignée à droite sur une même ligne, les liens au ras du bord inférieur, les tampons en bas à droite)
+- Fiche de poste : une croix en haut à droite ferme la fenêtre, en plus du bouton « Fermer »
+
+### Corrections
+
+- Fiche de poste : le pied de la fenêtre passe à la ligne quand les boutons ne tiennent pas sur une ligne, au lieu de sortir de la fenêtre (« Fermer » devenait inaccessible sous Windows) ; « Tamponner pour suivi » disparaît une fois le dossier ouvert
+- Maquette de la fiche de poste : boutons dans le pied de la fenêtre, comme dans l'application
+
 ## [1.7.3] — 2026-10-30
 
 ### Corrections
