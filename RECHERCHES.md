@@ -460,7 +460,7 @@ déduplication par `refs_vues` (protection contre la boucle API après dernière
 ## 8. Limitations connues
 
 - **Filtre `query` large** : le mot-clé `DGAL` remonte aussi `DGA` (Défense).
-  Combiner avec la sélection d'organisation dans le wizard pour affiner.
+  Combiner avec la sélection d'organisation dans le formulaire pour affiner.
 - **Organisations résolues** : ~~les IDs étaient hardcodés~~ → désormais scrappés
   automatiquement (cache 7 jours). Résolu.
 - **Filtre IDiv/IP** : exclusion par préfixe de titre uniquement. Les offres IDiv

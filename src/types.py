@@ -217,7 +217,7 @@ class Candidature(TypedDict, closed=True):
         detail: Détail structuré + archive HTML brute, voir
             `DetailOffre`.
         offre_source: Source de l'offre au moment du suivi (absente des
-            candidatures enregistrées avant la 2.0, voir
+            candidatures enregistrées avant l'ajout de ce champ, voir
             :func:`~src.donnees.candidatures.source_candidature`).
     """
 

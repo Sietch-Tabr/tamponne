@@ -1,7 +1,6 @@
 """Exécution de la recherche réseau en arrière-plan (QThread + Signal).
 
-Pattern vérifié concrètement avant écriture (REFONTE.md §8, Lot GUI
-étape 2) : les signaux de ce worker ne doivent être connectés qu'à des
+Les signaux de ce worker ne doivent être connectés qu'à des
 méthodes liées d'objets `QObject` créés dans le thread principal — une
 connexion à une fonction/lambda ordinaire ne garantit pas l'exécution
 sur le bon thread.

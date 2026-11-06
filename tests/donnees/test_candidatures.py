@@ -34,6 +34,15 @@ def test_charger_candidatures_corrompu_retourne_dict_vide(
     assert candidatures.charger_candidatures() == {}
 
 
+def test_charger_candidatures_json_non_objet_retourne_dict_vide(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    chemin = tmp_path / "candidatures.json"
+    chemin.write_text("[]", encoding="utf-8")
+    monkeypatch.setattr(candidatures, "CHEMIN_CANDIDATURES", chemin)
+    assert candidatures.charger_candidatures() == {}
+
+
 def test_ajouter_candidature_ne_prerempli_pas_lhistorique() -> None:
     """Démarrer le suivi (« Suivre cette offre ») ne signifie pas que la
     candidature a été envoyée : l'historique reste vide tant que

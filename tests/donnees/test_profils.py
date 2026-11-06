@@ -52,3 +52,9 @@ def test_categories_compatibles_cle_et_libelle_court_sans_doublon() -> None:
     assert profils.categories_compatibles(
         {"categories": ["A+ (autres)", "A+ (autres emplois fonctionnels)", "C"]}
     ) == ["A+ (autres emplois fonctionnels)", "C"]
+
+
+def test_charger_profils_json_non_objet_retourne_dict_vide() -> None:
+    profils.CHEMIN_PROFILS.parent.mkdir(parents=True, exist_ok=True)
+    profils.CHEMIN_PROFILS.write_text("null", encoding="utf-8")
+    assert profils.charger_profils() == {}

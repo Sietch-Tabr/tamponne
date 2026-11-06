@@ -3,7 +3,7 @@ lancement en arrière-plan, registre des offres et actions sur une offre."""
 
 import logging
 import threading
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -617,6 +617,10 @@ class ControleurRecherche(QObject):
         self._tout_change()
 
     def _on_thread_termine(self) -> None:
+        # `finished` part un instant avant la fin réelle du fil : le lâcher
+        # trop tôt le détruirait encore actif.
+        if self._thread is not None:
+            self._thread.wait()
         self._thread = None
         self._travailleur = None
         self._tout_change()
@@ -750,7 +754,7 @@ class ControleurRecherche(QObject):
         self._taches = [(t, tache) for t, tache in self._taches if t.isRunning()]
 
     @contextmanager
-    def _verrou_pour(self, url: str) -> Iterator[None]:
+    def _verrou_pour(self, url: str) -> Generator[None]:
         """Verrou propre à `url`, retiré dès que plus personne ne l'utilise."""
         with self._verrou_details:
             entree = self._verrous_url.setdefault(url, _VerrouUrl())

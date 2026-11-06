@@ -154,3 +154,64 @@ def test_exporter_donnees_emplacement_impossible_message_en_francais(
     bloque.write_text("", encoding="utf-8")
     with pytest.raises(ErreurSauvegarde, match="Impossible d'écrire"):
         exporter_donnees(bloque / "export.zip")
+
+
+def test_importer_donnees_copie_de_securite_elle_meme_retablit_les_donnees(
+    tmp_path: Path,
+) -> None:
+    """Le retour en arrière annoncé à l'utilisateur : importer la copie de
+    sécurité, qui doit être réécrite pendant sa propre lecture."""
+    _ecrire(profils.CHEMIN_PROFILS, {"Avant": {}})
+    avant = exporter_donnees_vers(tmp_path / "avant.zip")
+    _ecrire(profils.CHEMIN_PROFILS, {"Apres": {}})
+    importer_donnees(avant)
+    assert set(profils.charger_profils()) == {"Avant"}
+
+    importer_donnees(sauvegarde.chemin_copie_securite())
+
+    assert set(profils.charger_profils()) == {"Apres"}
+
+
+def exporter_donnees_vers(destination: Path) -> Path:
+    exporter_donnees(destination)
+    return destination
+
+
+def test_importer_donnees_json_non_objet_refuse_la_sauvegarde(tmp_path: Path) -> None:
+    source = _zip(
+        tmp_path / "liste.zip", {"manifeste.json": MANIFESTE, "profils.json": "[]"}
+    )
+    with pytest.raises(ErreurSauvegarde, match="endommagée"):
+        importer_donnees(source)
+
+
+def test_importer_donnees_nom_de_pdf_interdit_sous_windows_refuse_la_sauvegarde(
+    tmp_path: Path,
+) -> None:
+    source = _zip(
+        tmp_path / "ads.zip",
+        {"manifeste.json": MANIFESTE, "archives/fiche:flux.pdf": b"%PDF"},
+    )
+    with pytest.raises(ErreurSauvegarde, match="pas une sauvegarde"):
+        importer_donnees(source)
+
+
+def test_importer_donnees_avec_ancien_dossier_d_archives_perime_remplace_les_pdf(
+    tmp_path: Path,
+) -> None:
+    """Reste d'un import interrompu : il ne doit pas bloquer l'échange."""
+    dossier = candidatures.DOSSIER_ARCHIVES
+    dossier.mkdir(parents=True)
+    (dossier / "ANCIEN_1.pdf").write_bytes(b"%PDF")
+    perime = dossier.with_name(dossier.name + "-ancien")
+    perime.mkdir()
+    (perime / "RESTE.pdf").write_bytes(b"%PDF")
+    source = _zip(
+        tmp_path / "nouveau.zip",
+        {"manifeste.json": MANIFESTE, "archives/NOUVEAU_2.pdf": b"%PDF"},
+    )
+
+    importer_donnees(source)
+
+    assert [f.name for f in dossier.glob("*.pdf")] == ["NOUVEAU_2.pdf"]
+    assert not perime.exists()

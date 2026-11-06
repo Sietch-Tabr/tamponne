@@ -277,9 +277,10 @@ def appliquer_maj(info: InfoMaj) -> None:
     arrière du lanceur.
 
     Raises:
-        RuntimeError: Archive hors du dépôt, téléchargement, extraction ou
-            sauvegarde impossible, rien n'est installé : l'appelant décide de
-            continuer avec la version actuelle plutôt que bloquer.
+        RuntimeError: Archive hors du dépôt, téléchargement, extraction,
+            sauvegarde ou installation impossible. Avant l'installation rien
+            n'est modifié ; pendant, la version sauvegardée permet le retour
+            arrière du lanceur.
     """
     if not info["url_zip"]:
         raise RuntimeError("URL de l'archive de mise à jour manquante.")
@@ -324,7 +325,12 @@ def appliquer_maj(info: InfoMaj) -> None:
             raise RuntimeError(
                 f"Impossible de sauvegarder la version actuelle\u00a0: {e}"
             ) from e
-        installer_archive(dossier_extrait, CHEMIN_RACINE)
+        try:
+            installer_archive(dossier_extrait, CHEMIN_RACINE)
+        except OSError as e:
+            raise RuntimeError(
+                f"Impossible d'installer la mise \u00e0 jour\u00a0: {e}"
+            ) from e
 
 
 DOSSIERS_PURGES = ("src",)

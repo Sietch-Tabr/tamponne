@@ -9,7 +9,7 @@ import Tamponne
 Item {
     id: racine
 
-    /*! `ControleurSuivi` (src/gui/controleur_suivi.py). */
+    /*! `ControleurSuivi` (src/gui/controleurs/suivi.py). */
     required property var suivi
 
     function titreDe(reference: string): string {

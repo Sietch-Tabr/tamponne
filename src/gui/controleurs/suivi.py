@@ -274,6 +274,10 @@ class ControleurSuivi(QObject):
         self.rafraichir()
 
     def _on_termine(self) -> None:
+        # `finished` part un instant avant la fin réelle du fil : le lâcher
+        # trop tôt le détruirait encore actif.
+        if self._thread is not None:
+            self._thread.wait()
         self._thread = None
         self._verificateur = None
         self._texte_verification = LIBELLE_VERIFIER

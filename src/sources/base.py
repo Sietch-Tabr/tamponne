@@ -146,7 +146,7 @@ class SourceOffres(Protocol):
     offres, en gérant elle-même la pagination propre à son API/site.
     Ne filtre pas les grades supérieurs (IDIV/IP*/AFIPA) : ça reste un
     post-traitement appliqué par l'appelant, pour permettre de les
-    afficher ponctuellement (bouton dédié dans la TUI).
+    afficher ponctuellement (case « grades supérieurs » du formulaire).
     """
 
     def rechercher(
@@ -158,7 +158,7 @@ class SourceOffres(Protocol):
         """Retourne (offres de toutes les pages chargées, nb_pages, arret_anticipe).
 
         Args:
-            filtres: Filtres génériques du wizard/TUI.
+            filtres: Filtres génériques du formulaire de recherche.
             on_page: Callback optionnel appelé après chaque page chargée
                 avec (page_courante, nb_pages_a_charger), pour permettre
                 à l'appelant d'afficher une progression sans coupler

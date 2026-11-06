@@ -2,6 +2,7 @@
 redirections, erreurs et proxy sur un faux gestionnaire ; réutilisation des
 connexions et compression sur un vrai serveur local."""
 
+import base64
 import gzip
 import socket
 import socketserver
@@ -16,7 +17,6 @@ import urllib3
 from src.sources import reseau
 from src.sources.reseau import ErreurHttp, Session
 from tests.sources.reponses import (
-    Comportement,
     ReponseHttp,
     echec_reseau,
     simuler_reseau,
@@ -183,6 +183,23 @@ def test_le_proxy_du_systeme_est_utilise(
     assert isinstance(gestionnaire, urllib3.ProxyManager)
     assert gestionnaire.proxy is not None and gestionnaire.proxy.host == "proxy.test"
     assert gestionnaire.proxy_headers["proxy-authorization"].startswith("Basic ")
+
+
+def test_le_proxy_recoit_le_contexte_tls_du_systeme_et_des_identifiants_utf8(
+    monkeypatch: pytest.MonkeyPatch, _sans_gestionnaires: None
+) -> None:
+    """Depuis urllib3 2.8, le TLS du proxy ne reprend plus le contexte de la
+    destination : il doit lui être donné, sinon l'AC d'entreprise est refusée."""
+    monkeypatch.setattr(
+        urllib.request,
+        "getproxies",
+        lambda: {"https": "https://%C3%A9l:mdp@proxy.test:3128"},
+    )
+    monkeypatch.setattr(urllib.request, "proxy_bypass", lambda _h: False)
+    gestionnaire = reseau._gestionnaire("https://exemple.test/")
+    assert gestionnaire.proxy_ssl_context is reseau._contexte()
+    jeton = gestionnaire.proxy_headers["proxy-authorization"].removeprefix("Basic ")
+    assert base64.b64decode(jeton).decode("utf-8") == "él:mdp"
 
 
 def test_un_hote_exclu_du_proxy_est_joint_directement(

@@ -13,7 +13,6 @@ from src.recherche import orchestration
 from src.recherche.orchestration import (
     RechercheImpossible,
     criteres_ignores,
-    lignes_resume,
     post_traiter_resultats,
     rechercher_toutes_sources,
 )
@@ -605,37 +604,6 @@ def test_post_traiter_avec_profil_marque_les_nouvelles_et_la_date() -> None:
 
     seconde = post_traiter_resultats([_offre("O1"), _offre("O2")], [], False, "p")
     assert seconde["nouvelles"] == {"O2"}
-
-
-# --- Résumé ---
-
-
-def test_lignes_resume_cas_nominal() -> None:
-    resultat = post_traiter_resultats([_offre("O1")], [], False, None)
-    lignes = lignes_resume({}, resultat, 1, False, [])
-    assert lignes == ["Filtres\u00a0: tous versants", "1 offre(s)"]
-
-
-def test_lignes_resume_detaille_pages_exclusions_et_avertissements() -> None:
-    lignes = lignes_resume(
-        {},
-        {"offres": [_offre("O1")], "nb_exclus": 2, "nouvelles": {"O1"}},
-        3,
-        True,
-        ["FHF indisponible\u00a0: HTTP 503"],
-    )
-    assert lignes[1] == "1 offre(s) · 3 page(s)"
-    assert "1 nouvelle(s) offre(s) depuis la dernière recherche" in lignes
-    assert "2 offre(s) IDiv/IP exclue(s) (filtre de titre)" in lignes
-    assert "Arrêt à la page 3 (page vide)" in lignes
-    assert lignes[-1] == "FHF indisponible\u00a0: HTTP 503"
-
-
-def test_lignes_resume_aucune_offre() -> None:
-    lignes = lignes_resume(
-        {}, {"offres": [], "nb_exclus": 0, "nouvelles": set()}, 1, False, []
-    )
-    assert lignes[-1] == "Aucune offre trouvée."
 
 
 # --- critères qu'une source ne peut pas appliquer : prévenir, ne pas exclure ---

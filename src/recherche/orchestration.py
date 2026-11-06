@@ -18,7 +18,7 @@ from src.donnees.parametres_sources import (
     charger_sources_actives,
 )
 from src.donnees.profils import noter_lancement
-from src.filtres import date_dans_fenetre, filtrer_par_grades, resumer_filtres
+from src.filtres import date_dans_fenetre, filtrer_par_grades
 from src.sources.base import (
     CacheFiches,
     SourceOffres,
@@ -29,7 +29,7 @@ from src.sources.choisirleservicepublic.api import URL_SITE as SITE_CSP
 from src.sources.emploiterritorial.api import URL_SITE as SITE_TERRITORIAL
 from src.sources.fhf.api import URL_SITE as SITE_FHF
 from src.sources.passerellesmef.api import URL_SITE as SITE_PASSERELLES
-from src.sources.choisirleservicepublic import MAX_PAGES, ChoisirLeServicePublic
+from src.sources.choisirleservicepublic import ChoisirLeServicePublic
 from src.sources.choisirleservicepublic.extraction import filtrer_grades_superieurs
 from src.sources.emploiterritorial import EmploiTerritorial
 from src.sources.fhf import Fhf
@@ -361,38 +361,3 @@ def post_traiter_resultats(
             )
 
     return {"offres": offres_filtrees, "nb_exclus": nb_exclus, "nouvelles": nouvelles}
-
-
-def lignes_resume(
-    filtres: FiltresRecherche,
-    resultat: ResultatTraite,
-    nb_pages: int,
-    arret_anticipe: bool,
-    avertissements: list[str],
-) -> list[str]:
-    """Lignes de texte résumant une recherche terminée (filtres, nombre
-    d'offres, nouvelles, exclusions, pagination, avertissements)."""
-    offres = resultat["offres"]
-    nouvelles = resultat["nouvelles"]
-    lignes = [
-        f"Filtres\u00a0: {resumer_filtres(filtres)}",
-        f"{len(offres)} offre(s)" + (f" · {nb_pages} page(s)" if nb_pages > 1 else ""),
-    ]
-    if nouvelles:
-        lignes.append(
-            f"{len(nouvelles)} nouvelle(s) offre(s) depuis la dernière recherche"
-        )
-    if resultat["nb_exclus"]:
-        lignes.append(
-            f"{resultat['nb_exclus']} offre(s) IDiv/IP exclue(s) (filtre de titre)"
-        )
-    if arret_anticipe:
-        lignes.append(f"Arrêt à la page {nb_pages} (page vide)")
-    elif nb_pages > MAX_PAGES:
-        lignes.append(
-            f"{nb_pages} pages au total — seules les {MAX_PAGES} premières chargées."
-        )
-    if not offres:
-        lignes.append("Aucune offre trouvée.")
-    lignes.extend(avertissements)
-    return lignes

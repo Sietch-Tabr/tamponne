@@ -37,7 +37,7 @@ NOM_COPIE_SECURITE = "sauvegarde-avant-import.zip"
 TAILLE_MAX = 500 * 1024 * 1024
 """Taille décompressée maximale acceptée à l'import (archive piégée)."""
 
-_ARCHIVE_PDF = re.compile(r"archives/[^/\\]+\.pdf")
+_ARCHIVE_PDF = re.compile(r'archives/[^/\\:*?"<>|\x00-\x1f]+\.pdf')
 
 
 class ErreurSauvegarde(Exception):
@@ -146,7 +146,7 @@ def _verifier(archive: zipfile.ZipFile) -> None:
             contenu = json.loads(archive.read(nom))
         except ValueError:
             raise ErreurSauvegarde("Cette sauvegarde est endommagée.") from None
-        if not isinstance(contenu, dict | list):
+        if not isinstance(contenu, dict):
             raise ErreurSauvegarde("Cette sauvegarde est endommagée.")
 
 
@@ -161,6 +161,8 @@ def _remplacer_archives(archive: zipfile.ZipFile) -> None:
             # Nom de fichier seul : validé par `_ARCHIVE_PDF`, jamais de sous-dossier.
             (nouveau / Path(info.filename).name).write_bytes(archive.read(info))
     ancien = dossier.with_name(dossier.name + "-ancien")
+    # Reste d'un import interrompu : il ferait échouer l'échange ci-dessous.
+    shutil.rmtree(ancien, ignore_errors=True)
     if dossier.exists():
         dossier.replace(ancien)
     nouveau.replace(dossier)
@@ -171,33 +173,47 @@ def importer_donnees(source: Path) -> None:
     """Remplace toutes les données par celles de la sauvegarde `source`.
 
     Les données actuelles sont d'abord copiées dans `chemin_copie_securite()`.
-    Un fichier absent de la sauvegarde est supprimé (il n'existait pas dans
-    l'installation exportée).
+    Importer cette copie elle-même (retour en arrière) est permis : elle est
+    lue depuis un double, car la réécrire pendant sa lecture échoue sous
+    Windows. Un fichier absent de la sauvegarde est supprimé (il n'existait
+    pas dans l'installation exportée).
 
     Raises:
         ErreurSauvegarde: Fichier illisible ou refusé par la vérification,
             copie de sécurité ou écriture impossible.
     """
     try:
-        with zipfile.ZipFile(source) as archive:
-            _verifier(archive)
-            exporter_donnees(chemin_copie_securite())
-            try:
-                for nom, chemin in _fichiers().items():
-                    if nom in archive.namelist():
-                        chemin.parent.mkdir(parents=True, exist_ok=True)
-                        temporaire = chemin.with_name(chemin.name + ".import")
-                        temporaire.write_bytes(archive.read(nom))
-                        temporaire.replace(chemin)
-                    else:
-                        chemin.unlink(missing_ok=True)
-                _remplacer_archives(archive)
-            except OSError as erreur:
-                raise ErreurSauvegarde(
-                    "Import interrompu\u00a0: vos données d'avant l'import sont "
-                    f"dans {NOM_COPIE_SECURITE} (dossier data)."
-                ) from erreur
+        with tempfile.TemporaryDirectory(prefix="tamponne-import-") as dossier_tmp:
+            lue = source
+            if source.resolve() == chemin_copie_securite().resolve():
+                lue = Path(dossier_tmp) / "copie.zip"
+                shutil.copyfile(source, lue)
+            _importer_archive(lue)
     except (zipfile.BadZipFile, OSError) as erreur:
         raise ErreurSauvegarde(
             "Ce fichier n'est pas une sauvegarde de Tamponné."
         ) from erreur
+
+
+def _importer_archive(source: Path) -> None:
+    """Vérifie l'archive `source`, sauvegarde les données actuelles puis
+    les remplace."""
+    with zipfile.ZipFile(source) as archive:
+        _verifier(archive)
+        exporter_donnees(chemin_copie_securite())
+        try:
+            noms_archive = set(archive.namelist())
+            for nom, chemin in _fichiers().items():
+                if nom in noms_archive:
+                    chemin.parent.mkdir(parents=True, exist_ok=True)
+                    temporaire = chemin.with_name(chemin.name + ".import")
+                    temporaire.write_bytes(archive.read(nom))
+                    temporaire.replace(chemin)
+                else:
+                    chemin.unlink(missing_ok=True)
+            _remplacer_archives(archive)
+        except OSError as erreur:
+            raise ErreurSauvegarde(
+                "Import interrompu\u00a0: vos données d'avant l'import sont "
+                f"dans {NOM_COPIE_SECURITE} (dossier data)."
+            ) from erreur

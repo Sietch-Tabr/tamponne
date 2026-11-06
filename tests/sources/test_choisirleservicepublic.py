@@ -3,7 +3,10 @@
 import pytest
 
 import src.sources.choisirleservicepublic as source
-from src.sources.choisirleservicepublic.extraction import DETAIL_VIDE
+from src.sources.choisirleservicepublic.extraction import (
+    DETAIL_VIDE,
+    extraire_detail_offre,
+)
 
 _HTML_AVEC_JSON_LD = """
 <script type="application/ld+json">
@@ -37,3 +40,9 @@ def test_recuperer_detail_offre_echec_reseau_retourne_detail_vide(
         source.recuperer_detail_offre("https://choisirleservicepublic.gouv.fr/offre-1/")
         == DETAIL_VIDE
     )
+
+
+def test_extraire_detail_offre_json_ld_en_liste_laisse_les_champs_vides() -> None:
+    html = '<script type="application/ld+json">[{"Description": "x"}]</script>'
+    detail = extraire_detail_offre(html)
+    assert detail["description"] == "" and detail["page_html"] == html

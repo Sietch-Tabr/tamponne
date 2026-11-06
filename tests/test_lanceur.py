@@ -192,6 +192,22 @@ def test_lancer_installation_interrompue_restaure_la_sauvegarde(
     assert echec is not None and echec["motif"] == lanceur.MOTIF_INSTALLATION
 
 
+def test_lancer_installation_interrompue_efface_le_marqueur(marqueur: Path) -> None:
+    """Un marqueur resté après l'échec ferait rejouer la même mise à jour à
+    chaque démarrage, malgré l'échec mémorisé."""
+    marqueur.write_text('{"version": "1.1.0"}', encoding="utf-8")
+
+    def installation_interrompue() -> None:
+        maj.sauvegarder_version_actuelle()
+        maj.CHEMIN_PYPROJECT.write_text("cassé", encoding="utf-8")
+
+    executer = Executeur(
+        {"maj": [1], "sync": [0], "app": [0]}, {"maj": installation_interrompue}
+    )
+    assert lancer(executer) == 0
+    assert not marqueur.exists()
+
+
 def test_mettre_a_jour_uv_sous_windows_relance_l_installeur_en_secours(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

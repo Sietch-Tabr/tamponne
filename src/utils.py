@@ -44,9 +44,7 @@ def ecriture_atomique(chemin: Path, donnees: dict[str, Any]) -> None:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             f.write(contenu)
         _remplacer(chemin_tmp, chemin)
-    except (
-        Exception
-    ):  # générique intentionnel : nettoyage du temporaire quelle que soit l'erreur
+    except BaseException:  # nettoyage du temporaire même sur Ctrl+C
         with contextlib.suppress(OSError):
             os.unlink(chemin_tmp)
         raise

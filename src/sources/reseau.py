@@ -84,14 +84,23 @@ def _gestionnaire(url: str) -> Any:
                 entetes = None
                 identifiants = urlsplit(proxy)
                 if identifiants.username:
+                    # UTF-8 (RFC 7617) : le latin-1 par défaut échoue sur les
+                    # identifiants hors de ce jeu de caractères.
                     entetes = urllib3.make_headers(
                         proxy_basic_auth=(
                             f"{unquote(identifiants.username)}:"
                             f"{unquote(identifiants.password or '')}"
-                        )
+                        ),
+                        proxy_basic_auth_encoding="utf-8",
                     )
+                # Depuis urllib3 2.8, le TLS d'un proxy HTTPS ne reprend plus le
+                # contexte de la destination : sans lui, l'AC d'entreprise du
+                # proxy, connue du système seulement, serait refusée.
                 _gestionnaires[proxy] = urllib3.ProxyManager(
-                    proxy, proxy_headers=entetes, **commun
+                    proxy,
+                    proxy_headers=entetes,
+                    proxy_ssl_context=commun["ssl_context"],
+                    **commun,
                 )
             else:
                 _gestionnaires[proxy] = urllib3.PoolManager(**commun)

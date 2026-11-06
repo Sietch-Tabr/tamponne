@@ -9,7 +9,7 @@ import Tamponne
 Dialogue {
     id: racine
 
-    /*! Contenu fourni par le contrôleur (`detail(reference)`). */
+    /*! Contenu fourni par le contrôleur (`ControleurSuivi.detail` ou `detail_pret`). */
     property var fiche: ({})
 
     /*! Vrai tant que la fiche se télécharge : seuls l'intitulé et le
