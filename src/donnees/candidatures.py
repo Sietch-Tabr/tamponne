@@ -1,6 +1,6 @@
 """Suivi de candidature : historique d'événements par offre.
 
-Voir REFONTE.md §7 pour le modèle de données. Données strictement
+Modèle de données : `src.types.Candidature`. Données strictement
 locales à chaque installation (pas de synchronisation entre
 utilisateurs).
 """
@@ -110,13 +110,16 @@ def charger_candidatures() -> dict[str, Candidature]:
     if not CHEMIN_CANDIDATURES.exists():
         return {}
     try:
-        return json.loads(CHEMIN_CANDIDATURES.read_text(encoding="utf-8"))
+        donnees = json.loads(CHEMIN_CANDIDATURES.read_text(encoding="utf-8"))
     except json.JSONDecodeError, OSError:
+        donnees = None
+    if not isinstance(donnees, dict):
         journal.warning(
             "%s illisible ou corrompu, aucune candidature chargée.",
             CHEMIN_CANDIDATURES.name,
         )
         return {}
+    return donnees
 
 
 def sauvegarder_candidatures(candidatures: dict[str, Candidature]) -> None:
@@ -269,7 +272,7 @@ def supprimer_candidature(reference: str) -> None:
 
 def source_candidature(candidature: Candidature) -> str:
     """Source de l'offre suivie : celle mémorisée au suivi, sinon déduite
-    du préfixe de la référence (candidatures antérieures à la 2.0), sinon
+    du préfixe de la référence (candidatures enregistrées avant l'ajout du champ), sinon
     chaîne vide."""
     return candidature.get("offre_source") or deriver_source(
         candidature.get("offre_reference") or ""

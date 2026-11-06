@@ -42,3 +42,13 @@ def test_charger_sources_actives_nouvelle_cle_absente_du_fichier_est_active() ->
     etats = parametres_sources.charger_sources_actives()
     assert etats["emploiterritorial"] is True
     assert etats["choisirleservicepublic"] is False
+
+
+def test_charger_sources_actives_json_non_objet_retourne_tout_actif(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    chemin = tmp_path / "sources.json"
+    chemin.write_text("[true, false]", encoding="utf-8")
+    monkeypatch.setattr(parametres_sources, "CHEMIN_SOURCES", chemin)
+    etats = parametres_sources.charger_sources_actives()
+    assert etats == {cle: True for cle in parametres_sources.SOURCES_DISPONIBLES}

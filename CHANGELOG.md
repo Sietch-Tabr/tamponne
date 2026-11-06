@@ -4,6 +4,26 @@ Toutes les évolutions notables de Tamponné, de la plus récente à la plus
 ancienne. Le détail de chaque version est aussi publié sur la page
 [Releases](https://codeberg.org/Kwaite/tamponne/releases) du dépôt.
 
+## [1.7.5] — 2026-11-06
+
+### Corrections
+
+- Mise à jour : une installation interrompue ne rejoue plus la même mise à jour à chaque démarrage, et une erreur de disque pendant l'installation s'affiche en clair
+- Données : un fichier de demandes, de suivi ou de sources vide ou mal formé ne fait plus planter l'application, il est traité comme corrompu
+- Sauvegarde : l'import refuse un fichier dont les données ne sont pas valides ou dont un nom de PDF est interdit sous Windows, n'est plus bloqué par un import précédent interrompu, et permet de revenir en arrière en important la copie de sécurité
+- Fiche de poste : un bloc d'informations du site au format inattendu laisse les champs vides au lieu de faire échouer la lecture
+- Fermeture : les tâches en arrière-plan se terminent complètement avant d'être libérées, ce qui écarte un risque de plantage de Qt
+
+### Bibliothèques
+
+- `soupsieve` passe en 4.0.1 (sans effet sur les sélecteurs utilisés)
+- Proxy HTTPS : le certificat du système est transmis au proxy lui-même, comme l'exige `urllib3` 2.8, et les identifiants du proxy acceptent les caractères accentués
+
+### En coulisses
+
+- Code mort retiré (résumé de recherche de l'ancienne interface), références périmées corrigées dans les commentaires
+- Contrôle de types : version de Python précisée pour pyright
+
 ## [1.7.4] — 2026-10-30
 
 ### Nouveautés

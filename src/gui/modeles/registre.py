@@ -4,7 +4,7 @@ triable et filtrable par `ProxyOffres`."""
 
 from typing import Any
 
-from PySide6.QtCore import QByteArray, QModelIndex, QObject, QPersistentModelIndex, Qt
+from PySide6.QtCore import QByteArray, QModelIndex, QPersistentModelIndex, Qt
 
 from src.formatage import SOURCE_PAR_DEFAUT, cle_tri_date, reformater_date
 from src.gui.modeles.offres import ROLE_OFFRE, ROLE_TRI, ModeleOffres
@@ -13,6 +13,8 @@ from src.gui.presentation import date_courte
 ENTETES_REGISTRE = ["N°", "Intitulé", "Employeur", "Lieu", "Publiée", "Source"]
 COLONNE_NUMERO = 0
 COLONNE_INTITULE = 1
+COLONNE_EMPLOYEUR = 2
+COLONNE_LIEU = 3
 COLONNE_PUBLIEE = 4
 
 ROLE_NOUVELLE = Qt.ItemDataRole.UserRole + 2
@@ -23,9 +25,6 @@ type _Index = QModelIndex | QPersistentModelIndex
 
 class ModeleRegistre(ModeleOffres):
     """Offres de la dernière recherche, numérotées dans l'ordre des sources."""
-
-    def __init__(self, parent: QObject | None = None) -> None:
-        super().__init__(parent)
 
     def columnCount(self, parent: _Index = QModelIndex()) -> int:  # noqa: B008
         return 0 if parent.isValid() else len(ENTETES_REGISTRE)
@@ -61,9 +60,9 @@ class ModeleRegistre(ModeleOffres):
             return self.numero(ligne)
         if colonne == COLONNE_INTITULE:
             return offre["titre"]
-        if colonne == 2:
+        if colonne == COLONNE_EMPLOYEUR:
             return offre["employeur"] or "—"
-        if colonne == 3:
+        if colonne == COLONNE_LIEU:
             return offre["localisation"] or "—"
         if colonne == COLONNE_PUBLIEE:
             return reformater_date(offre["date"]) if offre["date"] else "—"

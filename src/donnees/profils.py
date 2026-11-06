@@ -20,14 +20,17 @@ def charger_profils() -> dict[str, Profil]:
     if not CHEMIN_PROFILS.exists():
         return {}
     try:
-        return json.loads(CHEMIN_PROFILS.read_text(encoding="utf-8"))
+        donnees = json.loads(CHEMIN_PROFILS.read_text(encoding="utf-8"))
     except json.JSONDecodeError, OSError:
+        donnees = None
+    if not isinstance(donnees, dict):
         # Journal plutôt qu'un message d'interface : ce module n'est lié à
         # aucune interface particulière.
         journal.warning(
             "%s illisible ou corrompu, aucun profil chargé.", CHEMIN_PROFILS.name
         )
         return {}
+    return donnees
 
 
 def sauvegarder_profils(profils: dict[str, Profil]) -> None:

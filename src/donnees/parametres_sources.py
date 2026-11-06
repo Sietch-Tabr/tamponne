@@ -34,17 +34,20 @@ def charger_sources_actives() -> dict[str, bool]:
     """Charge l'état actif/inactif de chaque source — toutes actives par
     défaut, y compris une source nouvellement ajoutée non encore
     présente dans le fichier."""
-    etats: dict[str, bool] = {}
+    etats: dict[str, object] = {}
     if CHEMIN_SOURCES.exists():
         try:
-            etats = json.loads(CHEMIN_SOURCES.read_text(encoding="utf-8"))
+            lu = json.loads(CHEMIN_SOURCES.read_text(encoding="utf-8"))
         except json.JSONDecodeError, OSError:
+            lu = None
+        if isinstance(lu, dict):
+            etats = lu
+        else:
             journal.warning(
                 "%s illisible ou corrompu, toutes les sources sont réactivées.",
                 CHEMIN_SOURCES.name,
             )
-            etats = {}
-    return {cle: etats.get(cle, True) for cle in SOURCES_DISPONIBLES}
+    return {cle: etats.get(cle, True) is not False for cle in SOURCES_DISPONIBLES}
 
 
 def sauvegarder_sources_actives(etats: dict[str, bool]) -> None:

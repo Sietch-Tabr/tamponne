@@ -271,6 +271,8 @@ class ControleurReglages(QObject):
             return
         self._cache_en_cours = True
         self._message_cache = ""
+        if self._thread_cache is not None:
+            self._thread_cache.wait()  # le précédent finit : ne pas le détruire actif
         thread = QThread()
         tache = TacheReseau(lambda: obtenir_organisations(forcer=True))
         tache.moveToThread(thread)
@@ -337,6 +339,8 @@ class ControleurReglages(QObject):
         if self._raccourci_en_cours:
             return
         self._raccourci_en_cours = True
+        if self._thread_raccourci is not None:
+            self._thread_raccourci.wait()  # le précédent finit : ne pas le détruire actif
         thread = QThread()
         tache = TacheReseau(operation)
         tache.moveToThread(thread)

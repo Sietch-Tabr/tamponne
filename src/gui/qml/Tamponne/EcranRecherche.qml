@@ -10,7 +10,7 @@ import Tamponne
 Item {
     id: racine
 
-    /*! `ControleurRecherche` (src/gui/controleur_recherche.py). */
+    /*! `ControleurRecherche` (src/gui/controleurs/recherche.py). */
     required property var recherche
     /*! `ControleurSuivi`, pour la copie archivée d'une offre déjà suivie. */
     required property var suivi

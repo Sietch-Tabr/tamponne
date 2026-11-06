@@ -270,7 +270,9 @@ def extraire_detail_offre(html: str) -> DetailOffre:
     m = _RE_JSON_LD.search(html)
     if m:
         try:
-            data = json.loads(m.group(1))
+            charge = json.loads(m.group(1))
+            # Un JSON-LD peut être une liste : seul un objet se lit par clés.
+            data = charge if isinstance(charge, dict) else {}
         except json.JSONDecodeError:
             journal.warning(
                 "Bloc JSON-LD de la fiche de poste illisible "
@@ -288,9 +290,7 @@ def extraire_detail_offre(html: str) -> DetailOffre:
         # Filet de sécurité : bloc DOM absent, retombe sur le JSON-LD dégradé.
         description = str(data.get("Description", "")).strip()
     if data and not description:
-        journal.warning(
-            "Champ Description vide dans le JSON-LD de la " "fiche de poste."
-        )
+        journal.warning("Champ Description vide dans le JSON-LD de la fiche de poste.")
 
     return {
         "description": description,

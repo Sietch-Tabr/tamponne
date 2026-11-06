@@ -9,7 +9,7 @@ import Tamponne
 Feuille {
     id: racine
 
-    /*! `ControleurRecherche` (src/gui/controleur_recherche.py). */
+    /*! `ControleurRecherche` (src/gui/controleurs/recherche.py). */
     required property var recherche
 
     signal selectionDemandee(string liste, string titre)

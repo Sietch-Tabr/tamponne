@@ -35,7 +35,7 @@ import signal
 import subprocess
 import sys
 import time
-from collections.abc import Callable, Iterator, Sequence
+from collections.abc import Callable, Generator, Sequence
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
@@ -256,7 +256,7 @@ def noter(texte: str) -> None:
 
 
 @contextmanager
-def _ctrl_c_laisse_a_l_enfant() -> Iterator[None]:
+def _ctrl_c_laisse_a_l_enfant() -> Generator[None]:
     """Le terminal envoie Ctrl+C à tout le groupe de processus : le lanceur
     l'ignore le temps de l'exécution, le processus lancé le traite seul (un
     gestionnaire, contrairement à `SIG_IGN`, n'est pas hérité par l'enfant)."""
@@ -374,7 +374,7 @@ def _activer_couleurs_console() -> bool:
 
 
 @contextmanager
-def console_visible(titre: str) -> Iterator[None]:
+def console_visible(titre: str) -> Generator[None]:
     """Sous Windows, ouvre une console le temps du bloc pour montrer la
     progression (téléchargements de uv) au lieu de travailler sans rien
     afficher ; ailleurs, le terminal du lanceur suffit. `titre` est annoncé
@@ -436,7 +436,7 @@ def _verrouiller(fichier: BinaryIO) -> None:
 
 
 @contextmanager
-def instance_unique() -> Iterator[None]:
+def instance_unique() -> Generator[None]:
     """Garde le verrou du lanceur le temps du bloc : un second lanceur, qui
     attend la fin de l'installation ou de l'interface, n'a rien à faire.
 
@@ -531,6 +531,9 @@ def _annuler_maj(executer: Executer, motif: str, version: str) -> bool:
     if not maj.restaurer_version_precedente():
         signaler(avec_detail(MESSAGE_RELANCER))
         return False
+    # Sans cela, un marqueur resté après une installation interrompue
+    # relancerait la même mise à jour à chaque démarrage.
+    maj.effacer_maj_disponible()
     maj.enregistrer_echec(version, motif)
     if not synchroniser(executer):
         signaler(avec_detail(MESSAGE_RELANCER))

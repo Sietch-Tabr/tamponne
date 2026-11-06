@@ -9,7 +9,7 @@ import Tamponne
 Item {
     id: racine
 
-    /*! `ControleurProfils` (src/gui/controleur_profils.py). */
+    /*! `ControleurProfils` (src/gui/controleurs/profils.py). */
     required property var profils
 
     /*! Recherche vierge demandée (carte « Nouvelle demande »). */
