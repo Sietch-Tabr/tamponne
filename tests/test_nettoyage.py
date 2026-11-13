@@ -54,8 +54,8 @@ def test_ancienne_installation_nettoyee_donnees_intactes(tmp_path: Path) -> None
 
 
 def test_fichiers_de_developpement_exclus_des_publications() -> None:
-    """Chaque fichier retiré des installations est aussi exclu du zip de
-    Codeberg (`git archive`), sinon la mise à jour suivante le réinstalle."""
+    """Chaque fichier retiré des installations est aussi exclu du zip des
+    publications (`git archive`), sinon la mise à jour suivante le réinstalle."""
     attributs = (nettoyage.CHEMIN_RACINE / ".gitattributes").read_text(encoding="utf-8")
     for relatif in FICHIERS_DEVELOPPEMENT:
         assert (nettoyage.CHEMIN_RACINE / relatif).exists(), relatif

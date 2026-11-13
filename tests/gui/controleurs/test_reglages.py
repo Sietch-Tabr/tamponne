@@ -26,8 +26,8 @@ from src.types import InfoMaj, Organisations
 INFO: InfoMaj = {
     "version": "2.0.1",
     "notes": "- Correctifs",
-    "url_zip": "https://codeberg.org/archive.zip",
-    "url_publication": "https://codeberg.org/release",
+    "url_zip": "https://api.github.com/repos/Sietch-Tabr/tamponne/zipball/v2.0.1",
+    "url_publication": "https://github.com/Sietch-Tabr/tamponne/releases/tag/v2.0.1",
 }
 
 
@@ -183,7 +183,7 @@ def test_verifier_mise_a_jour_affiche_l_avis_trouve(
     reglages.arreter()
 
 
-def test_verifier_mise_a_jour_codeberg_injoignable_le_dit(
+def test_verifier_mise_a_jour_github_injoignable_le_dit(
     qapp: QApplication, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     def injoignable() -> None:
@@ -193,7 +193,7 @@ def test_verifier_mise_a_jour_codeberg_injoignable_le_dit(
     reglages = ControleurReglages()
     reglages.verifier_mise_a_jour()
     qtbot.waitUntil(
-        lambda: "Codeberg ne répond pas" in reglages.property("avis")["objet"],
+        lambda: "GitHub ne répond pas" in reglages.property("avis")["objet"],
         timeout=5000,
     )
     reglages.arreter()

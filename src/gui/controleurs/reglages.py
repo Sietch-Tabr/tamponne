@@ -141,7 +141,7 @@ class ControleurReglages(QObject):
     # --- Mise à jour ---
 
     def verifier_mise_a_jour(self) -> None:
-        """Interroge Codeberg une fois, en arrière-plan. Appelée par
+        """Interroge GitHub une fois, en arrière-plan. Appelée par
         `main()` une fois la fenêtre chargée, jamais par le constructeur :
         les tests construisent l'interface sans boucle d'événements."""
         if self._thread_maj is not None:
@@ -168,7 +168,7 @@ class ControleurReglages(QObject):
         self.etat_change.emit()
 
     def afficher_echec_verification(self, detail: str) -> None:
-        """Codeberg injoignable : l'avis le dit au lieu d'annoncer « rien
+        """GitHub injoignable : l'avis le dit au lieu d'annoncer « rien
         de plus récent », avec le détail technique `detail`."""
         self._verification_en_cours = False
         self._erreur_verification = detail
@@ -207,7 +207,7 @@ class ControleurReglages(QObject):
 
     avis = Property(dict, _lire_avis, notify=etat_change)
     """Contenu de l'avis de mise à jour : `disponible` faux sans publication
-    proposée, `a_jour` vrai seulement si Codeberg a confirmé (tampon
+    proposée, `a_jour` vrai seulement si GitHub a confirmé (tampon
     « À jour ») ; `objet` échappé pour le texte riche."""
 
     def _lire_pastille(self) -> bool:
@@ -354,7 +354,7 @@ class ControleurReglages(QObject):
         thread.start()
         self.etat_change.emit()
 
-    def _on_raccourci_termine(self, _resultat: object) -> None:
+    def _on_raccourci_termine(self, _: object) -> None:
         self._raccourci_en_cours = False
         self._actualiser_raccourci()
 

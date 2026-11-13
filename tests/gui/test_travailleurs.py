@@ -217,8 +217,8 @@ def test_executer_source_en_echec_est_aussi_signalee_terminee(
 _INFO_MAJ_TEST: InfoMaj = {
     "version": "1.1.0",
     "notes": "notes",
-    "url_zip": "https://codeberg.org/x.zip",
-    "url_publication": "https://codeberg.org/x",
+    "url_zip": "https://api.github.com/repos/Sietch-Tabr/tamponne/zipball/v1.1.0",
+    "url_publication": "https://github.com/Sietch-Tabr/tamponne/releases/tag/v1.1.0",
 }
 
 

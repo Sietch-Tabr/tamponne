@@ -56,13 +56,13 @@ MESSAGE_RELANCER = (
     "La mise à jour de Tamponné n'a pas pu se terminer\u00a0: uv n'a pas pu "
     "télécharger Python ou ses composants, même après sa propre mise à jour.\n\n"
     "Vérifiez que l'ordinateur est connecté à internet (et le proxy éventuel), "
-    "puis relancez Tamponné. Si ce message revient, signalez-le sur Codeberg "
+    "puis relancez Tamponné. Si ce message revient, signalez-le sur GitHub "
     f"en joignant le fichier «\u00a0{JOURNAL_AFFICHE}\u00a0» du dossier de "
     "Tamponné."
 )
 MESSAGE_ERREUR = (
     "Tamponné s'est arrêté sur une erreur.\n\n"
-    "Relancez-le\u00a0; si le problème persiste, signalez-le sur Codeberg en "
+    "Relancez-le\u00a0; si le problème persiste, signalez-le sur GitHub en "
     f"joignant le fichier «\u00a0{JOURNAL_AFFICHE}\u00a0» du dossier de "
     "Tamponné."
 )

@@ -247,7 +247,7 @@ Item {
                     Terme { text: "Bureau de nuit" }
                     Definition { text: "Le bouton en haut à droite passe du thème jour au thème nuit, comme le réglage Thème." }
                     Terme { text: "Où sont mes données\u00a0?" }
-                    Definition { text: "Tout reste dans le dossier de Tamponné\u00a0: données dans «\u00a0data\u00a0», pages exportées dans «\u00a0exports\u00a0», journal des erreurs dans «\u00a0data/tamponne.log\u00a0» (à joindre à un signalement sur Codeberg, après relecture). Le dossier peut être déplacé ou copié tel quel\u00a0; pour changer d'ordinateur, la Sauvegarde suffit." }
+                    Definition { text: "Tout reste dans le dossier de Tamponné\u00a0: données dans «\u00a0data\u00a0», pages exportées dans «\u00a0exports\u00a0», journal des erreurs dans «\u00a0data/tamponne.log\u00a0» (à joindre à un signalement sur GitHub, après relecture). Le dossier peut être déplacé ou copié tel quel\u00a0; pour changer d'ordinateur, la Sauvegarde suffit." }
                 }
             }
         }

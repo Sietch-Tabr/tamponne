@@ -1,9 +1,9 @@
-"""Mise à jour de l'application via les publications (Releases) Codeberg.
+"""Mise à jour de l'application via les publications (Releases) GitHub.
 
 Uniquement les publications explicitement faites sur le dépôt — jamais un
 `git pull`/`fetch` sur une branche — pour garantir que seul ce qui a été
-publié est déployé. `/releases/latest` de l'API Forgejo/Gitea exclut déjà
-nativement les brouillons et pré-versions.
+publié est déployé. Les brouillons et pré-versions sont écartés ici : la
+liste des publications de l'API GitHub les renvoie avec les autres.
 
 Ne dépend d'aucune bibliothèque d'UI : ce module est appelé aussi bien
 depuis le vérificateur en arrière-plan (`src.gui.travailleurs`) que depuis
@@ -17,6 +17,7 @@ import shutil
 import sys
 import tempfile
 import tomllib
+lazy import urllib.error
 lazy import urllib.request
 lazy import zipfile
 from datetime import date
@@ -27,13 +28,15 @@ from src.types import EchecMaj, InfoMaj
 from src.utils import ecriture_atomique
 
 URL_API_RELEASES = (
-    "https://codeberg.org/api/v1/repos/Kwaite/tamponne/releases"
-    "?draft=false&pre-release=false&limit=50"
+    "https://api.github.com/repos/Sietch-Tabr/tamponne/releases?per_page=50"
 )
-PREFIXE_ARCHIVES = "https://codeberg.org/Kwaite/tamponne/"
+PREFIXE_ARCHIVES = "https://api.github.com/repos/Sietch-Tabr/tamponne/"
 """Seules les archives du dépôt sont téléchargées, quoi que dise l'API."""
-HOTE_ARCHIVES = "https://codeberg.org/"
-"""Adresse que doit encore avoir le téléchargement après d'éventuelles redirections."""
+HOTE_ARCHIVES = "https://codeload.github.com/Sietch-Tabr/tamponne/"
+"""Adresse que doit avoir le téléchargement après la redirection : GitHub
+renvoie l'archive depuis `codeload.github.com`, pas depuis l'API."""
+_USER_AGENT = "tamponne (+https://github.com/Sietch-Tabr/tamponne)"
+"""GitHub rejette les requêtes de l'API sans User-Agent."""
 TAILLE_MAX_ARCHIVE = 100 * 1024 * 1024
 """Octets au-delà desquels le téléchargement est abandonné (une publication
 pèse quelques Mo)."""
@@ -66,42 +69,57 @@ def _tuple_version(version: str) -> tuple[int, ...]:
 
 def version_plus_recente(distante: str, locale: str) -> bool:
     """Compare deux versions par tuple d'entiers (`"1.2.0"` -> `(1, 2, 0)`),
-    tolère un préfixe `v` (format des tags Codeberg, ex. `v1.2.0`)."""
+    tolère un préfixe `v` (format des tags du dépôt, ex. `v1.2.0`)."""
     return _tuple_version(distante) > _tuple_version(locale)
 
 
 class VerificationImpossible(RuntimeError):
-    """Codeberg n'a pas pu être interrogé ; le message est le détail
-    technique (erreur réseau, réponse illisible)."""
+    """GitHub n'a pas pu être interrogé ; le message est le détail
+    technique (erreur réseau, réponse illisible, limite de requêtes)."""
 
 
 def verifier_derniere_publication() -> InfoMaj | None:
-    """Interroge les publications Codeberg — `None` si aucune n'est plus
+    """Interroge les publications GitHub — `None` si aucune n'est plus
     récente que la version installée.
 
     Les notes réunissent toutes les publications postérieures à la version
     installée, de la plus récente à la plus ancienne, chacune sous son numéro.
+    Brouillons et pré-versions sont ignorés.
 
     Raises:
-        VerificationImpossible: Codeberg injoignable ou réponse illisible :
-            on ne sait pas s'il existe une version plus récente.
+        VerificationImpossible: GitHub injoignable, limite de requêtes
+            atteinte ou réponse illisible : on ne sait pas s'il existe une
+            version plus récente.
     """
     try:
         requete = urllib.request.Request(
-            URL_API_RELEASES, headers={"Accept": "application/json"}
+            URL_API_RELEASES,
+            headers={
+                "Accept": "application/vnd.github+json",
+                "User-Agent": _USER_AGENT,
+            },
         )
         with urllib.request.urlopen(requete, timeout=_TIMEOUT) as reponse:
             donnees = json.loads(reponse.read().decode("utf-8"))
+    except urllib.error.HTTPError as erreur:
+        if erreur.code in (403, 429):
+            raise VerificationImpossible(
+                f"limite de requêtes de GitHub atteinte (HTTP {erreur.code}), "
+                "réessayez plus tard"
+            ) from erreur
+        raise VerificationImpossible(str(erreur)) from erreur
     except (OSError, json.JSONDecodeError) as erreur:
         raise VerificationImpossible(str(erreur)) from erreur
 
     if not isinstance(donnees, list):
-        raise VerificationImpossible("réponse inattendue de Codeberg")
+        raise VerificationImpossible("réponse inattendue de GitHub")
     installee = version_locale()
     nouvelles = [
         publication
         for publication in donnees
         if isinstance(publication, dict)
+        and not publication.get("draft")
+        and not publication.get("prerelease")
         and publication.get("tag_name")
         and version_plus_recente(str(publication["tag_name"]), installee)
     ]
@@ -247,8 +265,8 @@ def _telecharger(url: str, destination: Path) -> None:
     `_TIMEOUT_TELECHARGEMENT` secondes une réponse ou des données.
 
     Raises:
-        RuntimeError: Redirigé hors de Codeberg, ou archive plus grosse que
-            `TAILLE_MAX_ARCHIVE`.
+        RuntimeError: Redirigé hors de `HOTE_ARCHIVES`, ou archive plus grosse
+            que `TAILLE_MAX_ARCHIVE`.
     """
     with (
         urllib.request.urlopen(url, timeout=_TIMEOUT_TELECHARGEMENT) as reponse,
@@ -256,7 +274,7 @@ def _telecharger(url: str, destination: Path) -> None:
     ):
         if not reponse.geturl().startswith(HOTE_ARCHIVES):
             raise RuntimeError(
-                "Archive de mise à jour redirigée hors de Codeberg, refusée."
+                "Archive de mise à jour redirigée hors de GitHub, refusée."
             )
         recu = 0
         while morceau := reponse.read(1024 * 1024):
@@ -270,7 +288,7 @@ def appliquer_maj(info: InfoMaj) -> None:
     """Télécharge et applique la publication `info`.
 
     Installe les fichiers de l'archive dans la racine du projet (voir
-    `installer_archive`) : l'archive Codeberg ne contient que les fichiers
+    `installer_archive`) : l'archive GitHub ne contient que les fichiers
     suivis par git et publiés, donc `data/`, `.git/` et les fichiers non
     versionnés hors de `src/` ne sont jamais touchés. La version remplacée
     est d'abord copiée (`sauvegarder_version_actuelle`) pour le retour
@@ -310,8 +328,8 @@ def appliquer_maj(info: InfoMaj) -> None:
                 f"Impossible de télécharger ou d'extraire la mise à jour\u00a0: {e}"
             ) from e
 
-        # Dossier racine unique de l'archive (ex. « tamponne-abc1234/ ») déduit
-        # plutôt que deviné : la convention de nommage Forgejo peut changer.
+        # Dossier racine unique de l'archive (ex. « Sietch-Tabr-tamponne-abc1234/ »)
+        # déduit plutôt que deviné : la convention de nommage de GitHub peut changer.
         racines = [p for p in Path(dossier_tmp).iterdir() if p.is_dir()]
         if len(racines) != 1:
             raise RuntimeError(
