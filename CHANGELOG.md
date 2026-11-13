@@ -4,6 +4,12 @@ Toutes les évolutions notables de Tamponné, de la plus récente à la plus
 ancienne. Le détail de chaque version est aussi publié sur la page
 [Releases](https://github.com/Sietch-Tabr/tamponne/releases) du dépôt.
 
+## [1.7.8] — 2026-11-14
+
+### En coulisses
+
+- Version de contrôle : seul le numéro change, pour vérifier une seconde mise à jour depuis GitHub à partir d'une installation issue d'une archive GitHub (la 1.7.7)
+
 ## [1.7.7] — 2026-11-13
 
 ### Bibliothèques
