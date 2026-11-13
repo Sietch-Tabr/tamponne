@@ -4,6 +4,7 @@ exposition aux lecteurs d'écran et branchements vers `ControleurReglages`."""
 from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
 from PySide6.QtCore import Q_ARG, QMetaObject, QObject, QUrl
@@ -156,7 +157,7 @@ def test_date_cache_affichee_apres_rafraichissement(
     racine = _afficher(moteur, 4, qapp)
     assert _element(racine, "dateCache").isVisible() is False
     monkeypatch.setattr(
-        controleur_reglages, "obtenir_organisations", lambda forcer=False: {}
+        controleur_reglages, "obtenir_organisations", Mock(return_value={})
     )
     monkeypatch.setattr(
         controleur_reglages,

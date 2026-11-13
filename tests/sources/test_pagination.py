@@ -3,6 +3,7 @@ sites simulés : pagination, page vide, plafond `MAX_PAGES`, échec réseau."""
 
 from collections.abc import Callable
 from types import ModuleType
+from unittest.mock import Mock
 
 import pytest
 
@@ -34,7 +35,7 @@ def _offres_de_page(html: str) -> list[Offre]:
 @pytest.fixture(autouse=True)
 def _sans_attente(monkeypatch: pytest.MonkeyPatch) -> None:
     for module in (csp, emploiterritorial, fhf, passerellesmef):
-        monkeypatch.setattr(module.time, "sleep", lambda _s: None)
+        monkeypatch.setattr(module.time, "sleep", Mock(return_value=None))
 
 
 def _progression() -> tuple[list[tuple[int, int]], Callable[[int, int], None]]:
@@ -186,7 +187,7 @@ def test_passerelles_pages_selon_le_total_annonce(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _passerelles_pages(monkeypatch, {1: "p1:a", 2: "p2:b"})
-    monkeypatch.setattr(passerellesmef, "extraire_totaux", lambda _t: (20, 2))
+    monkeypatch.setattr(passerellesmef, "extraire_totaux", Mock(return_value=(20, 2)))
     pages, on_page = _progression()
     offres, nb, arret = passerellesmef.PasserellesMef().rechercher({}, on_page)
     assert [o["reference"] for o in offres] == ["a", "b"]
@@ -196,7 +197,7 @@ def test_passerelles_pages_selon_le_total_annonce(
 
 def test_passerelles_page_vide_avant_la_fin(monkeypatch: pytest.MonkeyPatch) -> None:
     _passerelles_pages(monkeypatch, {1: "p1:a", 2: "p2:", 3: "p3:c"})
-    monkeypatch.setattr(passerellesmef, "extraire_totaux", lambda _t: (45, 3))
+    monkeypatch.setattr(passerellesmef, "extraire_totaux", Mock(return_value=(45, 3)))
     offres, nb, arret = passerellesmef.PasserellesMef().rechercher({})
     assert [o["reference"] for o in offres] == ["a"]
     assert (nb, arret) == (3, True)
@@ -281,7 +282,9 @@ def test_recuperer_detail_offre_extrait_la_page(
     monkeypatch: pytest.MonkeyPatch, module: ModuleType
 ) -> None:
     monkeypatch.setattr(module, "nouvelle_session", lambda: None)
-    monkeypatch.setattr(module, "obtenir_fiche_offre", lambda _o, _u: "<html>x</html>")
+    monkeypatch.setattr(
+        module, "obtenir_fiche_offre", Mock(return_value="<html>x</html>")
+    )
     monkeypatch.setattr(module, "extraire_detail_offre", lambda html: {"page": html})
     assert module.recuperer_detail_offre("https://exemple.test/x") == {
         "page": "<html>x</html>"

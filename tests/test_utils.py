@@ -2,6 +2,7 @@
 
 import os
 from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
 
@@ -10,7 +11,7 @@ from src import utils
 
 @pytest.fixture(autouse=True)
 def _sans_attente(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(utils.time, "sleep", lambda _s: None)
+    monkeypatch.setattr(utils.time, "sleep", Mock(return_value=None))
 
 
 def test_ecriture_atomique_ecrit_le_json(tmp_path: Path) -> None:

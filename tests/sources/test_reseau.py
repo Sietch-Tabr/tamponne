@@ -10,6 +10,7 @@ import threading
 import urllib.request
 from collections.abc import Iterator
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from unittest.mock import Mock
 
 import pytest
 import urllib3
@@ -166,7 +167,7 @@ def test_sans_proxy_les_connexions_sont_directes(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(urllib.request, "getproxies", lambda: {})
-    monkeypatch.setattr(urllib.request, "proxy_bypass", lambda _h: False)
+    monkeypatch.setattr(urllib.request, "proxy_bypass", Mock(return_value=False))
     gestionnaire = reseau._gestionnaire("https://exemple.test/")
     assert type(gestionnaire) is urllib3.PoolManager
 
@@ -178,7 +179,7 @@ def test_le_proxy_du_systeme_est_utilise(monkeypatch: pytest.MonkeyPatch) -> Non
         "getproxies",
         lambda: {"https": "http://u%40x:mdp@proxy.test:3128"},
     )
-    monkeypatch.setattr(urllib.request, "proxy_bypass", lambda _h: False)
+    monkeypatch.setattr(urllib.request, "proxy_bypass", Mock(return_value=False))
     gestionnaire = reseau._gestionnaire("https://exemple.test/")
     assert isinstance(gestionnaire, urllib3.ProxyManager)
     assert gestionnaire.proxy is not None and gestionnaire.proxy.host == "proxy.test"
@@ -196,7 +197,7 @@ def test_le_proxy_recoit_le_contexte_tls_du_systeme_et_des_identifiants_utf8(
         "getproxies",
         lambda: {"https": "https://%C3%A9l:mdp@proxy.test:3128"},
     )
-    monkeypatch.setattr(urllib.request, "proxy_bypass", lambda _h: False)
+    monkeypatch.setattr(urllib.request, "proxy_bypass", Mock(return_value=False))
     gestionnaire = reseau._gestionnaire("https://exemple.test/")
     assert gestionnaire.proxy_ssl_context is reseau._contexte()
     jeton = gestionnaire.proxy_headers["proxy-authorization"].removeprefix("Basic ")
@@ -210,7 +211,7 @@ def test_un_hote_exclu_du_proxy_est_joint_directement(
     monkeypatch.setattr(
         urllib.request, "getproxies", lambda: {"https": "http://proxy.test:3128"}
     )
-    monkeypatch.setattr(urllib.request, "proxy_bypass", lambda _h: True)
+    monkeypatch.setattr(urllib.request, "proxy_bypass", Mock(return_value=True))
     assert type(reseau._gestionnaire("https://interne.test/")) is urllib3.PoolManager
 
 
@@ -266,7 +267,7 @@ def site_local(monkeypatch: pytest.MonkeyPatch) -> Iterator[_Site]:
     monkeypatch.setattr(socket.socket, "connect", _CONNEXION_REELLE)
     monkeypatch.setattr(socket, "create_connection", _CREATION_REELLE)
     monkeypatch.setattr(urllib.request, "getproxies", lambda: {})
-    monkeypatch.setattr(urllib.request, "proxy_bypass", lambda _h: True)
+    monkeypatch.setattr(urllib.request, "proxy_bypass", Mock(return_value=True))
     monkeypatch.setattr(reseau, "_gestionnaires", {})
     site = _Site()
     fil = threading.Thread(

@@ -5,6 +5,7 @@ classement en profil, mode édition et actions sur une offre."""
 from collections.abc import Callable, Iterator
 from datetime import date
 from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
 from PySide6.QtCore import QModelIndex, Qt
@@ -279,7 +280,7 @@ def test_consulter_ligne_ouvre_la_fiche_dans_l_application(
     monkeypatch.setattr(
         controleur_recherche,
         "recuperer_detail_offre",
-        lambda url: DETAIL_VIDE,
+        Mock(return_value=DETAIL_VIDE),
     )
     ouverts: list[object] = []
     monkeypatch.setattr(
@@ -538,7 +539,7 @@ def test_consulter_ouvre_la_fenetre_avant_la_fin_du_telechargement(
     controleur: ControleurRecherche, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(
-        controleur_recherche, "recuperer_detail_offre", lambda url: _detail_lu()
+        controleur_recherche, "recuperer_detail_offre", Mock(return_value=_detail_lu())
     )
     ordre: list[str] = []
     controleur.detail_attendu.connect(lambda apercu: ordre.append(apercu["titre"]))
@@ -703,7 +704,7 @@ def test_verrous_par_url_sont_retires_apres_usage(
     controleur: ControleurRecherche, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(
-        controleur_recherche, "recuperer_detail_offre", lambda url: _detail_lu()
+        controleur_recherche, "recuperer_detail_offre", Mock(return_value=_detail_lu())
     )
     for numero in range(5):
         controleur._lire_detail(f"https://exemple.test/{numero}")
@@ -714,7 +715,7 @@ def test_fiches_de_poste_ecrites_par_lots_et_a_l_arret(
     controleur: ControleurRecherche, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(
-        controleur_recherche, "recuperer_detail_offre", lambda url: _detail_lu()
+        controleur_recherche, "recuperer_detail_offre", Mock(return_value=_detail_lu())
     )
     lot = controleur_recherche.ENREGISTREMENT_DETAILS_PAR_LOT
     for numero in range(lot - 1):
@@ -735,7 +736,7 @@ def test_consulter_signale_une_offre_deja_suivie(
     controleur: ControleurRecherche, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(
-        controleur_recherche, "recuperer_detail_offre", lambda url: _detail_lu()
+        controleur_recherche, "recuperer_detail_offre", Mock(return_value=_detail_lu())
     )
     fiches: list[dict[str, object]] = []
     controleur.detail_pret.connect(fiches.append)

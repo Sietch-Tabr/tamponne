@@ -1,6 +1,7 @@
 """Tests du filtrage côté client de Passerelles/MEF (pas de réseau)."""
 
 import pytest
+from unittest.mock import Mock
 
 from src.sources import passerellesmef
 from src.sources.choisirleservicepublic.extraction import DETAIL_VIDE
@@ -170,13 +171,13 @@ def _site(monkeypatch: pytest.MonkeyPatch) -> dict[str, DetailOffre]:
         _offre("marne", "Haute-Marne (52)"),
         _offre("sans-lieu", ""),
     ]
-    monkeypatch.setattr(passerellesmef.time, "sleep", lambda _s: None)
+    monkeypatch.setattr(passerellesmef.time, "sleep", Mock(return_value=None))
     monkeypatch.setattr(passerellesmef, "nouvelle_session", lambda: None)
-    monkeypatch.setattr(passerellesmef, "obtenir_formulaire", lambda _o: "")
+    monkeypatch.setattr(passerellesmef, "obtenir_formulaire", Mock(return_value=""))
     monkeypatch.setattr(
         passerellesmef,
         "obtenir_page_recherche",
-        lambda _o, _u: {"html": "", "title": ""},
+        Mock(return_value={"html": "", "title": ""}),
     )
     monkeypatch.setattr(
         passerellesmef, "extraire_offres", lambda _h: [dict(o) for o in offres]

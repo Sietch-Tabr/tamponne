@@ -1,6 +1,7 @@
 """Tests pour src/sources/choisirleservicepublic/__init__.py."""
 
 import pytest
+from unittest.mock import Mock
 
 import src.sources.choisirleservicepublic as source
 from src.sources.choisirleservicepublic.extraction import (
@@ -21,7 +22,7 @@ def test_recuperer_detail_offre_succes_retourne_le_detail_extrait(
     monkeypatch.setattr(
         source,
         "obtenir_page_offres",
-        lambda url: {"html": _HTML_AVEC_JSON_LD, "title": "Offre de test"},
+        Mock(return_value={"html": _HTML_AVEC_JSON_LD, "title": "Offre de test"}),
     )
     detail = source.recuperer_detail_offre(
         "https://choisirleservicepublic.gouv.fr/offre-1/"

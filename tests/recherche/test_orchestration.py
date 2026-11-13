@@ -5,6 +5,7 @@ from collections.abc import Callable
 from datetime import date
 from functools import partialmethod
 from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
 
@@ -85,15 +86,17 @@ def test_rechercher_fusionne_les_resultats_de_deux_sources(
     monkeypatch.setattr(
         ChoisirLeServicePublic,
         "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: ([_offre("O1")], 1, False),
+        Mock(return_value=([_offre("O1")], 1, False)),
     )
     monkeypatch.setattr(
         EmploiTerritorial,
         "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: (
-            [_offre("O2", "Territorial")],
-            1,
-            False,
+        Mock(
+            return_value=(
+                [_offre("O2", "Territorial")],
+                1,
+                False,
+            )
         ),
     )
     resultats, avertissements, erreurs = _executer({})
@@ -109,15 +112,17 @@ def test_rechercher_dedoublonne_les_offres_communes(
     monkeypatch.setattr(
         ChoisirLeServicePublic,
         "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: ([_offre("O1")], 1, False),
+        Mock(return_value=([_offre("O1")], 1, False)),
     )
     monkeypatch.setattr(
         EmploiTerritorial,
         "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: (
-            [_offre("O1", "Territorial")],
-            1,
-            False,
+        Mock(
+            return_value=(
+                [_offre("O1", "Territorial")],
+                1,
+                False,
+            )
         ),
     )
     resultats, _, _ = _executer({})
@@ -132,7 +137,7 @@ def test_rechercher_avertissement_sur_echec_partiel_sans_bloquer(
     monkeypatch.setattr(
         ChoisirLeServicePublic,
         "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: ([_offre("O1")], 1, False),
+        Mock(return_value=([_offre("O1")], 1, False)),
     )
 
     def _echec(
@@ -158,7 +163,7 @@ def test_rechercher_source_au_format_imprevu_n_arrete_pas_les_autres(
     monkeypatch.setattr(
         ChoisirLeServicePublic,
         "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: ([_offre("O1")], 1, False),
+        Mock(return_value=([_offre("O1")], 1, False)),
     )
 
     def _format_imprevu(
@@ -220,7 +225,7 @@ def test_rechercher_source_desactivee_nest_pas_interrogee(
     monkeypatch.setattr(
         ChoisirLeServicePublic,
         "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: ([_offre("O1")], 1, False),
+        Mock(return_value=([_offre("O1")], 1, False)),
     )
 
     def _echoue_si_appelee(
@@ -248,16 +253,18 @@ def test_rechercher_versant_etat_seul_exclut_territorial_et_hospitaliere(
     monkeypatch.setattr(
         ChoisirLeServicePublic,
         "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: ([_offre("O1")], 1, False),
+        Mock(return_value=([_offre("O1")], 1, False)),
     )
     # Passerelles/MEF est elle-même mono-versant État : doit rester interrogée.
     monkeypatch.setattr(
         PasserellesMef,
         "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: (
-            [_offre("O2", "MEF")],
-            1,
-            False,
+        Mock(
+            return_value=(
+                [_offre("O2", "MEF")],
+                1,
+                False,
+            )
         ),
     )
 
@@ -283,15 +290,17 @@ def test_rechercher_versant_territorial_seul_interroge_emploiterritorial(
     monkeypatch.setattr(
         ChoisirLeServicePublic,
         "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: ([_offre("O1")], 1, False),
+        Mock(return_value=([_offre("O1")], 1, False)),
     )
     monkeypatch.setattr(
         EmploiTerritorial,
         "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: (
-            [_offre("O2", "Territorial")],
-            1,
-            False,
+        Mock(
+            return_value=(
+                [_offre("O2", "Territorial")],
+                1,
+                False,
+            )
         ),
     )
     resultats, _, _ = _executer({"versants": ["territorial"]})
@@ -334,7 +343,7 @@ def test_rechercher_traduit_categorie_et_departement_vers_emploiterritorial(
     monkeypatch.setattr(
         ChoisirLeServicePublic,
         "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: ([_offre("O1")], 1, False),
+        Mock(return_value=([_offre("O1")], 1, False)),
     )
     urls_appelees: list[str] = []
 
@@ -365,24 +374,28 @@ def test_rechercher_interroge_passerellesmef_et_fhf_quand_actives(
     monkeypatch.setattr(
         ChoisirLeServicePublic,
         "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: ([_offre("O1")], 1, False),
+        Mock(return_value=([_offre("O1")], 1, False)),
     )
     monkeypatch.setattr(
         PasserellesMef,
         "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: (
-            [_offre("O2", "MEF")],
-            1,
-            False,
+        Mock(
+            return_value=(
+                [_offre("O2", "MEF")],
+                1,
+                False,
+            )
         ),
     )
     monkeypatch.setattr(
         Fhf,
         "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: (
-            [_offre("FHF_1", "FHF")],
-            1,
-            False,
+        Mock(
+            return_value=(
+                [_offre("FHF_1", "FHF")],
+                1,
+                False,
+            )
         ),
     )
     resultats, avertissements, _ = _executer({})
@@ -490,15 +503,17 @@ def test_rechercher_signale_chaque_source_en_cours_dans_lordre(
     monkeypatch.setattr(
         ChoisirLeServicePublic,
         "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: ([_offre("O1")], 1, False),
+        Mock(return_value=([_offre("O1")], 1, False)),
     )
     monkeypatch.setattr(
         EmploiTerritorial,
         "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: (
-            [_offre("O2", "Territorial")],
-            1,
-            False,
+        Mock(
+            return_value=(
+                [_offre("O2", "Territorial")],
+                1,
+                False,
+            )
         ),
     )
     sources_vues: list[str] = []
@@ -700,7 +715,7 @@ def test_rechercher_remonte_la_lecture_des_fiches(
 
     monkeypatch.setattr(ChoisirLeServicePublic, "rechercher", _csp)
     monkeypatch.setattr(
-        EmploiTerritorial, "rechercher", lambda *_a, **_k: ([], 1, False)
+        EmploiTerritorial, "rechercher", Mock(return_value=([], 1, False))
     )
     lectures: list[tuple[str, int, int]] = []
     rechercher_toutes_sources(
@@ -715,10 +730,10 @@ def test_une_source_sans_offre_dont_le_site_va_bien_est_une_recherche_vide(
     monkeypatch: pytest.MonkeyPatch, _site_en_bon_etat: list[str]
 ) -> None:
     monkeypatch.setattr(
-        ChoisirLeServicePublic, "rechercher", lambda *_a, **_k: ([], 1, False)
+        ChoisirLeServicePublic, "rechercher", Mock(return_value=([], 1, False))
     )
     monkeypatch.setattr(
-        EmploiTerritorial, "rechercher", lambda *_a, **_k: ([_offre("T1")], 1, False)
+        EmploiTerritorial, "rechercher", Mock(return_value=([_offre("T1")], 1, False))
     )
     resultats, avertissements, erreurs = _executer({})
 
@@ -736,10 +751,10 @@ def test_une_source_sans_offre_dont_le_site_est_en_panne_est_signalee(
 
     monkeypatch.setattr(orchestration, "controler_site", panne)
     monkeypatch.setattr(
-        ChoisirLeServicePublic, "rechercher", lambda *_a, **_k: ([], 1, False)
+        ChoisirLeServicePublic, "rechercher", Mock(return_value=([], 1, False))
     )
     monkeypatch.setattr(
-        EmploiTerritorial, "rechercher", lambda *_a, **_k: ([_offre("T1")], 1, False)
+        EmploiTerritorial, "rechercher", Mock(return_value=([_offre("T1")], 1, False))
     )
     resultats, avertissements, erreurs = _executer({})
 
@@ -757,10 +772,10 @@ def test_toutes_les_sources_vides_et_en_panne_la_recherche_est_impossible(
 
     monkeypatch.setattr(orchestration, "controler_site", panne)
     monkeypatch.setattr(
-        ChoisirLeServicePublic, "rechercher", lambda *_a, **_k: ([], 1, False)
+        ChoisirLeServicePublic, "rechercher", Mock(return_value=([], 1, False))
     )
     monkeypatch.setattr(
-        EmploiTerritorial, "rechercher", lambda *_a, **_k: ([], 1, False)
+        EmploiTerritorial, "rechercher", Mock(return_value=([], 1, False))
     )
     _, _, erreurs = _executer({})
     assert erreurs and "indisponibles" in erreurs[0]
@@ -776,7 +791,7 @@ def test_source_en_echec_est_signalee_par_son_nom(
     monkeypatch.setattr(
         ChoisirLeServicePublic,
         "rechercher",
-        lambda *_a, **_k: ([_offre("O1")], 1, False),
+        Mock(return_value=([_offre("O1")], 1, False)),
     )
     noms: list[str] = []
     rechercher_toutes_sources({}, {}, on_echec_source=noms.append)

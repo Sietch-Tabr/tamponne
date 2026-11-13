@@ -3,6 +3,7 @@ avis de mise à jour et rafraîchissement du cache des organisations."""
 
 from datetime import date, datetime
 from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
 from pytestqt.qtbot import QtBot
@@ -186,7 +187,7 @@ def test_verifier_mise_a_jour_affiche_l_avis_trouve(
     qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(travailleurs, "verifier_derniere_publication", lambda: INFO)
-    monkeypatch.setattr(travailleurs, "ecrire_maj_disponible", lambda _info: None)
+    monkeypatch.setattr(travailleurs, "ecrire_maj_disponible", Mock(return_value=None))
     reglages = ControleurReglages()
     reglages.verifier_mise_a_jour()
     assert "recherche d'une mise à jour" in reglages.property("avis")["objet"]

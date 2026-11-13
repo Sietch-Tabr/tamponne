@@ -6,6 +6,7 @@ import re
 import sys
 from collections.abc import Callable, Sequence
 from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
 
@@ -61,7 +62,7 @@ def marqueur(monkeypatch: pytest.MonkeyPatch) -> Path:
     pyproject = maj.CHEMIN_RACINE / "pyproject.toml"
     pyproject.write_text('[project]\nversion = "1.0.0"\n', encoding="utf-8")
     monkeypatch.setattr(maj, "CHEMIN_PYPROJECT", pyproject)
-    monkeypatch.setattr(lanceur.shutil, "which", lambda _nom: "/bin/uv")
+    monkeypatch.setattr(lanceur.shutil, "which", Mock(return_value="/bin/uv"))
     return maj.CHEMIN_MARQUEUR
 
 

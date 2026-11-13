@@ -3,6 +3,7 @@
 from datetime import date, timedelta
 from pathlib import Path
 from typing import cast
+from unittest.mock import Mock
 
 import pytest
 
@@ -153,7 +154,7 @@ def test_extraire_url_pdf_domaine_externe_rejete() -> None:
 
 def test_generer_archive_pdf_reussi(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        candidatures, "telecharger_binaire", lambda url: b"%PDF-1.4 contenu"
+        candidatures, "telecharger_binaire", Mock(return_value=b"%PDF-1.4 contenu")
     )
     reussi = candidatures.generer_archive_pdf("ref-1", _PAGE_AVEC_LIEN_PDF)
 
@@ -191,7 +192,7 @@ def test_suivre_offre_enregistre_detail_et_archive_pdf(
     detail: DetailOffre = {**DETAIL_VIDE, "page_html": _PAGE_AVEC_LIEN_PDF}
     monkeypatch.setattr(candidatures, "recuperer_detail_offre", lambda url: detail)
     monkeypatch.setattr(
-        candidatures, "telecharger_binaire", lambda url: b"%PDF-1.4 contenu"
+        candidatures, "telecharger_binaire", Mock(return_value=b"%PDF-1.4 contenu")
     )
     offre: Offre = {
         "titre": "Attaché",
@@ -218,7 +219,9 @@ def test_suivre_offre_sans_detail_ni_archive_suit_quand_meme(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Fiche injoignable : le suivi basique reste utile (titre/url)."""
-    monkeypatch.setattr(candidatures, "recuperer_detail_offre", lambda url: DETAIL_VIDE)
+    monkeypatch.setattr(
+        candidatures, "recuperer_detail_offre", Mock(return_value=DETAIL_VIDE)
+    )
     offre: Offre = {
         "titre": "Attaché",
         "url": "https://example.org/1",

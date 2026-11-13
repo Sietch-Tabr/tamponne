@@ -4,6 +4,7 @@ de `src.recherche.orchestration` en signaux. L'orchestration est testée dans te
 
 from collections.abc import Callable
 from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
 from PySide6.QtCore import QCoreApplication
@@ -66,15 +67,17 @@ def test_executer_fusionne_les_resultats_de_deux_sources(
     monkeypatch.setattr(
         ChoisirLeServicePublic,
         "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: ([_offre("O1")], 1, False),
+        Mock(return_value=([_offre("O1")], 1, False)),
     )
     monkeypatch.setattr(
         EmploiTerritorial,
         "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: (
-            [_offre("O2", "Territorial")],
-            1,
-            False,
+        Mock(
+            return_value=(
+                [_offre("O2", "Territorial")],
+                1,
+                False,
+            )
         ),
     )
     resultats, avertissements, erreurs = _executer(TravailleurRecherche({}, {}))
@@ -90,7 +93,7 @@ def test_executer_avertissement_sur_echec_partiel_sans_bloquer(
     monkeypatch.setattr(
         ChoisirLeServicePublic,
         "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: ([_offre("O1")], 1, False),
+        Mock(return_value=([_offre("O1")], 1, False)),
     )
 
     def _echec(
@@ -128,15 +131,17 @@ def test_executer_emet_source_en_cours(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         ChoisirLeServicePublic,
         "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: ([_offre("O1")], 1, False),
+        Mock(return_value=([_offre("O1")], 1, False)),
     )
     monkeypatch.setattr(
         EmploiTerritorial,
         "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: (
-            [_offre("O2", "Territorial")],
-            1,
-            False,
+        Mock(
+            return_value=(
+                [_offre("O2", "Territorial")],
+                1,
+                False,
+            )
         ),
     )
     travailleur = TravailleurRecherche({}, {})
@@ -168,7 +173,7 @@ def test_executer_emet_progression_nommee_et_source_terminee(
     monkeypatch.setattr(
         EmploiTerritorial,
         "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: ([], 1, False),
+        Mock(return_value=([], 1, False)),
     )
     travailleur = TravailleurRecherche({}, {})
     progressions: list[tuple[object, ...]] = []
@@ -202,7 +207,7 @@ def test_executer_source_en_echec_est_aussi_signalee_terminee(
     monkeypatch.setattr(
         EmploiTerritorial,
         "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: ([_offre("O2")], 1, False),
+        Mock(return_value=([_offre("O2")], 1, False)),
     )
     travailleur = TravailleurRecherche({}, {})
     terminees: list[str] = []
