@@ -15,12 +15,6 @@ URL_BASE = "https://www.emploi-territorial.fr"
 SOURCE_LABEL = "Fonction publique territoriale"
 
 _RE_DATE_TOOLTIP = re.compile(r"le (\d{2}/\d{2}/\d{4})")
-_RE_ESPACES = re.compile(r"\s+")
-
-
-def _texte_normalise(tag: Tag) -> str:
-    """Texte d'un tag, espaces/retours à la ligne internes réduits à un seul."""
-    return _RE_ESPACES.sub(" ", tag.get_text(" ", strip=True)).strip()
 
 
 # Libellés déjà mappés vers un champ dédié de DetailOffre — exclus de
