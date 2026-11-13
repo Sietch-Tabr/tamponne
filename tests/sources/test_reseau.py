@@ -20,6 +20,8 @@ from src.sources.reseau import ErreurHttp, Session
 from tests.sources.reponses import (
     ReponseHttp,
     echec_reseau,
+    selon_methode,
+    selon_url,
     simuler_reseau,
 )
 
@@ -40,7 +42,7 @@ def test_les_cookies_recus_sont_renvoyes_au_meme_site(
 ) -> None:
     faux = simuler_reseau(
         monkeypatch,
-        lambda *_a: ReponseHttp(
+        lambda *_: ReponseHttp(
             entetes={"Set-Cookie": ["PHPSESSID=abc; path=/; HttpOnly", "x=1"]}
         ),
     )
@@ -59,7 +61,7 @@ def test_un_cookie_efface_par_le_site_n_est_plus_renvoye(
 ) -> None:
     faux = simuler_reseau(
         monkeypatch,
-        lambda *_a: ReponseHttp(
+        lambda *_: ReponseHttp(
             entetes={
                 "Set-Cookie": [
                     "keep=1; path=/",
@@ -79,7 +81,7 @@ def test_deux_sessions_ne_partagent_pas_leurs_cookies(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     faux = simuler_reseau(
-        monkeypatch, lambda *_a: ReponseHttp(entetes={"Set-Cookie": "s=1"})
+        monkeypatch, lambda *_: ReponseHttp(entetes={"Set-Cookie": "s=1"})
     )
     Session({}).lire("https://exemple.test/")
     Session({}).lire("https://exemple.test/")
@@ -89,9 +91,7 @@ def test_deux_sessions_ne_partagent_pas_leurs_cookies(
 def test_une_redirection_apres_un_post_devient_un_get_avec_les_cookies(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def comportement(
-        methode: str, url: str, corps: object, entetes: dict[str, str]
-    ) -> ReponseHttp:
+    def comportement(methode: str) -> ReponseHttp:
         if methode == "POST":
             return ReponseHttp(
                 statut=302,
@@ -99,7 +99,7 @@ def test_une_redirection_apres_un_post_devient_un_get_avec_les_cookies(
             )
         return ReponseHttp("page 1")
 
-    faux = simuler_reseau(monkeypatch, comportement)
+    faux = simuler_reseau(monkeypatch, selon_methode(comportement))
     reponse = Session({}).lire("https://exemple.test/recherche", {"q": "réseau"})
 
     assert reponse.url == "https://exemple.test/resultats"
@@ -112,14 +112,12 @@ def test_une_redirection_apres_un_post_devient_un_get_avec_les_cookies(
 
 
 def test_une_redirection_307_garde_le_post(monkeypatch: pytest.MonkeyPatch) -> None:
-    def comportement(
-        methode: str, url: str, corps: object, entetes: dict[str, str]
-    ) -> ReponseHttp:
+    def comportement(url: str) -> ReponseHttp:
         if url.endswith("/a"):
             return ReponseHttp(statut=307, entetes={"Location": "/b"})
         return ReponseHttp("ok")
 
-    faux = simuler_reseau(monkeypatch, comportement)
+    faux = simuler_reseau(monkeypatch, selon_url(comportement))
     Session({}).lire("https://exemple.test/a", {"q": "1"})
     assert [(m, c) for m, _, c, _ in faux.appels] == [("POST", "q=1"), ("POST", "q=1")]
 
@@ -240,7 +238,7 @@ class _Gestionnaire(BaseHTTPRequestHandler):
         self.server.connexions += 1  # type: ignore[attr-defined]
 
     def log_message(self, format: str, *args: object) -> None:
-        pass
+        del format, args  # le serveur de test ne journalise rien
 
     def _repondre(self, statut: int, corps: bytes, entetes: dict[str, str]) -> None:
         self.send_response(statut)
@@ -316,14 +314,12 @@ def test_les_cookies_suivent_une_redirection_sur_le_vrai_serveur(
 def test_une_redirection_vers_un_schema_inconnu_est_une_erreur_reseau(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def comportement(
-        methode: str, url: str, corps: object, entetes: dict[str, str]
-    ) -> ReponseHttp:
+    def comportement(url: str) -> ReponseHttp:
         if url.startswith("https://exemple.test"):
             return ReponseHttp(statut=302, entetes={"Location": "ftp://pirate.test/x"})
         raise urllib3.exceptions.URLSchemeUnknown("ftp")
 
-    simuler_reseau(monkeypatch, comportement)
+    simuler_reseau(monkeypatch, selon_url(comportement))
     with pytest.raises(RuntimeError, match="Erreur réseau"):
         Session({}).lire("https://exemple.test/")
 

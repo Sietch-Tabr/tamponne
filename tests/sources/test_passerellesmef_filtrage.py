@@ -180,7 +180,7 @@ def _site(monkeypatch: pytest.MonkeyPatch) -> dict[str, DetailOffre]:
         Mock(return_value={"html": "", "title": ""}),
     )
     monkeypatch.setattr(
-        passerellesmef, "extraire_offres", lambda _h: [dict(o) for o in offres]
+        passerellesmef, "extraire_offres", lambda _: [dict(o) for o in offres]
     )
     monkeypatch.setattr(
         passerellesmef,

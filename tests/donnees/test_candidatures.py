@@ -189,7 +189,9 @@ def test_suivre_offre_enregistre_detail_et_archive_pdf(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     detail: DetailOffre = {**DETAIL_VIDE, "page_html": _PAGE_AVEC_LIEN_PDF}
-    monkeypatch.setattr(candidatures, "recuperer_detail_offre", lambda url: detail)
+    monkeypatch.setattr(
+        candidatures, "recuperer_detail_offre", Mock(return_value=detail)
+    )
     monkeypatch.setattr(
         candidatures, "telecharger_binaire", Mock(return_value=b"%PDF-1.4 contenu")
     )

@@ -171,11 +171,11 @@ def _site(monkeypatch: pytest.MonkeyPatch) -> dict[str, list[object]]:
         passerellesmef, "obtenir_formulaire", Mock(return_value=FORMULAIRE)
     )
 
-    def envoyer(_o: object, champs: dict[str, str]) -> PageAPI:
+    def envoyer(_: object, champs: dict[str, str]) -> PageAPI:
         echanges["envois"].append(champs)
         return {"html": "p1", "title": "(30 offres, page 1) / Catégorie : A"}
 
-    def page(_o: object, url: str) -> PageAPI:
+    def page(_: object, url: str) -> PageAPI:
         echanges["pages"].append(url)
         numero = url.rsplit("page=", 1)[1] if "page=" in url else "1"
         return {"html": f"p{numero}", "title": "(30 offres, page 1)"}

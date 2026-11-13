@@ -53,7 +53,7 @@ def _csp_pages(monkeypatch: pytest.MonkeyPatch, pages: dict[int, str], nb: int) 
 
     monkeypatch.setattr(csp, "obtenir_page_offres", obtenir)
     monkeypatch.setattr(csp, "extraire_offres", _offres_de_page)
-    monkeypatch.setattr(csp, "extraire_pagination", lambda _t: (1, nb))
+    monkeypatch.setattr(csp, "extraire_pagination", lambda _: (1, nb))
 
 
 def test_csp_une_seule_page(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -104,25 +104,12 @@ def test_csp_resout_les_organisations_du_cache() -> None:
 # --- FHF et Passerelles : une requête par page ---
 
 
-def _pages_par_requete(
-    monkeypatch: pytest.MonkeyPatch, module: ModuleType, pages: list[str], titre: str
-) -> None:
-    reponses = iter(pages)
-    monkeypatch.setattr(module, "nouvelle_session", lambda: None)
-    monkeypatch.setattr(
-        module,
-        "obtenir_page_recherche",
-        lambda _opener, _url: {"html": next(reponses, "fin:"), "title": titre},
-    )
-    monkeypatch.setattr(module, "extraire_offres", _offres_de_page)
-
-
 def _fhf_pages(monkeypatch: pytest.MonkeyPatch, pages: dict[int, str]) -> list[str]:
     """Pages de FHF par numéro (lues par lots en parallèle : ordre libre) ;
     renvoie les adresses demandées."""
     demandees: list[str] = []
 
-    def obtenir(_opener: object, url: str) -> dict[str, str]:
+    def obtenir(_: object, url: str) -> dict[str, str]:
         demandees.append(url)
         numero = int(url.rsplit("page=", 1)[1]) if "page=" in url else 0
         return {"html": pages.get(numero, f"p{numero}:"), "title": ""}
@@ -174,7 +161,7 @@ def test_fhf_demande_chaque_departement_au_site_et_etiquette_les_offres(
 def _passerelles_pages(monkeypatch: pytest.MonkeyPatch, pages: dict[int, str]) -> None:
     """Pages de Passerelles par numéro (lues en parallèle : ordre libre)."""
 
-    def obtenir(_opener: object, url: str) -> dict[str, str]:
+    def obtenir(_: object, url: str) -> dict[str, str]:
         numero = int(url.rsplit("page=", 1)[1]) if "page=" in url else 1
         return {"html": pages.get(numero, ""), "title": ""}
 
@@ -208,7 +195,7 @@ def test_passerelles_plafonne_les_pages_sans_filtre(
 ) -> None:
     total = passerellesmef.MAX_PAGES + 5
     _passerelles_pages(monkeypatch, {n: f"p{n}:r{n}" for n in range(1, total + 1)})
-    monkeypatch.setattr(passerellesmef, "extraire_totaux", lambda _t: (total * 15, 1))
+    monkeypatch.setattr(passerellesmef, "extraire_totaux", lambda _: (total * 15, 1))
     offres, nb, arret = passerellesmef.PasserellesMef().rechercher({})
     assert len(offres) == passerellesmef.MAX_PAGES
     assert (nb, arret) == (total, True)
@@ -225,16 +212,16 @@ def _territorial(
     monkeypatch.setattr(
         emploiterritorial,
         "obtenir_page_recherche",
-        lambda _opener, _url: {"html": premiere, "title": ""},
+        lambda *_: {"html": premiere, "title": ""},
     )
 
-    def suivante(_opener: object, page: int) -> str:
+    def suivante(_: object, page: int) -> str:
         demandes.append(page)
         return cumul
 
     monkeypatch.setattr(emploiterritorial, "obtenir_page_suivante", suivante)
     monkeypatch.setattr(emploiterritorial, "extraire_offres", _offres_de_page)
-    monkeypatch.setattr(emploiterritorial, "extraire_totaux", lambda _h: (total, 2))
+    monkeypatch.setattr(emploiterritorial, "extraire_totaux", lambda _: (total, 2))
     return demandes
 
 

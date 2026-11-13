@@ -19,7 +19,7 @@ from tests.sources.reponses import (
 )
 
 ERREURS = [
-    pytest.param(lambda *_a: ReponseHttp(statut=503), "Erreur HTTP 503", id="http"),
+    pytest.param(lambda *_: ReponseHttp(statut=503), "Erreur HTTP 503", id="http"),
     pytest.param(
         echec_reseau(urllib3.exceptions.HTTPError("hôte inconnu")),
         "hôte inconnu",

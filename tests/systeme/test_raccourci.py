@@ -137,7 +137,7 @@ def test_echec_de_creation_message_en_francais(
 ) -> None:
     _sur(monkeypatch, "windows")
 
-    def echec(commande: Sequence[str], **_options: Any) -> None:
+    def echec(commande: Sequence[str], **_: Any) -> None:
         raise subprocess.CalledProcessError(1, commande)
 
     monkeypatch.setattr(subprocess, "run", echec)
