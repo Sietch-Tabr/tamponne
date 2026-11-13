@@ -33,8 +33,7 @@ def test_recuperer_detail_offre_succes_retourne_le_detail_extrait(
 def test_recuperer_detail_offre_echec_reseau_retourne_detail_vide(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def _leve_erreur(url: str) -> None:
-        raise RuntimeError("Erreur réseau lors du chargement")
+    _leve_erreur = Mock(side_effect=RuntimeError("Erreur réseau lors du chargement"))
 
     monkeypatch.setattr(source, "obtenir_page_offres", _leve_erreur)
     assert (

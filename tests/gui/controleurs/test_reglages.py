@@ -244,8 +244,7 @@ def test_rafraichir_cache_transmet_les_organisations(
 def test_rafraichir_cache_en_echec_affiche_un_message(
     qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    def echouer(forcer: bool = False) -> Organisations:
-        raise RuntimeError("site inaccessible")
+    echouer = Mock(side_effect=RuntimeError("site inaccessible"))
 
     monkeypatch.setattr(controleur_reglages, "obtenir_organisations", echouer)
     reglages = ControleurReglages()

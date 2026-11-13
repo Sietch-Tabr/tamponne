@@ -139,14 +139,7 @@ def test_rechercher_avertissement_sur_echec_partiel_sans_bloquer(
         "rechercher",
         Mock(return_value=([_offre("O1")], 1, False)),
     )
-
-    def _echec(
-        self: object,
-        filtres: FiltresRecherche,
-        on_page: Callable[[int, int], None] | None = None,
-        on_fiche: Callable[[int, int], None] | None = None,
-    ) -> None:
-        raise RuntimeError("Erreur réseau")
+    _echec = Mock(side_effect=RuntimeError("Erreur réseau"))
 
     monkeypatch.setattr(EmploiTerritorial, "rechercher", _echec)
     resultats, avertissements, erreurs = _executer({})
@@ -165,34 +158,24 @@ def test_rechercher_source_au_format_imprevu_n_arrete_pas_les_autres(
         "rechercher",
         Mock(return_value=([_offre("O1")], 1, False)),
     )
-
-    def _format_imprevu(
-        self: object,
-        filtres: FiltresRecherche,
-        on_page: Callable[[int, int], None] | None = None,
-        on_fiche: Callable[[int, int], None] | None = None,
-    ) -> None:
-        raise AttributeError("'NoneType' object has no attribute 'find'")
+    _format_imprevu = Mock(
+        side_effect=AttributeError("'NoneType' object has no attribute 'find'")
+    )
 
     monkeypatch.setattr(EmploiTerritorial, "rechercher", _format_imprevu)
     resultats, avertissements, erreurs = _executer({})
     assert erreurs == []
     assert resultats[0][0][0]["reference"] == "O1"
     assert "réponse inattendue du site (AttributeError" in avertissements[0]
-    # Journal : la trace complète, pour retrouver la ligne qui a cédé.
-    assert "Traceback" in caplog.text and "_format_imprevu" in caplog.text
+    # Journal : la trace complète et le message de l'erreur, pour retrouver ce qui a cédé.
+    assert "Traceback" in caplog.text
+    assert "'NoneType' object has no attribute 'find'" in caplog.text
 
 
 def test_rechercher_erreur_si_toutes_les_sources_echouent(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def _echec(
-        self: object,
-        filtres: FiltresRecherche,
-        on_page: Callable[[int, int], None] | None = None,
-        on_fiche: Callable[[int, int], None] | None = None,
-    ) -> None:
-        raise RuntimeError("Erreur réseau")
+    _echec = Mock(side_effect=RuntimeError("Erreur réseau"))
 
     monkeypatch.setattr(ChoisirLeServicePublic, "rechercher", _echec)
     monkeypatch.setattr(EmploiTerritorial, "rechercher", _echec)
@@ -227,14 +210,9 @@ def test_rechercher_source_desactivee_nest_pas_interrogee(
         "rechercher",
         Mock(return_value=([_offre("O1")], 1, False)),
     )
-
-    def _echoue_si_appelee(
-        self: object,
-        filtres: FiltresRecherche,
-        on_page: Callable[[int, int], None] | None = None,
-        on_fiche: Callable[[int, int], None] | None = None,
-    ) -> None:
-        raise AssertionError("emploiterritorial ne doit pas être interrogée")
+    _echoue_si_appelee = Mock(
+        side_effect=AssertionError("emploiterritorial ne doit pas être interrogée")
+    )
 
     monkeypatch.setattr(EmploiTerritorial, "rechercher", _echoue_si_appelee)
     resultats, _, _ = _executer({})
@@ -267,14 +245,9 @@ def test_rechercher_versant_etat_seul_exclut_territorial_et_hospitaliere(
             )
         ),
     )
-
-    def _echoue_si_appelee(
-        self: object,
-        filtres: FiltresRecherche,
-        on_page: Callable[[int, int], None] | None = None,
-        on_fiche: Callable[[int, int], None] | None = None,
-    ) -> None:
-        raise AssertionError("source mono-versant exclue par le filtre appelée")
+    _echoue_si_appelee = Mock(
+        side_effect=AssertionError("source mono-versant exclue par le filtre appelée")
+    )
 
     monkeypatch.setattr(EmploiTerritorial, "rechercher", _echoue_si_appelee)
     monkeypatch.setattr(Fhf, "rechercher", _echoue_si_appelee)
@@ -538,13 +511,7 @@ def test_rechercher_remonte_progression_et_sources_terminees(
         on_page(2, 2)
         return [_offre("O1")], 2, False
 
-    def _echec(
-        self: object,
-        filtres: FiltresRecherche,
-        on_page: Callable[[int, int], None] | None = None,
-        on_fiche: Callable[[int, int], None] | None = None,
-    ) -> None:
-        raise RuntimeError("HTTP 503")
+    _echec = Mock(side_effect=RuntimeError("HTTP 503"))
 
     monkeypatch.setattr(ChoisirLeServicePublic, "rechercher", _csp)
     monkeypatch.setattr(EmploiTerritorial, "rechercher", _echec)
@@ -767,8 +734,7 @@ def test_une_source_sans_offre_dont_le_site_est_en_panne_est_signalee(
 def test_toutes_les_sources_vides_et_en_panne_la_recherche_est_impossible(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def panne(_url: str) -> None:
-        raise RuntimeError("Le site annonce une panne")
+    panne = Mock(side_effect=RuntimeError("Le site annonce une panne"))
 
     monkeypatch.setattr(orchestration, "controler_site", panne)
     monkeypatch.setattr(
@@ -784,8 +750,7 @@ def test_toutes_les_sources_vides_et_en_panne_la_recherche_est_impossible(
 def test_source_en_echec_est_signalee_par_son_nom(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def echec(*_args: object, **_kwargs: object) -> None:
-        raise RuntimeError("HTTP 503")
+    echec = Mock(side_effect=RuntimeError("HTTP 503"))
 
     monkeypatch.setattr(EmploiTerritorial, "rechercher", echec)
     monkeypatch.setattr(
@@ -801,8 +766,7 @@ def test_source_en_echec_est_signalee_par_son_nom(
 def test_date_de_lancement_non_enregistree_ne_fait_pas_echouer_le_traitement(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def refuse(_nom: str) -> None:
-        raise PermissionError("tenu")
+    refuse = Mock(side_effect=PermissionError("tenu"))
 
     monkeypatch.setattr(orchestration, "noter_lancement", refuse)
     resultat = post_traiter_resultats([_offre("O1")], [], False, "fiche")

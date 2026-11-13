@@ -233,8 +233,7 @@ def test_rechercher_lit_les_fiches_des_criteres_que_le_site_ne_filtre_pas(
 def test_rechercher_sans_critere_pour_le_site_ne_charge_pas_le_formulaire(
     _site: dict[str, list[object]], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    def interdit(_o: object) -> str:
-        raise AssertionError("formulaire inutile")
+    interdit = Mock(side_effect=AssertionError("formulaire inutile"))
 
     monkeypatch.setattr(passerellesmef, "obtenir_formulaire", interdit)
     passerellesmef.PasserellesMef().rechercher({"query": "réseau"})

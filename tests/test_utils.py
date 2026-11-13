@@ -42,8 +42,7 @@ def test_ecriture_atomique_retente_si_le_fichier_est_tenu(
 def test_ecriture_atomique_abandonne_apres_les_essais_et_nettoie(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    def refuse(_source: str, _destination: Path) -> None:
-        raise PermissionError("tenu")
+    refuse = Mock(side_effect=PermissionError("tenu"))
 
     monkeypatch.setattr(utils.os, "replace", refuse)
     with pytest.raises(PermissionError):

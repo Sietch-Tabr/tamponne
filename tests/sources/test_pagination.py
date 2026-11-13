@@ -269,8 +269,7 @@ def test_territorial_signale_des_offres_manquantes(
 def test_recuperer_detail_offre_echec_reseau_fiche_vide(
     monkeypatch: pytest.MonkeyPatch, module: ModuleType
 ) -> None:
-    def injoignable(_opener: object, _url: str) -> str:
-        raise RuntimeError("Erreur réseau")
+    injoignable = Mock(side_effect=RuntimeError("Erreur réseau"))
 
     monkeypatch.setattr(module, "nouvelle_session", lambda: None)
     monkeypatch.setattr(module, "obtenir_fiche_offre", injoignable)
@@ -294,8 +293,7 @@ def test_recuperer_detail_offre_extrait_la_page(
 def test_csp_recuperer_detail_offre_echec_reseau_fiche_vide(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def injoignable(_url: str) -> None:
-        raise RuntimeError("Erreur réseau")
+    injoignable = Mock(side_effect=RuntimeError("Erreur réseau"))
 
     monkeypatch.setattr(csp, "obtenir_page_offres", injoignable)
     assert csp.recuperer_detail_offre("https://exemple.test/x") == csp.DETAIL_VIDE

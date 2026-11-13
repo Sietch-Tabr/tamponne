@@ -2,6 +2,7 @@
 fiche et disponibilité d'une offre selon son site (pas de réseau)."""
 
 from collections.abc import Callable
+from unittest.mock import Mock
 
 import pytest
 import urllib3
@@ -193,8 +194,7 @@ def test_verifier_disponibilite_retour_a_l_accueil_passerelles(
 def test_verifier_disponibilite_site_injoignable_propage(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def injoignable(_url: str) -> tuple[str, str]:
-        raise RuntimeError("Erreur réseau")
+    injoignable = Mock(side_effect=RuntimeError("Erreur réseau"))
 
     monkeypatch.setattr(detail, "consulter_page", injoignable)
     with pytest.raises(RuntimeError, match="Erreur réseau"):

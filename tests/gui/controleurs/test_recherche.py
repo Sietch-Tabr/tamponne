@@ -66,13 +66,8 @@ def _sources_factices(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
             False,
         )
 
-    def _territorial(
-        self: object,
-        filtres: FiltresRecherche,
-        on_page: Callable[[int, int], None] | None = None,
-        on_fiche: Callable[[int, int], None] | None = None,
-    ) -> tuple[list[Offre], int, bool]:
-        return (
+    _territorial = Mock(
+        return_value=(
             [
                 _offre(
                     "T3",
@@ -84,6 +79,7 @@ def _sources_factices(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
             1,
             False,
         )
+    )
 
     monkeypatch.setattr(ChoisirLeServicePublic, "rechercher", _csp)
     monkeypatch.setattr(EmploiTerritorial, "rechercher", _territorial)
@@ -624,8 +620,7 @@ def test_precharger_selection_prepare_la_consultation(
 def test_exception_inattendue_pendant_la_recherche_ne_bloque_pas_l_ecran(
     controleur: ControleurRecherche, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    def casse(*_args: object, **_kwargs: object) -> None:
-        raise KeyError("imprévu")
+    casse = Mock(side_effect=KeyError("imprévu"))
 
     monkeypatch.setattr(travailleurs, "rechercher_toutes_sources", casse)
     controleur.lancer()
@@ -639,8 +634,7 @@ def test_exception_inattendue_pendant_la_recherche_ne_bloque_pas_l_ecran(
 def test_exception_pendant_l_affichage_du_resultat_est_signalee(
     controleur: ControleurRecherche, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    def casse(*_args: object, **_kwargs: object) -> None:
-        raise OSError("disque")
+    casse = Mock(side_effect=OSError("disque"))
 
     monkeypatch.setattr(controleur_recherche, "post_traiter_resultats", casse)
     controleur.lancer()
@@ -667,8 +661,7 @@ def test_source_en_echec_est_marquee_indisponible_sans_lire_le_texte(
 def test_echec_du_prechargement_ne_montre_aucune_erreur(
     controleur: ControleurRecherche, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    def casse(url: str) -> dict[str, object]:
-        raise RuntimeError("site injoignable")
+    casse = Mock(side_effect=RuntimeError("site injoignable"))
 
     monkeypatch.setattr(controleur_recherche, "recuperer_detail_offre", casse)
     controleur.lancer()
@@ -687,8 +680,7 @@ def test_echec_du_prechargement_ne_montre_aucune_erreur(
 def test_echec_de_la_consultation_est_montre(
     controleur: ControleurRecherche, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    def casse(url: str) -> dict[str, object]:
-        raise RuntimeError("site injoignable")
+    casse = Mock(side_effect=RuntimeError("site injoignable"))
 
     monkeypatch.setattr(controleur_recherche, "recuperer_detail_offre", casse)
     controleur.lancer()

@@ -95,14 +95,7 @@ def test_executer_avertissement_sur_echec_partiel_sans_bloquer(
         "rechercher",
         Mock(return_value=([_offre("O1")], 1, False)),
     )
-
-    def _echec(
-        self: object,
-        filtres: FiltresRecherche,
-        on_page: Callable[[int, int], None] | None = None,
-        on_fiche: Callable[[int, int], None] | None = None,
-    ) -> None:
-        raise RuntimeError("Erreur réseau")
+    _echec = Mock(side_effect=RuntimeError("Erreur réseau"))
 
     monkeypatch.setattr(EmploiTerritorial, "rechercher", _echec)
     resultats, avertissements, erreurs = _executer(TravailleurRecherche({}, {}))
@@ -195,13 +188,7 @@ def test_executer_emet_progression_nommee_et_source_terminee(
 def test_executer_source_en_echec_est_aussi_signalee_terminee(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def _echec(
-        self: object,
-        filtres: FiltresRecherche,
-        on_page: Callable[[int, int], None] | None = None,
-        on_fiche: Callable[[int, int], None] | None = None,
-    ) -> None:
-        raise RuntimeError("HTTP 503")
+    _echec = Mock(side_effect=RuntimeError("HTTP 503"))
 
     monkeypatch.setattr(ChoisirLeServicePublic, "rechercher", _echec)
     monkeypatch.setattr(
@@ -279,8 +266,7 @@ def test_recherche_exception_inattendue_emet_une_erreur(
 ) -> None:
     from src.gui import travailleurs as travailleurs_module
 
-    def casse(*_args: object, **_kwargs: object) -> None:
-        raise KeyError("imprévu")
+    casse = Mock(side_effect=KeyError("imprévu"))
 
     monkeypatch.setattr(travailleurs_module, "rechercher_toutes_sources", casse)
     erreurs: list[str] = []
@@ -338,8 +324,7 @@ def test_verificateur_maj_marqueur_non_ecrit_n_empeche_pas_l_annonce(
 ) -> None:
     from src.gui import travailleurs as travailleurs_module
 
-    def refuse(_info: InfoMaj) -> None:
-        raise PermissionError("fichier tenu")
+    refuse = Mock(side_effect=PermissionError("fichier tenu"))
 
     monkeypatch.setattr(
         travailleurs_module, "verifier_derniere_publication", lambda: _INFO_MAJ_TEST

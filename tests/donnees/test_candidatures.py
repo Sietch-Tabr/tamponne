@@ -176,8 +176,7 @@ def test_generer_archive_pdf_sans_lien_echoue_sans_lever(
 def test_generer_archive_pdf_echec_reseau_echoue_sans_lever(
     monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
-    def _leve_erreur(url: str) -> None:
-        raise RuntimeError("Erreur réseau")
+    _leve_erreur = Mock(side_effect=RuntimeError("Erreur réseau"))
 
     monkeypatch.setattr(candidatures, "telecharger_binaire", _leve_erreur)
     reussi = candidatures.generer_archive_pdf("ref-1", _PAGE_AVEC_LIEN_PDF)

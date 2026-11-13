@@ -120,8 +120,7 @@ def test_verifier_offres_relaie_progression_et_marque_depubliee(
 def test_verifier_offres_echec_reseau_signale_sans_rien_conclure(
     qapp: QApplication, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    def injoignable(_url: str) -> bool:
-        raise RuntimeError("Erreur réseau lors du chargement")
+    injoignable = Mock(side_effect=RuntimeError("Erreur réseau lors du chargement"))
 
     monkeypatch.setattr(travailleurs, "verifier_disponibilite", injoignable)
     controleur = ControleurSuivi(qapp)
