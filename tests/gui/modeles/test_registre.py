@@ -1,6 +1,7 @@
 """Tests de src/gui/modeles/registre.py : colonnes du registre, numéros,
 dates courtes, tampon « Nouveau » et clés de tri."""
 
+import pytest
 from PySide6.QtCore import QModelIndex, Qt
 from PySide6.QtWidgets import QApplication
 
@@ -55,7 +56,8 @@ def test_cellules_numero_date_courte_tirets_et_source(qapp: QApplication) -> Non
     assert _valeur(modele, 1, 5, affiche) == "FHF"
 
 
-def test_numero_a_la_largeur_du_dernier(qapp: QApplication) -> None:
+@pytest.mark.usefixtures("qapp")
+def test_numero_a_la_largeur_du_dernier() -> None:
     modele = ModeleRegistre()
     offres = [_offre(str(i), "01/10/2026") for i in range(120)]
     modele.definir_offres(offres, set())

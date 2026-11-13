@@ -95,9 +95,8 @@ def test_bouton_lampe_annonce_le_bureau_vise(moteur: QQmlApplicationEngine) -> N
     assert "Bureau de nuit" in _noms_accessibles(_racine(moteur))
 
 
-def test_adapter_a_l_ecran_agrandit_si_l_ecran_est_trop_petit(
-    qapp: QApplication,
-) -> None:
+@pytest.mark.usefixtures("qapp")
+def test_adapter_a_l_ecran_agrandit_si_l_ecran_est_trop_petit() -> None:
     """L'écran hors écran des tests fait 800 × 800 : 1280 × 900 n'y tient pas."""
     fenetre = QWindow()
     fenetre.resize(1280, 900)
@@ -107,7 +106,8 @@ def test_adapter_a_l_ecran_agrandit_si_l_ecran_est_trop_petit(
     fenetre.close()
 
 
-def test_adapter_a_l_ecran_garde_la_taille_si_elle_tient(qapp: QApplication) -> None:
+@pytest.mark.usefixtures("qapp")
+def test_adapter_a_l_ecran_garde_la_taille_si_elle_tient() -> None:
     fenetre = QWindow()
     fenetre.resize(600, 500)
     fenetre.show()

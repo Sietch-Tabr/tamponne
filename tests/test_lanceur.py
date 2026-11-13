@@ -65,13 +65,15 @@ def marqueur(monkeypatch: pytest.MonkeyPatch) -> Path:
     return maj.CHEMIN_MARQUEUR
 
 
-def test_lancer_sans_mise_a_jour_lance_l_interface_une_fois(marqueur: Path) -> None:
+@pytest.mark.usefixtures("marqueur")
+def test_lancer_sans_mise_a_jour_lance_l_interface_une_fois() -> None:
     executer = Executeur({"app": [0]})
     assert lancer(executer) == 0
     assert executer.commandes == [APPLICATION]
 
 
-def test_lancer_redemarre_tant_que_l_interface_le_demande(marqueur: Path) -> None:
+@pytest.mark.usefixtures("marqueur")
+def test_lancer_redemarre_tant_que_l_interface_le_demande() -> None:
     executer = Executeur({"app": [CODE_REDEMARRAGE, CODE_REDEMARRAGE, 3]})
     assert lancer(executer) == 3
     assert executer.commandes == [APPLICATION] * 3
@@ -385,8 +387,9 @@ def test_executer_affiche_et_journalise_les_sorties(
     assert "Téléchargement…" in journal.read_text(encoding="utf-8")
 
 
+@pytest.mark.usefixtures("marqueur")
 def test_synchroniser_annonce_le_telechargement(
-    marqueur: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(lanceur, "_sortie", sys.stdout)
     assert lanceur.synchroniser(Executeur({"sync": [0]}))
@@ -472,8 +475,9 @@ def test_annoncer_respecte_no_color_et_les_sorties_redirigees(
     assert lanceur.ATTRIBUTS_ANNONCE not in fichier.getvalue()
 
 
+@pytest.mark.usefixtures("marqueur")
 def test_synchroniser_annonce_la_mise_a_jour_de_uv_en_valeur(
-    marqueur: Path, monkeypatch: pytest.MonkeyPatch
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     sortie = _Terminal()
     monkeypatch.setattr(lanceur, "_sortie", sortie)
@@ -493,8 +497,9 @@ def verrou(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return chemin
 
 
+@pytest.mark.usefixtures("verrou")
 @pytest.mark.skipif(sys.platform == "win32", reason="verrou testé sous POSIX")
-def test_instance_unique_refuse_un_second_lanceur_puis_se_libere(verrou: Path) -> None:
+def test_instance_unique_refuse_un_second_lanceur_puis_se_libere() -> None:
     with lanceur.instance_unique():
         assert not lanceur.verrou_libre()
         with pytest.raises(lanceur.DejaLance):

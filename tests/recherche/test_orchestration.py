@@ -196,9 +196,8 @@ def test_rechercher_erreur_si_toutes_les_sources_echouent(
     assert len(erreurs) == 1
 
 
-def test_rechercher_erreur_si_aucune_source_active(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+@pytest.mark.usefixtures("monkeypatch")
+def test_rechercher_erreur_si_aucune_source_active() -> None:
     parametres_sources.sauvegarder_sources_actives(
         {
             "choisirleservicepublic": False,

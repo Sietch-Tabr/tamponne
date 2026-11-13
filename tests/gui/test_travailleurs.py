@@ -7,7 +7,6 @@ from pathlib import Path
 
 import pytest
 from PySide6.QtCore import QCoreApplication
-from pytestqt.qtbot import QtBot
 
 from src.donnees import parametres_sources
 from src.gui.travailleurs import TravailleurRecherche, VerificateurMiseAJour
@@ -110,9 +109,8 @@ def test_executer_avertissement_sur_echec_partiel_sans_bloquer(
     assert resultats[0][0][0]["reference"] == "O1"
 
 
-def test_executer_erreur_si_aucune_source_active(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+@pytest.mark.usefixtures("monkeypatch")
+def test_executer_erreur_si_aucune_source_active() -> None:
     parametres_sources.sauvegarder_sources_actives(
         {
             "choisirleservicepublic": False,
@@ -151,8 +149,9 @@ def test_executer_emet_source_en_cours(monkeypatch: pytest.MonkeyPatch) -> None:
     ]
 
 
+@pytest.mark.usefixtures("qtbot")
 def test_executer_emet_progression_nommee_et_source_terminee(
-    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def _csp(
         self: object,
@@ -187,8 +186,9 @@ def test_executer_emet_progression_nommee_et_source_terminee(
     )
 
 
+@pytest.mark.usefixtures("qtbot")
 def test_executer_source_en_echec_est_aussi_signalee_terminee(
-    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def _echec(
         self: object,

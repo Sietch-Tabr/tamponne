@@ -197,9 +197,8 @@ def _references(
     return [o["reference"] for o in offres]
 
 
-def test_rechercher_sans_critere_local_ne_lit_aucune_fiche(
-    _site: dict[str, DetailOffre],
-) -> None:
+@pytest.mark.usefixtures("_site")
+def test_rechercher_sans_critere_local_ne_lit_aucune_fiche() -> None:
     assert _references({}) == ["paris", "marne", "sans-lieu"]
 
 
@@ -232,18 +231,16 @@ def test_rechercher_categorie_filtre_sur_la_fiche(
     assert _references({"categories": ["A"]}) == ["paris"]
 
 
-def test_rechercher_fiche_illisible_est_gardee(
-    _site: dict[str, DetailOffre],
-) -> None:
+@pytest.mark.usefixtures("_site")
+def test_rechercher_fiche_illisible_est_gardee() -> None:
     assert _references({"categories": ["A"], "localisations": ["Paris"]}) == [
         "paris",
         "sans-lieu",
     ]
 
 
-def test_rechercher_organisation_hors_bercy_ne_renvoie_rien(
-    _site: dict[str, DetailOffre],
-) -> None:
+@pytest.mark.usefixtures("_site")
+def test_rechercher_organisation_hors_bercy_ne_renvoie_rien() -> None:
     assert _references({"organisations": ["Mairie de Paris - Crédit municipal"]}) == []
 
 
@@ -267,8 +264,9 @@ def test_rechercher_ne_relit_pas_une_fiche_en_cache(
     assert lectures == []
 
 
+@pytest.mark.usefixtures("_site")
 def test_rechercher_ecarte_sans_lire_sa_fiche_une_offre_d_un_autre_lieu(
-    _site: dict[str, DetailOffre], monkeypatch: pytest.MonkeyPatch
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     lectures: list[str] = []
 

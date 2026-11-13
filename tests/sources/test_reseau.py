@@ -161,8 +161,9 @@ def _sans_gestionnaires(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(reseau, "_gestionnaires", {})
 
 
+@pytest.mark.usefixtures("_sans_gestionnaires")
 def test_sans_proxy_les_connexions_sont_directes(
-    monkeypatch: pytest.MonkeyPatch, _sans_gestionnaires: None
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(urllib.request, "getproxies", lambda: {})
     monkeypatch.setattr(urllib.request, "proxy_bypass", lambda _h: False)
@@ -170,9 +171,8 @@ def test_sans_proxy_les_connexions_sont_directes(
     assert type(gestionnaire) is urllib3.PoolManager
 
 
-def test_le_proxy_du_systeme_est_utilise(
-    monkeypatch: pytest.MonkeyPatch, _sans_gestionnaires: None
-) -> None:
+@pytest.mark.usefixtures("_sans_gestionnaires")
+def test_le_proxy_du_systeme_est_utilise(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         urllib.request,
         "getproxies",
@@ -185,8 +185,9 @@ def test_le_proxy_du_systeme_est_utilise(
     assert gestionnaire.proxy_headers["proxy-authorization"].startswith("Basic ")
 
 
+@pytest.mark.usefixtures("_sans_gestionnaires")
 def test_le_proxy_recoit_le_contexte_tls_du_systeme_et_des_identifiants_utf8(
-    monkeypatch: pytest.MonkeyPatch, _sans_gestionnaires: None
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Depuis urllib3 2.8, le TLS du proxy ne reprend plus le contexte de la
     destination : il doit lui être donné, sinon l'AC d'entreprise est refusée."""
@@ -202,8 +203,9 @@ def test_le_proxy_recoit_le_contexte_tls_du_systeme_et_des_identifiants_utf8(
     assert base64.b64decode(jeton).decode("utf-8") == "él:mdp"
 
 
+@pytest.mark.usefixtures("_sans_gestionnaires")
 def test_un_hote_exclu_du_proxy_est_joint_directement(
-    monkeypatch: pytest.MonkeyPatch, _sans_gestionnaires: None
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
         urllib.request, "getproxies", lambda: {"https": "http://proxy.test:3128"}
