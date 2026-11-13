@@ -136,7 +136,7 @@ SITES: Final[Mapping[str, str]] = {
 """Adresse de l'accueil de chaque source (contrôle du site, voir `controler_site`)."""
 
 
-def _ignorer(*_args: object) -> None:
+def _ignorer(*_: object) -> None:
     return None
 
 

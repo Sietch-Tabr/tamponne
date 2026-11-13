@@ -807,7 +807,7 @@ class ControleurRecherche(QObject):
             return
         url = offre["url"]
         self._lancer_tache(
-            lambda: self._lire_detail(url), lambda _detail: None, silencieuse=True
+            lambda: self._lire_detail(url), lambda _: None, silencieuse=True
         )
 
     @Slot()

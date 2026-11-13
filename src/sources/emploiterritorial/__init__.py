@@ -55,6 +55,7 @@ class EmploiTerritorial:
         toutes les lignes de la page 1 à N (vérifié empiriquement — pas
         une requête par page, plus poli envers le WAF actif sur ce site).
         """
+        del on_fiche  # imposé par le contrat de SourceOffres, sans fiche à lire ici
         categories = [
             CATEGORIES[c] for c in filtres.get("categories", []) if c in CATEGORIES
         ]

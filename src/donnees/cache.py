@@ -272,6 +272,7 @@ class _CacheTemporel:
 
     @staticmethod
     def _donnee_valide(donnee: object) -> bool:
+        del donnee  # paramètre du contrat des sous-classes, inutile ici
         raise NotImplementedError
 
     def _charger(self) -> dict[str, dict[str, Any]]:
