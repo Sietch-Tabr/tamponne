@@ -4,6 +4,18 @@ Toutes les évolutions notables de Tamponné, de la plus récente à la plus
 ancienne. Le détail de chaque version est aussi publié sur la page
 [Releases](https://github.com/Sietch-Tabr/tamponne/releases) du dépôt.
 
+## [1.7.7] — 2026-11-13
+
+### Bibliothèques
+
+- `soupsieve` passe en 4.1 : ses sélecteurs deviennent sûrs entre threads (les pages des sites sont lues en parallèle) et plusieurs cas rares de `:lang()` et de valeurs d'attribut se terminant par un saut de ligne sont corrigés ; les sélecteurs utilisés par Tamponné (`button.text-clamp--cta`, `.block-table li strong`, `[data-reference]`) donnent les mêmes résultats
+- `mypy-extensions` passe en 1.2.0 (outil de développement, sans effet sur l'application)
+
+### En coulisses
+
+- Tests : paramètres, variables et fonctions jamais lus retirés, doublures simplifiées par des `Mock` et une doublure de source partagée (`tests/doubles.py`), sans changer le comportement
+- Première version dont l'archive de mise à jour est créée directement par GitHub
+
 ## [1.7.6] — 2026-11-13
 
 ### Nouveautés
