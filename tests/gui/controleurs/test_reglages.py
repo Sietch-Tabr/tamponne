@@ -223,7 +223,7 @@ def test_rafraichir_cache_transmet_les_organisations(
 ) -> None:
     orgas: Organisations = {"Ministère": {"Direction": 12}}
     monkeypatch.setattr(
-        controleur_reglages, "obtenir_organisations", lambda forcer=False: orgas
+        controleur_reglages, "obtenir_organisations", Mock(return_value=orgas)
     )
     moment = datetime(2026, 10, 12, 14, 5).astimezone()
     monkeypatch.setattr(controleur_reglages, "date_cache_organisations", lambda: None)
@@ -270,7 +270,7 @@ def test_pont_relaie_le_chargement_des_organisations_a_la_recherche(
 ) -> None:
     orgas: Organisations = {"Ministère": {"Direction": 12}}
     monkeypatch.setattr(
-        controleur_reglages, "obtenir_organisations", lambda forcer=False: orgas
+        controleur_reglages, "obtenir_organisations", Mock(return_value=orgas)
     )
     pont = Pont()
     recherche = pont.property("recherche")

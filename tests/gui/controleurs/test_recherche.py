@@ -2,7 +2,7 @@
 (aucun appel réseau) : formulaire, recherche en QThread, registre,
 classement en profil, mode édition et actions sur une offre."""
 
-from collections.abc import Callable, Iterator
+from collections.abc import Iterator
 from datetime import date
 from pathlib import Path
 from unittest.mock import Mock
@@ -23,6 +23,7 @@ from src.sources.choisirleservicepublic import ChoisirLeServicePublic
 from src.sources.choisirleservicepublic.extraction import DETAIL_VIDE
 from src.sources.emploiterritorial import EmploiTerritorial
 from src.types import FiltresRecherche, Offre
+from tests.doubles import Appel, Resultat, SourceFactice
 
 
 def _offre(
@@ -48,15 +49,10 @@ def _sources_factices(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         {"passerellesmef": False, "fhf": False}
     )
 
-    def _csp(
-        self: object,
-        filtres: FiltresRecherche,
-        on_page: Callable[[int, int], None] | None = None,
-        on_fiche: Callable[[int, int], None] | None = None,
-    ) -> tuple[list[Offre], int, bool]:
-        assert on_page is not None
-        on_page(1, 2)
-        on_page(2, 2)
+    def _csp(appel: Appel) -> Resultat:
+        assert appel.on_page is not None
+        appel.on_page(1, 2)
+        appel.on_page(2, 2)
         return (
             [
                 _offre("MINT_2026-1", "Attaché(e) d'administration RH", "01/10/2026"),
@@ -81,7 +77,9 @@ def _sources_factices(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         )
     )
 
-    monkeypatch.setattr(ChoisirLeServicePublic, "rechercher", _csp)
+    monkeypatch.setattr(
+        ChoisirLeServicePublic, "rechercher", SourceFactice(_csp).rechercher
+    )
     monkeypatch.setattr(EmploiTerritorial, "rechercher", _territorial)
 
 
@@ -249,7 +247,7 @@ def test_consulter_et_tamponner_passent_par_un_thread(
     )
     detail["description"] = "Missions."
     monkeypatch.setattr(
-        controleur_recherche, "recuperer_detail_offre", lambda url: detail
+        controleur_recherche, "recuperer_detail_offre", Mock(return_value=detail)
     )
     suivis: list[str] = []
     monkeypatch.setattr(
@@ -401,19 +399,15 @@ def test_fiche_aux_criteres_modifies_n_est_pas_touchee(
 def test_export_resume_les_criteres_de_la_recherche_affichee(
     controleur: ControleurRecherche, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    recus: list[str] = []
-
-    def exporter(offres: object, resume: str, nb_pages: int, profil: object) -> Path:
-        recus.append(resume)
-        return Path("export.html")
-
+    exporter = Mock(return_value=Path("export.html"))
     monkeypatch.setattr(controleur_recherche, "exporter_html", exporter)
     controleur.basculer("categories", "A", True)
     controleur.lancer()
     _attendre(controleur, qtbot)
     controleur.basculer("categories", "C", True)
     controleur.exporter()
-    assert recus[0] == resumer_filtres(
+    resume_exporte = exporter.call_args.args[1]
+    assert resume_exporte == resumer_filtres(
         {**controleur.construire_filtres(), "categories": ["A"]}
     )
 
@@ -421,14 +415,7 @@ def test_export_resume_les_criteres_de_la_recherche_affichee(
 def test_nouvelles_seulement_et_export_des_offres_visibles(
     controleur: ControleurRecherche, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    exportees: list[list[Offre]] = []
-
-    def exporter(
-        offres: list[Offre], resume: str, nb_pages: int, profil: object
-    ) -> Path:
-        exportees.append(offres)
-        return Path("export.html")
-
+    exporter = Mock(return_value=Path("export.html"))
     monkeypatch.setattr(controleur_recherche, "exporter_html", exporter)
     profils.sauvegarder_profils(
         {"f": {"label": "F", "versants": ["etat", "territorial"]}}
@@ -438,7 +425,7 @@ def test_nouvelles_seulement_et_export_des_offres_visibles(
     controleur.filtrer("finances")
     assert controleur.property("modele").rowCount() == 1
     controleur.exporter()
-    assert [o["reference"] for o in exportees[0]] == ["T3"]
+    assert [o["reference"] for o in exporter.call_args.args[0]] == ["T3"]
     controleur.filtrer("")
     controleur.nouvelles_seulement(True)
     assert controleur.property("modele").rowCount() == 2
@@ -539,7 +526,7 @@ def test_consulter_ouvre_la_fenetre_avant_la_fin_du_telechargement(
     )
     ordre: list[str] = []
     controleur.detail_attendu.connect(lambda apercu: ordre.append(apercu["titre"]))
-    controleur.detail_pret.connect(lambda fiche: ordre.append("pret"))
+    controleur.detail_pret.connect(lambda _: ordre.append("pret"))
     controleur.lancer()
     _attendre(controleur, qtbot)
     controleur.selectionner(0)

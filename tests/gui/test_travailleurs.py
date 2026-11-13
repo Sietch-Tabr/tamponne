@@ -2,7 +2,6 @@
 de `src.recherche.orchestration` en signaux. L'orchestration est testée dans test_recherche.py.
 """
 
-from collections.abc import Callable
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -13,7 +12,8 @@ from src.donnees import parametres_sources
 from src.gui.travailleurs import TravailleurRecherche, VerificateurMiseAJour
 from src.sources.choisirleservicepublic import ChoisirLeServicePublic
 from src.sources.emploiterritorial import EmploiTerritorial
-from src.types import FiltresRecherche, InfoMaj, Offre
+from src.types import InfoMaj, Offre
+from tests.doubles import Appel, Resultat, SourceFactice
 
 
 @pytest.fixture(autouse=True)
@@ -83,7 +83,7 @@ def test_executer_fusionne_les_resultats_de_deux_sources(
     resultats, avertissements, erreurs = _executer(TravailleurRecherche({}, {}))
     assert avertissements == []
     assert erreurs == []
-    offres, nb_pages, arret_anticipe = resultats[0]
+    offres, _, _ = resultats[0]
     assert {o["reference"] for o in offres} == {"O1", "O2"}
 
 
@@ -105,7 +105,6 @@ def test_executer_avertissement_sur_echec_partiel_sans_bloquer(
     assert resultats[0][0][0]["reference"] == "O1"
 
 
-@pytest.mark.usefixtures("monkeypatch")
 def test_executer_erreur_si_aucune_source_active() -> None:
     parametres_sources.sauvegarder_sources_actives(
         {
@@ -115,7 +114,7 @@ def test_executer_erreur_si_aucune_source_active() -> None:
             "fhf": False,
         }
     )
-    resultats, avertissements, erreurs = _executer(TravailleurRecherche({}, {}))
+    resultats, _, erreurs = _executer(TravailleurRecherche({}, {}))
     assert resultats == []
     assert len(erreurs) == 1
 
@@ -151,18 +150,15 @@ def test_executer_emet_source_en_cours(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_executer_emet_progression_nommee_et_source_terminee(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def _csp(
-        self: object,
-        filtres: FiltresRecherche,
-        on_page: Callable[[int, int], None] | None = None,
-        on_fiche: Callable[[int, int], None] | None = None,
-    ) -> tuple[list[Offre], int, bool]:
-        assert on_page is not None
-        on_page(1, 2)
-        on_page(2, 2)
+    def _csp(appel: Appel) -> Resultat:
+        assert appel.on_page is not None
+        appel.on_page(1, 2)
+        appel.on_page(2, 2)
         return [_offre("O1")], 2, False
 
-    monkeypatch.setattr(ChoisirLeServicePublic, "rechercher", _csp)
+    monkeypatch.setattr(
+        ChoisirLeServicePublic, "rechercher", SourceFactice(_csp).rechercher
+    )
     monkeypatch.setattr(
         EmploiTerritorial,
         "rechercher",
