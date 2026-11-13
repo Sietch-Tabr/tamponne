@@ -201,7 +201,7 @@ Item {
                         }
 
                         Tampon {
-                            // Pas pendant la vérification ni si Codeberg n'a pas répondu.
+                            // Pas pendant la vérification ni si GitHub n'a pas répondu.
                             visible: racine.avis.a_jour === true
                             texte: "À jour"
                             encre: Theme.vert

@@ -88,7 +88,13 @@ ECRANS: dict[str, tuple[str, int, int, str]] = {
 """Écran → (fichier de maquette, index d'onglet QML, hauteur de fenêtre,
 action « objectName:fonction:argument » appelée dans le QML avant la
 capture, « registre » pour remplir la recherche de démonstration, « avis »
-pour l'avis de mise à jour de démonstration, vide si aucune)."""
+pour l'avis de mise à jour de démonstration, vide si aucune). L'avis est aussi
+posé dès que la page de maquette montre la pastille « mise à jour disponible »
+de l'onglet Réglages."""
+
+LIBELLE_PASTILLE = "(mise à jour disponible)"
+"""Texte caché de la pastille dans la maquette : sa présence dit que l'écran de
+maquette est capturé avec un avis de mise à jour."""
 
 
 def _police(fichier: str) -> str:
@@ -148,9 +154,14 @@ def capturer_maquette(fichier: str, nuit: bool, hauteur: int, dossier: Path) -> 
     return QImage(str(capture))
 
 
-def capturer_qml(onglet: int, nuit: bool, hauteur: int, action: str) -> QImage:
+def capturer_qml(
+    onglet: int, nuit: bool, hauteur: int, action: str, avec_avis: bool = False
+) -> QImage:
     """Capture hors écran de la fenêtre QML sur l'onglet demandé, après
-    avoir ouvert une fenêtre de l'écran Suivi si `action` est renseignée."""
+    avoir ouvert une fenêtre de l'écran Suivi si `action` est renseignée.
+
+    `avec_avis` pose l'avis de mise à jour de démonstration avant l'action,
+    pour que la pastille de l'onglet Réglages soit visible comme dans la maquette."""
     from src.gui import application
     from src.gui.controleurs import suivi as controleur_suivi
     from src.gui.pont import Pont
@@ -176,6 +187,10 @@ def capturer_qml(onglet: int, nuit: bool, hauteur: int, action: str) -> QImage:
     assert app is not None
     for _ in range(30):
         app.processEvents()
+    if avec_avis and action != "avis":
+        donnees_demo.poser_avis(pont.reglages_controleur)
+        for _ in range(30):
+            app.processEvents()
     if action == "registre":
         donnees_demo.remplir_registre(pont.property("recherche"))
         for _ in range(30):
@@ -238,6 +253,9 @@ def main() -> int:
     QGuiApplication.setAttribute(Qt.ApplicationAttribute.AA_DontUseNativeMenuBar)
     app = QGuiApplication(sys.argv[:1])
     fichier, onglet, hauteur, action = ECRANS[arguments.ecran]
+    avec_avis = LIBELLE_PASTILLE in (DOSSIER_MAQUETTE / fichier).read_text(
+        encoding="utf-8"
+    )
     arguments.sortie.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="tamponne-comparaison-") as temporaire:
         dossier = Path(temporaire)
@@ -251,7 +269,7 @@ def main() -> int:
         for nuit in (False, True):
             theme = "nuit" if nuit else "jour"
             maquette = capturer_maquette(fichier, nuit, hauteur, dossier)
-            qml = capturer_qml(onglet, nuit, hauteur, action)
+            qml = capturer_qml(onglet, nuit, hauteur, action, avec_avis)
             destination = arguments.sortie / f"{arguments.ecran}-{theme}.png"
             assembler(maquette, qml, destination)
             print(destination)

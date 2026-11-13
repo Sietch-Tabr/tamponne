@@ -48,7 +48,7 @@ if errorlevel 1 (
     uv sync
 )
 if errorlevel 1 (
-    powershell -NoProfile -Command "Add-Type -AssemblyName PresentationFramework; [void][System.Windows.MessageBox]::Show('Tamponné n''a pas pu télécharger Python ou ses composants, même après la mise à jour de uv.' + [char]10 + [char]10 + 'Vérifiez que l''ordinateur est connecté à internet (et le proxy éventuel), puis relancez Tamponné. Si le problème continue, signalez-le sur Codeberg avec une capture de la fenêtre noire restée ouverte.' + [char]10 + [char]10 + 'Détail : « uv sync » a échoué ; son message exact est affiché dans la fenêtre noire. ' + 'Proxy utilisé : ' + $(if ($env:HTTPS_PROXY) { try { $p = [uri]$env:HTTPS_PROXY; $p.Scheme + '://' + $p.Host + ':' + $p.Port } catch { 'illisible' } } else { 'aucun' }), 'Tamponné', 'OK', 'Error')"
+    powershell -NoProfile -Command "Add-Type -AssemblyName PresentationFramework; [void][System.Windows.MessageBox]::Show('Tamponné n''a pas pu télécharger Python ou ses composants, même après la mise à jour de uv.' + [char]10 + [char]10 + 'Vérifiez que l''ordinateur est connecté à internet (et le proxy éventuel), puis relancez Tamponné. Si le problème continue, signalez-le sur GitHub avec une capture de la fenêtre noire restée ouverte.' + [char]10 + [char]10 + 'Détail : « uv sync » a échoué ; son message exact est affiché dans la fenêtre noire. ' + 'Proxy utilisé : ' + $(if ($env:HTTPS_PROXY) { try { $p = [uri]$env:HTTPS_PROXY; $p.Scheme + '://' + $p.Host + ':' + $p.Port } catch { 'illisible' } } else { 'aucun' }), 'Tamponné', 'OK', 'Error')"
     exit /b 1
 )
 rem Le lanceur se relance sans console puis rend la main : cette fenêtre se ferme,

@@ -6,15 +6,25 @@ import shutil
 import tempfile
 import urllib.request
 import zipfile
-from collections.abc import Callable
+from email.message import Message
 from pathlib import Path
 from typing import Literal, Self
-from urllib.error import URLError
+from unittest.mock import Mock
+from urllib.error import HTTPError, URLError
 
 import pytest
 
 from src import maj
 from src.types import InfoMaj
+
+_DEPOT_API = "https://api.github.com/repos/Sietch-Tabr/tamponne"
+_URL_ZIP = f"{_DEPOT_API}/zipball/v1.1.0"
+"""Adresse du zip d'une publication, telle que l'API de GitHub la donne."""
+_URL_FINALE = (
+    "https://codeload.github.com/Sietch-Tabr/tamponne/legacy.zip/refs/tags/v1.1.0"
+)
+"""Adresse après la redirection de GitHub vers `codeload.github.com`."""
+_URL_PUBLICATION = "https://github.com/Sietch-Tabr/tamponne/releases/tag/v1.1.0"
 
 
 @pytest.fixture(autouse=True)
@@ -33,8 +43,8 @@ def _info(version: str = "1.1.0") -> InfoMaj:
     return {
         "version": version,
         "notes": "notes de version",
-        "url_zip": "https://codeberg.org/Kwaite/tamponne/archive/v1.1.0.zip",
-        "url_publication": "https://codeberg.org/x",
+        "url_zip": _URL_ZIP,
+        "url_publication": _URL_PUBLICATION,
     }
 
 
@@ -93,12 +103,16 @@ def test_marqueur_effacement_sans_marqueur_ne_leve_pas() -> None:
 # --- verifier_derniere_publication ---
 
 
-def _release(version: str, notes: str = "") -> dict[str, str]:
+def _release(
+    version: str, notes: str = "", *, draft: bool = False, prerelease: bool = False
+) -> dict[str, object]:
     return {
         "tag_name": f"v{version}",
         "body": notes,
-        "zipball_url": f"https://codeberg.org/Kwaite/tamponne/archive/v{version}.zip",
-        "html_url": f"https://codeberg.org/x/{version}",
+        "draft": draft,
+        "prerelease": prerelease,
+        "zipball_url": f"{_DEPOT_API}/zipball/v{version}",
+        "html_url": f"https://github.com/Sietch-Tabr/tamponne/releases/tag/v{version}",
     }
 
 
@@ -111,8 +125,8 @@ def test_verifier_derniere_publication_version_plus_recente(
     assert info == {
         "version": "1.1.0",
         "notes": "notes",
-        "url_zip": "https://codeberg.org/Kwaite/tamponne/archive/v1.1.0.zip",
-        "url_publication": "https://codeberg.org/x/1.1.0",
+        "url_zip": _URL_ZIP,
+        "url_publication": _URL_PUBLICATION,
     }
 
 
@@ -133,7 +147,7 @@ def test_verifier_derniere_publication_cumule_les_notes_depuis_la_version_instal
     info = maj.verifier_derniere_publication()
     assert info is not None
     assert info["version"] == "1.4.2"
-    assert info["url_zip"].endswith("v1.4.2.zip")
+    assert info["url_zip"].endswith("/zipball/v1.4.2")
     assert info["notes"] == (
         "## Version 1.4.2\n\n- C\n\n## Version 1.4.1\n\n- B\n\n"
         "## Version 1.4.0\n\n- A"
@@ -161,10 +175,9 @@ def test_verifier_derniere_publication_reponse_inattendue_leve_verification_impo
 def test_verifier_derniere_publication_erreur_reseau_leve_verification_impossible(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def _leve(*args: object, **kwargs: object) -> None:
-        raise URLError("hors ligne")
-
-    monkeypatch.setattr(urllib.request, "urlopen", _leve)
+    monkeypatch.setattr(
+        urllib.request, "urlopen", Mock(side_effect=URLError("hors ligne"))
+    )
     with pytest.raises(maj.VerificationImpossible, match="hors ligne"):
         maj.verifier_derniere_publication()
 
@@ -177,18 +190,76 @@ def test_verifier_derniere_publication_json_invalide_leve_verification_impossibl
         maj.verifier_derniere_publication()
 
 
-def _urlopen_factice(contenu: bytes) -> Callable[..., object]:
+def test_verifier_derniere_publication_ignore_brouillons_et_pre_versions(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    reponse = json.dumps(
+        [
+            _release("1.3.0", "brouillon", draft=True),
+            _release("1.2.0", "pré-version", prerelease=True),
+            _release("1.1.0", "stable"),
+        ]
+    ).encode("utf-8")
+    monkeypatch.setattr(urllib.request, "urlopen", _urlopen_factice(reponse))
+    info = maj.verifier_derniere_publication()
+    assert info is not None
+    assert info["version"] == "1.1.0"
+    assert info["notes"] == "stable"
+
+
+def test_verifier_derniere_publication_que_des_brouillons_retourne_none(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    reponse = json.dumps([_release("1.3.0", draft=True)]).encode("utf-8")
+    monkeypatch.setattr(urllib.request, "urlopen", _urlopen_factice(reponse))
+    assert maj.verifier_derniere_publication() is None
+
+
+def test_verifier_derniere_publication_interroge_github_en_se_nommant(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    urlopen = _urlopen_factice(b"[]")
+    monkeypatch.setattr(urllib.request, "urlopen", urlopen)
+    assert maj.verifier_derniere_publication() is None
+    requete = urlopen.call_args.args[0]
+    assert requete.full_url == maj.URL_API_RELEASES
+    assert requete.full_url.startswith("https://api.github.com/repos/Sietch-Tabr/")
+    assert requete.get_header("Accept") == "application/vnd.github+json"
+    assert "tamponne" in requete.get_header("User-agent")
+
+
+@pytest.mark.parametrize("code", [403, 429])
+def test_verifier_derniere_publication_limite_de_requetes_dit_de_reessayer_plus_tard(
+    code: int, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    erreur = HTTPError(maj.URL_API_RELEASES, code, "rate limit", Message(), None)
+    monkeypatch.setattr(urllib.request, "urlopen", Mock(side_effect=erreur))
+    with pytest.raises(maj.VerificationImpossible, match="limite de requêtes") as e:
+        maj.verifier_derniere_publication()
+    assert str(code) in str(e.value)
+
+
+def test_verifier_derniere_publication_autre_erreur_http_garde_son_detail(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    erreur = HTTPError(maj.URL_API_RELEASES, 404, "Not Found", Message(), None)
+    monkeypatch.setattr(urllib.request, "urlopen", Mock(side_effect=erreur))
+    with pytest.raises(maj.VerificationImpossible, match="404"):
+        maj.verifier_derniere_publication()
+
+
+def _urlopen_factice(contenu: bytes) -> Mock:
     class _ReponseFactice:
         def __enter__(self) -> Self:
             return self
 
-        def __exit__(self, *a: object) -> Literal[False]:
+        def __exit__(self, *_: object) -> Literal[False]:
             return False
 
         def read(self) -> bytes:
             return contenu
 
-    return lambda *args, **kwargs: _ReponseFactice()
+    return Mock(return_value=_ReponseFactice())
 
 
 # --- appliquer_maj ---
@@ -213,7 +284,7 @@ def test_appliquer_maj_copie_les_fichiers_de_larchive(
     monkeypatch.setattr(
         maj,
         "_telecharger",
-        lambda url, filename: shutil.copy(chemin_zip, filename),
+        lambda _, filename: shutil.copy(chemin_zip, filename),
     )
 
     maj.appliquer_maj(_info())
@@ -244,7 +315,7 @@ def test_appliquer_maj_fichier_executable_dans_larchive_reste_executable(
     monkeypatch.setattr(
         maj,
         "_telecharger",
-        lambda url, filename: shutil.copy(chemin_zip, filename),
+        lambda _, filename: shutil.copy(chemin_zip, filename),
     )
 
     maj.appliquer_maj(_info())
@@ -265,7 +336,7 @@ def test_appliquer_maj_ne_touche_pas_data(
     monkeypatch.setattr(
         maj,
         "_telecharger",
-        lambda url, filename: shutil.copy(chemin_zip, filename),
+        lambda _, filename: shutil.copy(chemin_zip, filename),
     )
 
     maj.appliquer_maj(_info())
@@ -283,10 +354,7 @@ def test_appliquer_maj_url_manquante_leve_erreur_explicite() -> None:
 def test_appliquer_maj_echec_telechargement_leve_runtime_error(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def _leve(url: str, filename: str) -> None:
-        raise URLError("hors ligne")
-
-    monkeypatch.setattr(maj, "_telecharger", _leve)
+    monkeypatch.setattr(maj, "_telecharger", Mock(side_effect=URLError("hors ligne")))
     with pytest.raises(RuntimeError):
         maj.appliquer_maj(_info())
 
@@ -378,7 +446,7 @@ def test_appliquer_maj_sauvegarde_la_version_actuelle_hors_donnees_et_venv(
     monkeypatch.setattr(
         maj,
         "_telecharger",
-        lambda url, filename: shutil.copy(chemin_zip, filename),
+        lambda _, filename: shutil.copy(chemin_zip, filename),
     )
 
     maj.appliquer_maj(_info())
@@ -400,7 +468,7 @@ def test_restaurer_version_precedente_remet_l_ancienne_version(
     monkeypatch.setattr(
         maj,
         "_telecharger",
-        lambda url, filename: shutil.copy(chemin_zip, filename),
+        lambda _, filename: shutil.copy(chemin_zip, filename),
     )
     maj.appliquer_maj(_info())
 
@@ -451,6 +519,20 @@ def test_appliquer_maj_refuse_une_archive_hors_du_depot() -> None:
         maj.appliquer_maj(info)
 
 
+def test_appliquer_maj_refuse_une_archive_de_l_ancien_depot_codeberg() -> None:
+    info = _info()
+    info["url_zip"] = "https://codeberg.org/Kwaite/tamponne/archive/v1.1.0.zip"
+    with pytest.raises(RuntimeError, match="hors du dépôt"):
+        maj.appliquer_maj(info)
+
+
+def test_appliquer_maj_refuse_l_archive_d_un_autre_depot_github() -> None:
+    info = _info()
+    info["url_zip"] = "https://api.github.com/repos/autre/depot/zipball/v1.1.0"
+    with pytest.raises(RuntimeError, match="hors du dépôt"):
+        maj.appliquer_maj(info)
+
+
 class _ReponseTelechargee(io.BytesIO):
     """Réponse de `urlopen` : lisible, avec l'adresse finale après redirection."""
 
@@ -462,34 +544,49 @@ class _ReponseTelechargee(io.BytesIO):
         return self._url
 
 
+def _urlopen_redirige_vers(url_finale: str, contenu: bytes = b"x") -> Mock:
+    """`urlopen` factice dont la réponse porte l'adresse finale `url_finale`,
+    comme après la redirection de l'API vers `codeload.github.com`."""
+    return Mock(return_value=_ReponseTelechargee(contenu, url_finale))
+
+
 def test_telecharger_enregistre_la_reponse_avec_un_delai(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    delais: list[float] = []
-
-    def urlopen(url: str, timeout: float) -> _ReponseTelechargee:
-        delais.append(timeout)
-        return _ReponseTelechargee(b"archive", url)
-
+    urlopen = _urlopen_redirige_vers(_URL_FINALE, b"archive")
     monkeypatch.setattr(urllib.request, "urlopen", urlopen)
     destination = tmp_path / "maj.zip"
-    maj._telecharger("https://codeberg.org/Kwaite/tamponne/archive/v1.zip", destination)
+    maj._telecharger(_URL_ZIP, destination)
     assert destination.read_bytes() == b"archive"
-    assert delais == [maj._TIMEOUT_TELECHARGEMENT]
+    urlopen.assert_called_once_with(_URL_ZIP, timeout=maj._TIMEOUT_TELECHARGEMENT)
 
 
-def test_telecharger_refuse_une_redirection_hors_de_codeberg(
+def test_telecharger_refuse_une_redirection_hors_de_github(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(
-        urllib.request,
-        "urlopen",
-        lambda url, timeout: _ReponseTelechargee(b"x", "https://evil.example/a.zip"),
+        urllib.request, "urlopen", _urlopen_redirige_vers("https://evil.example/a.zip")
     )
-    with pytest.raises(RuntimeError, match="hors de Codeberg"):
-        maj._telecharger(
-            "https://codeberg.org/Kwaite/tamponne/archive/v1.zip", tmp_path / "m.zip"
-        )
+    with pytest.raises(RuntimeError, match="hors de GitHub"):
+        maj._telecharger(_URL_ZIP, tmp_path / "m.zip")
+
+
+def test_telecharger_refuse_une_redirection_vers_un_autre_depot_github(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    autre = "https://codeload.github.com/autre/depot/legacy.zip/refs/tags/v1.1.0"
+    monkeypatch.setattr(urllib.request, "urlopen", _urlopen_redirige_vers(autre))
+    with pytest.raises(RuntimeError, match="hors de GitHub"):
+        maj._telecharger(_URL_ZIP, tmp_path / "m.zip")
+
+
+def test_telecharger_refuse_une_archive_servie_par_l_api_sans_redirection(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """L'adresse finale doit être celle de `codeload.github.com`, pas celle de l'API."""
+    monkeypatch.setattr(urllib.request, "urlopen", _urlopen_redirige_vers(_URL_ZIP))
+    with pytest.raises(RuntimeError, match="hors de GitHub"):
+        maj._telecharger(_URL_ZIP, tmp_path / "m.zip")
 
 
 def test_telecharger_abandonne_une_archive_trop_volumineuse(
@@ -497,14 +594,10 @@ def test_telecharger_abandonne_une_archive_trop_volumineuse(
 ) -> None:
     monkeypatch.setattr(maj, "TAILLE_MAX_ARCHIVE", 10)
     monkeypatch.setattr(
-        urllib.request,
-        "urlopen",
-        lambda url, timeout: _ReponseTelechargee(b"x" * 100, url),
+        urllib.request, "urlopen", _urlopen_redirige_vers(_URL_FINALE, b"x" * 100)
     )
     with pytest.raises(RuntimeError, match="trop volumineuse"):
-        maj._telecharger(
-            "https://codeberg.org/Kwaite/tamponne/archive/v1.zip", tmp_path / "m.zip"
-        )
+        maj._telecharger(_URL_ZIP, tmp_path / "m.zip")
 
 
 def test_marqueur_incomplet_est_complete_par_des_valeurs_vides() -> None:
@@ -562,7 +655,7 @@ def test_appliquer_maj_chmod_ignore_un_nom_d_archive_hors_du_dossier(
         monkeypatch.setattr(
             maj,
             "_telecharger",
-            lambda url, destination: shutil.copy(chemin_zip, destination),
+            lambda _, destination: shutil.copy(chemin_zip, destination),
         )
 
         maj.appliquer_maj(_info())

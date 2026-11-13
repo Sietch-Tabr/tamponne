@@ -130,7 +130,7 @@ fi || {
 } || {
     signaler "Tamponné n'a pas pu télécharger Python ou ses composants, même après la mise à jour de uv.
 
-Vérifiez que l'ordinateur est connecté à internet (et le proxy éventuel), puis relancez Tamponné. Si le problème continue, signalez-le sur Codeberg avec une capture du texte affiché dans le terminal.
+Vérifiez que l'ordinateur est connecté à internet (et le proxy éventuel), puis relancez Tamponné. Si le problème continue, signalez-le sur GitHub avec une capture du texte affiché dans le terminal.
 
 Détail : « uv sync » a échoué ; son message exact est affiché dans le terminal."
     exit 1
@@ -141,6 +141,6 @@ Détail : « uv sync » a échoué ; son message exact est affiché dans le 
 uv run python -m src.lanceur \
     || signaler "Tamponné s'est arrêté sur une erreur.
 
-Relancez-le ; si le problème persiste, signalez-le sur Codeberg en joignant le fichier « data/tamponne.log » du dossier de Tamponné."
+Relancez-le ; si le problème persiste, signalez-le sur GitHub en joignant le fichier « data/tamponne.log » du dossier de Tamponné."
 exit 0
 }

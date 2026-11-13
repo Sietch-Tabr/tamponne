@@ -28,7 +28,7 @@ from src.utils import ecriture_atomique
 CHEMIN_RACINE = RACINE
 CHEMIN_PREFERENCE = DATA / "raccourci.json"
 NOM = "Tamponné"
-IDENTIFIANT_MACOS = "org.codeberg.kwaite.tamponne"
+IDENTIFIANT_MACOS = "io.github.sietch-tabr.tamponne"
 
 type Systeme = Literal["windows", "macos", "linux"]
 type EtatRaccourci = Literal["indisponible", "absent", "a_jour", "deplace"]

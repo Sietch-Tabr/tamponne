@@ -251,7 +251,7 @@ class PageAPI(TypedDict, closed=True):
 
 
 class InfoMaj(TypedDict, closed=True):
-    """Publication Codeberg plus récente que la version locale.
+    """Publication GitHub plus récente que la version locale.
 
     Attributes:
         version: Numéro de version cible (``tag_name``, préfixe ``v`` ôté).

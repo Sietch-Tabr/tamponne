@@ -126,14 +126,14 @@ class VerificateurDisponibilite(QObject):
 
 
 class VerificateurMiseAJour(QObject):
-    """Vérifie une fois s'il existe une publication Codeberg plus récente —
+    """Vérifie une fois s'il existe une publication GitHub plus récente —
     même pattern QThread que `TravailleurRecherche`/`VerificateurDisponibilite`."""
 
     resultat = Signal(object)
     """`InfoMaj | None` — `None` si aucune mise à jour (rien de publié,
     déjà à jour)."""
     echec = Signal(str)
-    """Codeberg injoignable : détail technique de l'erreur."""
+    """GitHub injoignable : détail technique de l'erreur."""
 
     def executer(self) -> None:
         """Slot à connecter à `QThread.started`. Pose le marqueur de mise

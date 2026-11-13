@@ -334,8 +334,8 @@ def test_notes_en_html_code_gras_et_echappement() -> None:
 
 
 def test_notes_en_html_liens_https_seulement() -> None:
-    html = notes_en_html("[README](https://codeberg.org/r) et [local](file:///etc)")
-    assert '<a href="https://codeberg.org/r">README</a>' in html
+    html = notes_en_html("[README](https://github.com/r) et [local](file:///etc)")
+    assert '<a href="https://github.com/r">README</a>' in html
     assert "local" in html and "file://" not in html
 
 
@@ -364,7 +364,7 @@ def test_texte_avis_sans_publication_distingue_en_cours_echec_et_a_jour() -> Non
         "version 1.3.2 installée, rien de plus récent."
     )
     echec = presentation.texte_avis_sans_publication("1.3.2", False, "timed out")
-    assert "Codeberg ne répond pas (connexion internet ou proxy)" in echec
+    assert "GitHub ne répond pas (connexion internet ou proxy)" in echec
     assert echec.endswith("Détail : timed out")
 
 

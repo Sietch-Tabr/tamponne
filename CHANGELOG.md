@@ -2,7 +2,20 @@
 
 Toutes les évolutions notables de Tamponné, de la plus récente à la plus
 ancienne. Le détail de chaque version est aussi publié sur la page
-[Releases](https://codeberg.org/Kwaite/tamponne/releases) du dépôt.
+[Releases](https://github.com/Sietch-Tabr/tamponne/releases) du dépôt.
+
+## [1.7.6] — 2026-11-13
+
+### Nouveautés
+
+- Le projet déménage sur GitHub : l'application y cherche désormais ses mises à jour, vérifie que l'archive téléchargée vient bien de `codeload.github.com`, et dit clairement quand GitHub limite les requêtes
+- Les messages d'erreur, l'aide et le README renvoient vers GitHub pour les signalements
+
+### En coulisses
+
+- Le raccourci du menu des applications sous macOS porte l'identifiant `io.github.sietch-tabr.tamponne` (appliqué à la prochaine création du raccourci)
+- Contrôle de types : pyright analyse aussi le code propre à Windows, au lieu de le griser comme inaccessible
+- Comparaison avec la maquette : l'avis de mise à jour de démonstration est posé sur tous les écrans dont la maquette montre la pastille de l'onglet Réglages, et la copie de la maquette de l'aide reprend la phrase sur le mot-clé que l'application affichait déjà
 
 ## [1.7.5] — 2026-11-06
 
@@ -460,9 +473,9 @@ Version initiale.
 - Suivi de candidature
 - Mise à jour automatique
 
-[1.0.5]: https://codeberg.org/Kwaite/tamponne/compare/v1.0.4...v1.0.5
-[1.0.4]: https://codeberg.org/Kwaite/tamponne/compare/v1.0.3...v1.0.4
-[1.0.3]: https://codeberg.org/Kwaite/tamponne/compare/v1.0.2...v1.0.3
-[1.0.2]: https://codeberg.org/Kwaite/tamponne/compare/v1.0.1...v1.0.2
-[1.0.1]: https://codeberg.org/Kwaite/tamponne/compare/v1.0.0...v1.0.1
-[1.0.0]: https://codeberg.org/Kwaite/tamponne/releases/tag/v1.0.0
+[1.0.5]: https://github.com/Sietch-Tabr/tamponne/compare/v1.0.4...v1.0.5
+[1.0.4]: https://github.com/Sietch-Tabr/tamponne/compare/v1.0.3...v1.0.4
+[1.0.3]: https://github.com/Sietch-Tabr/tamponne/compare/v1.0.2...v1.0.3
+[1.0.2]: https://github.com/Sietch-Tabr/tamponne/compare/v1.0.1...v1.0.2
+[1.0.1]: https://github.com/Sietch-Tabr/tamponne/compare/v1.0.0...v1.0.1
+[1.0.0]: https://github.com/Sietch-Tabr/tamponne/releases/tag/v1.0.0

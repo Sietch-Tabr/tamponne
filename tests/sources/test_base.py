@@ -60,9 +60,9 @@ def test_deduplique_liste_vide() -> None:
     assert deduplique_offres([]) == []
 
 
-def test_user_agent_identifie_designe_le_depot_codeberg() -> None:
+def test_user_agent_identifie_designe_le_depot_github() -> None:
     assert USER_AGENT_IDENTIFIE.startswith("tamponne ")
-    assert "https://codeberg.org/Kwaite/tamponne" in USER_AGENT_IDENTIFIE
+    assert "https://github.com/Sietch-Tabr/tamponne" in USER_AGENT_IDENTIFIE
 
 
 def test_sources_sans_waf_envoient_le_user_agent_identifie() -> None:
@@ -98,4 +98,4 @@ def test_les_sources_envoient_le_user_agent_identifie_et_demandent_la_compressio
 def test_reseau_interdit_pendant_les_tests() -> None:
     """Garde-fou de conftest : un vrai appel réseau échoue tout de suite."""
     with pytest.raises(OSError, match="interdite"):
-        urllib.request.urlopen("https://codeberg.org", timeout=5)
+        urllib.request.urlopen("https://github.com", timeout=5)

@@ -12,7 +12,7 @@ Application de bureau pour rechercher des offres d'emploi de la fonction publiqu
 
 Rien à installer au préalable : au premier lancement, Tamponné installe lui-même ce dont il a besoin ([uv](https://docs.astral.sh/uv/), puis Python et ses composants). Une connexion internet est nécessaire la première fois (quelques minutes).
 
-1. **Télécharger** : sur la page [Releases](https://codeberg.org/Kwaite/tamponne/releases), dans la dernière version, cliquer sur **« Source code (ZIP) »**.
+1. **Télécharger** : sur la page [Releases](https://github.com/Sietch-Tabr/tamponne/releases), dans la dernière version, cliquer sur **« Source code (zip) »**.
 2. **Dézipper** le fichier où vous voulez (Documents, Bureau…). Tamponné est portable : il reste dans ce dossier, avec vos données (`data/`). Pour le déplacer, déplacez tout le dossier.
 3. **Double-cliquer** sur le lanceur :
 
@@ -74,7 +74,7 @@ uv, installé au premier lancement, peut servir à d'autres logiciels : il reste
 
 ## Mise à jour automatique
 
-Au lancement, l'app vérifie en arrière-plan s'il existe une publication ([Releases](https://codeberg.org/Kwaite/tamponne/releases) Codeberg) plus récente que la version installée — jamais un `git pull` sur une branche, uniquement ce qui a été explicitement publié.
+Au lancement, l'app vérifie en arrière-plan s'il existe une publication ([Releases](https://github.com/Sietch-Tabr/tamponne/releases) GitHub) plus récente que la version installée — jamais un `git pull` sur une branche, uniquement ce qui a été explicitement publié.
 
 - Une mise à jour disponible se signale par un point rouge sur l'onglet « Réglages », où l'avis de mise à jour présente la nouvelle version et ses notes ; sinon l'avis indique que la version installée est à jour.
 - Par défaut, elle s'applique automatiquement **au prochain lancement**, sans action requise (« Au prochain lancement » efface simplement le point rouge).
@@ -87,14 +87,14 @@ Ce mécanisme repose sur les lanceurs (`Tamponne.command`, `Tamponne.bat`, ou le
 
 ## En cas de problème
 
-Les messages d'erreur disent quoi faire, suivis d'une ligne « Détail » qui reprend l'erreur technique. Le journal `data/tamponne.log` garde, lancement après lancement, l'heure et le détail technique de chaque erreur (sources injoignables, mises à jour, sauvegardes…) ainsi que les sorties de uv ; au-delà de 1 Mo, il est archivé dans `data/tamponne.1.log`. Le chemin de votre dossier personnel y est remplacé par `~`, et vos fiches, notes et candidatures n'y figurent pas : joignez-le à un signalement sur [Codeberg](https://codeberg.org/Kwaite/tamponne/issues), après l'avoir relu.
+Les messages d'erreur disent quoi faire, suivis d'une ligne « Détail » qui reprend l'erreur technique. Le journal `data/tamponne.log` garde, lancement après lancement, l'heure et le détail technique de chaque erreur (sources injoignables, mises à jour, sauvegardes…) ainsi que les sorties de uv ; au-delà de 1 Mo, il est archivé dans `data/tamponne.1.log`. Le chemin de votre dossier personnel y est remplacé par `~`, et vos fiches, notes et candidatures n'y figurent pas : joignez-le à un signalement sur [GitHub](https://github.com/Sietch-Tabr/tamponne/issues), après l'avoir relu.
 
 ## Sécurité et confidentialité
 
 - **Vos données restent sur votre ordinateur**, dans le dossier `data/` de Tamponné : fiches, dossiers suivis, notes. Rien n'est envoyé ailleurs.
-- **Connexions** : uniquement les quatre sites d'offres (pour les recherches, fiches et vérifications), Codeberg (mises à jour) et, à l'installation, les serveurs de uv et de Python. Toutes en HTTPS, certificats vérifiés par le système (comme le navigateur, via `truststore`), avec un User-Agent qui désigne Tamponné.
+- **Connexions** : uniquement les quatre sites d'offres (pour les recherches, fiches et vérifications), GitHub (mises à jour) et, à l'installation, les serveurs de uv et de Python. Toutes en HTTPS, certificats vérifiés par le système (comme le navigateur, via `truststore`), avec un User-Agent qui désigne Tamponné.
 - **Liens ouverts** : seuls les liens `https://` (offres, notes de version) s'ouvrent dans le navigateur, jamais un autre type d'adresse.
-- **Mises à jour** : téléchargées uniquement depuis le dépôt Codeberg de Tamponné, en HTTPS. Elles ne sont pas signées : leur sûreté repose sur la protection du compte qui publie.
+- **Mises à jour** : téléchargées uniquement depuis le dépôt GitHub de Tamponné, en HTTPS. Elles ne sont pas signées : leur sûreté repose sur la protection du compte qui publie.
 - **Installation de uv** : le script officiel (`astral.sh`) est exécuté tel quel, comme le recommande uv ; c'est aussi lui qui sert de secours pour mettre uv à jour sous Windows.
 - **Sauvegardes importées** : seuls les fichiers attendus sont acceptés (pas de chemin vers l'extérieur du dossier `data/`), avec une taille plafonnée et une copie des données d'avant l'import.
 
@@ -113,7 +113,7 @@ uv run python -m src.gui.application   # interface seule
 ```
 src/
   lanceur.py                 boucle de lancement : mise à jour en attente, redémarrage
-  maj.py                     vérification/application des mises à jour (publications Codeberg)
+  maj.py                     vérification/application des mises à jour (publications GitHub)
   nettoyage.py               retrait des fichiers supprimés d'une version à l'autre
   types.py                   structures de données partagées (TypedDict)
   utils.py                   écriture JSON atomique

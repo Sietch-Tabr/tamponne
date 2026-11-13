@@ -485,7 +485,7 @@ class _NotesHtml:
 
 
 def notes_en_html(markdown: str) -> str:
-    """Notes de version Codeberg (Markdown) en HTML au style maîtrisé.
+    """Notes de version GitHub (Markdown) en HTML au style maîtrisé.
 
     Le rendu Markdown de Qt affiche le code dans une police de secours et
     agrandit les titres : seuls les éléments des publications du projet
@@ -522,7 +522,7 @@ def texte_avis_sans_publication(installee: str, en_cours: bool, erreur: str) -> 
     if erreur:
         return (
             f"version {installee} installée\u00a0; impossible de savoir s'il existe "
-            "plus récent, Codeberg ne répond pas (connexion internet ou proxy). "
+            "plus récent, GitHub ne répond pas (connexion internet ou proxy). "
             f"Détail\u00a0: {erreur}"
         )
     return f"version {installee} installée, rien de plus récent."

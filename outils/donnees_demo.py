@@ -227,7 +227,7 @@ def poser_avis(reglages: controleur_reglages.ControleurReglages) -> None:
     reglages.afficher_avis(
         {
             "version": "2.0.1",
-            "notes": "[Notes de version reprises de la publication Codeberg]",
+            "notes": "[Notes de version reprises de la publication GitHub]",
             "url_zip": "",
             "url_publication": "",
         }

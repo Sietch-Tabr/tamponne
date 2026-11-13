@@ -13,7 +13,7 @@ from src.sources.reseau import ErreurHttp, Session
 from src.types import FicheFiltrage, FiltresRecherche, Offre
 
 # Sites sans WAF : User-Agent identifiant l'application et son dépôt.
-USER_AGENT_IDENTIFIE = "tamponne (+https://codeberg.org/Kwaite/tamponne)"
+USER_AGENT_IDENTIFIE = "tamponne (+https://github.com/Sietch-Tabr/tamponne)"
 _RE_TITRE = re.compile(r"<title[^>]*>(.*?)</title>", re.S | re.I)
 _RE_ESPACES = re.compile(r"\s+")
 _RE_LIGNES_VIDES = re.compile(r"\n{3,}")
