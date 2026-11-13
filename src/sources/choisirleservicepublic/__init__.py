@@ -76,6 +76,7 @@ class ChoisirLeServicePublic:
         on_fiche: Callable[[int, int], None] | None = None,
     ) -> tuple[list[Offre], int, bool]:
         """Voir :meth:`SourceOffres.rechercher`."""
+        del on_fiche  # imposé par le contrat de SourceOffres, sans fiche à lire ici
         categories = [
             CATEGORIES[c] for c in filtres.get("categories", []) if c in CATEGORIES
         ]

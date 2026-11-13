@@ -3,9 +3,9 @@ avis de mise à jour et rafraîchissement du cache des organisations."""
 
 from datetime import date, datetime
 from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
-from PySide6.QtWidgets import QApplication
 from pytestqt.qtbot import QtBot
 
 from src import maj
@@ -38,34 +38,39 @@ def _environnement(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(controleur_reglages, "date_avis", lambda: date(2026, 10, 4))
 
 
-def test_sources_toutes_actives_par_defaut_dans_l_ordre(qapp: QApplication) -> None:
+@pytest.mark.usefixtures("qapp")
+def test_sources_toutes_actives_par_defaut_dans_l_ordre() -> None:
     reglages = ControleurReglages()
     cles = [s["cle"] for s in reglages.property("sources")]
     assert cles == list(parametres_sources.SOURCES_DISPONIBLES)
     assert all(reglages.property("sources_actives")[cle] for cle in cles)
 
 
-def test_basculer_source_enregistre_aussitot(qapp: QApplication) -> None:
+@pytest.mark.usefixtures("qapp")
+def test_basculer_source_enregistre_aussitot() -> None:
     reglages = ControleurReglages()
     reglages.basculer_source("fhf")
     assert parametres_sources.charger_sources_actives()["fhf"] is False
     assert reglages.property("sources_actives")["fhf"] is False
 
 
-def test_basculer_source_inconnue_ignoree(qapp: QApplication) -> None:
+@pytest.mark.usefixtures("qapp")
+def test_basculer_source_inconnue_ignoree() -> None:
     reglages = ControleurReglages()
     reglages.basculer_source("inconnue")
     assert not parametres_sources.CHEMIN_SOURCES.exists()
 
 
-def test_definir_reduire_animations_persiste(qapp: QApplication) -> None:
+@pytest.mark.usefixtures("qapp")
+def test_definir_reduire_animations_persiste() -> None:
     reglages = ControleurReglages()
     reglages.definir_reduire_animations(True)
     assert parametres_affichage.charger_reduire_animations() is True
     assert ControleurReglages().property("reduire_animations") is True
 
 
-def test_avis_sans_publication_annonce_version_a_jour(qapp: QApplication) -> None:
+@pytest.mark.usefixtures("qapp")
+def test_avis_sans_publication_annonce_version_a_jour() -> None:
     reglages = ControleurReglages()
     assert reglages.property("avis") == {
         "disponible": False,
@@ -75,7 +80,8 @@ def test_avis_sans_publication_annonce_version_a_jour(qapp: QApplication) -> Non
     assert reglages.property("pastille") is False
 
 
-def test_afficher_avis_reprend_version_date_et_notes(qapp: QApplication) -> None:
+@pytest.mark.usefixtures("qapp")
+def test_afficher_avis_reprend_version_date_et_notes() -> None:
     reglages = ControleurReglages()
     reglages.afficher_avis(INFO)
     assert reglages.property("avis") == {
@@ -88,13 +94,15 @@ def test_afficher_avis_reprend_version_date_et_notes(qapp: QApplication) -> None
     assert reglages.property("pastille") is True
 
 
-def test_afficher_avis_sans_notes_le_signale(qapp: QApplication) -> None:
+@pytest.mark.usefixtures("qapp")
+def test_afficher_avis_sans_notes_le_signale() -> None:
     reglages = ControleurReglages()
     reglages.afficher_avis({**INFO, "notes": ""})
     assert "Pas de notes de version." in reglages.property("avis")["notes"]
 
 
-def test_reporter_maj_efface_la_pastille(qapp: QApplication) -> None:
+@pytest.mark.usefixtures("qapp")
+def test_reporter_maj_efface_la_pastille() -> None:
     reglages = ControleurReglages()
     reglages.afficher_avis(INFO)
     reglages.reporter_maj()
@@ -102,7 +110,8 @@ def test_reporter_maj_efface_la_pastille(qapp: QApplication) -> None:
     assert reglages.property("avis")["disponible"] is True
 
 
-def test_installer_maj_demande_a_quitter(qapp: QApplication, qtbot: QtBot) -> None:
+@pytest.mark.usefixtures("qapp")
+def test_installer_maj_demande_a_quitter(qtbot: QtBot) -> None:
     reglages = ControleurReglages()
     reglages.afficher_avis(INFO)
     with qtbot.waitSignal(reglages.quitter_demande, timeout=1000):
@@ -110,7 +119,8 @@ def test_installer_maj_demande_a_quitter(qapp: QApplication, qtbot: QtBot) -> No
     assert reglages.redemarrage_demande is True
 
 
-def test_installer_maj_repose_le_marqueur(qapp: QApplication) -> None:
+@pytest.mark.usefixtures("qapp")
+def test_installer_maj_repose_le_marqueur() -> None:
     """La vérification ne pose pas le marqueur d'une version annulée : le
     clic le repose, c'est le nouvel essai à la demande."""
     reglages = ControleurReglages()
@@ -119,14 +129,16 @@ def test_installer_maj_repose_le_marqueur(qapp: QApplication) -> None:
     assert maj.lire_maj_disponible() == INFO
 
 
-def test_reporter_maj_repose_le_marqueur(qapp: QApplication) -> None:
+@pytest.mark.usefixtures("qapp")
+def test_reporter_maj_repose_le_marqueur() -> None:
     reglages = ControleurReglages()
     reglages.afficher_avis(INFO)
     reglages.reporter_maj()
     assert maj.lire_maj_disponible() == INFO
 
 
-def test_avis_d_une_version_annulee_donne_le_motif(qapp: QApplication) -> None:
+@pytest.mark.usefixtures("qapp")
+def test_avis_d_une_version_annulee_donne_le_motif() -> None:
     maj.enregistrer_echec("2.0.1", "l'application ne démarrait pas")
     reglages = ControleurReglages()
     reglages.afficher_avis(INFO)
@@ -136,9 +148,8 @@ def test_avis_d_une_version_annulee_donne_le_motif(qapp: QApplication) -> None:
     )
 
 
-def test_avis_d_une_version_plus_recente_que_l_annulee_reste_normal(
-    qapp: QApplication,
-) -> None:
+@pytest.mark.usefixtures("qapp")
+def test_avis_d_une_version_plus_recente_que_l_annulee_reste_normal() -> None:
     maj.enregistrer_echec("2.0.0", "motif")
     reglages = ControleurReglages()
     reglages.afficher_avis(INFO)
@@ -163,18 +174,20 @@ def test_verification_programme_une_version_plus_recente_que_l_annulee(
     assert maj.lire_maj_disponible() == INFO
 
 
-def test_installer_maj_sans_avis_ne_fait_rien(qapp: QApplication, qtbot: QtBot) -> None:
+@pytest.mark.usefixtures("qapp")
+def test_installer_maj_sans_avis_ne_fait_rien(qtbot: QtBot) -> None:
     reglages = ControleurReglages()
     with qtbot.assertNotEmitted(reglages.quitter_demande):
         reglages.installer_maj()
     assert reglages.redemarrage_demande is False
 
 
+@pytest.mark.usefixtures("qapp")
 def test_verifier_mise_a_jour_affiche_l_avis_trouve(
-    qapp: QApplication, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(travailleurs, "verifier_derniere_publication", lambda: INFO)
-    monkeypatch.setattr(travailleurs, "ecrire_maj_disponible", lambda _info: None)
+    monkeypatch.setattr(travailleurs, "ecrire_maj_disponible", Mock(return_value=None))
     reglages = ControleurReglages()
     reglages.verifier_mise_a_jour()
     assert "recherche d'une mise à jour" in reglages.property("avis")["objet"]
@@ -183,8 +196,9 @@ def test_verifier_mise_a_jour_affiche_l_avis_trouve(
     reglages.arreter()
 
 
+@pytest.mark.usefixtures("qapp")
 def test_verifier_mise_a_jour_github_injoignable_le_dit(
-    qapp: QApplication, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     def injoignable() -> None:
         raise maj.VerificationImpossible("<urlopen error timed out>")
@@ -203,12 +217,13 @@ def test_verifier_mise_a_jour_github_injoignable_le_dit(
     assert avis["objet"].endswith("Détail\u00a0: &lt;urlopen error timed out&gt;")
 
 
+@pytest.mark.usefixtures("qapp")
 def test_rafraichir_cache_transmet_les_organisations(
-    qapp: QApplication, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     orgas: Organisations = {"Ministère": {"Direction": 12}}
     monkeypatch.setattr(
-        controleur_reglages, "obtenir_organisations", lambda forcer=False: orgas
+        controleur_reglages, "obtenir_organisations", Mock(return_value=orgas)
     )
     moment = datetime(2026, 10, 12, 14, 5).astimezone()
     monkeypatch.setattr(controleur_reglages, "date_cache_organisations", lambda: None)
@@ -225,11 +240,11 @@ def test_rafraichir_cache_transmet_les_organisations(
     assert reglages.property("date_cache") == texte_date_cache(moment)
 
 
+@pytest.mark.usefixtures("qapp")
 def test_rafraichir_cache_en_echec_affiche_un_message(
-    qapp: QApplication, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    def echouer(forcer: bool = False) -> Organisations:
-        raise RuntimeError("site inaccessible")
+    echouer = Mock(side_effect=RuntimeError("site inaccessible"))
 
     monkeypatch.setattr(controleur_reglages, "obtenir_organisations", echouer)
     reglages = ControleurReglages()
@@ -240,7 +255,8 @@ def test_rafraichir_cache_en_echec_affiche_un_message(
     assert reglages.property("message_cache") == MESSAGE_CACHE_INDISPONIBLE
 
 
-def test_pont_transmet_le_cache_rafraichi_a_la_recherche(qapp: QApplication) -> None:
+@pytest.mark.usefixtures("qapp")
+def test_pont_transmet_le_cache_rafraichi_a_la_recherche() -> None:
     pont = Pont()
     orgas: Organisations = {"Ministère": {"Direction": 12}}
     pont.reglages_controleur.organisations_rafraichies.emit(orgas)
@@ -248,12 +264,13 @@ def test_pont_transmet_le_cache_rafraichi_a_la_recherche(qapp: QApplication) -> 
     assert groupes[0]["elements"][0]["valeur"] == "Ministère - Direction"
 
 
+@pytest.mark.usefixtures("qapp")
 def test_pont_relaie_le_chargement_des_organisations_a_la_recherche(
-    qapp: QApplication, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     orgas: Organisations = {"Ministère": {"Direction": 12}}
     monkeypatch.setattr(
-        controleur_reglages, "obtenir_organisations", lambda forcer=False: orgas
+        controleur_reglages, "obtenir_organisations", Mock(return_value=orgas)
     )
     pont = Pont()
     recherche = pont.property("recherche")
@@ -267,7 +284,8 @@ def test_pont_relaie_le_chargement_des_organisations_a_la_recherche(
     assert recherche.property("etat_organisations") == ""
 
 
-def test_pont_pastille_suit_l_avis(qapp: QApplication) -> None:
+@pytest.mark.usefixtures("qapp")
+def test_pont_pastille_suit_l_avis() -> None:
     pont = Pont()
     assert pont.property("mise_a_jour_disponible") is False
     pont.reglages_controleur.afficher_avis(INFO)
@@ -282,8 +300,9 @@ def sous_linux(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(raccourci, "systeme_courant", lambda: "linux")
 
 
+@pytest.mark.usefixtures("qapp", "sous_linux")
 def test_raccourci_premier_lancement_pose_la_question_puis_la_retient(
-    qapp: QApplication, qtbot: QtBot, sous_linux: None
+    qtbot: QtBot,
 ) -> None:
     reglages = ControleurReglages()
     assert reglages.property("raccourci")["etat"] == "absent"
@@ -295,9 +314,8 @@ def test_raccourci_premier_lancement_pose_la_question_puis_la_retient(
         reglages.verifier_raccourci()
 
 
-def test_ajouter_puis_retirer_raccourci_en_arriere_plan(
-    qapp: QApplication, qtbot: QtBot, sous_linux: None
-) -> None:
+@pytest.mark.usefixtures("qapp", "sous_linux")
+def test_ajouter_puis_retirer_raccourci_en_arriere_plan(qtbot: QtBot) -> None:
     reglages = ControleurReglages()
     reglages.ajouter_raccourci()
     assert reglages.property("raccourci_en_cours") is True
@@ -311,11 +329,9 @@ def test_ajouter_puis_retirer_raccourci_en_arriere_plan(
     reglages.arreter()
 
 
+@pytest.mark.usefixtures("qapp")
 def test_raccourci_indisponible_masque_la_feuille(
-    qapp: QApplication,
-    qtbot: QtBot,
-    monkeypatch: pytest.MonkeyPatch,
-    caplog: pytest.LogCaptureFixture,
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
     monkeypatch.setattr(raccourci, "systeme_courant", lambda: None)
     reglages = ControleurReglages()
@@ -329,9 +345,8 @@ def test_raccourci_indisponible_masque_la_feuille(
     reglages.arreter()
 
 
-def test_exporter_puis_importer_donnees_redemarre(
-    qapp: QApplication, qtbot: QtBot, tmp_path: Path
-) -> None:
+@pytest.mark.usefixtures("qapp")
+def test_exporter_puis_importer_donnees_redemarre(qtbot: QtBot, tmp_path: Path) -> None:
     profils.CHEMIN_PROFILS.write_text('{"Exportée": {}}', encoding="utf-8")
     reglages = ControleurReglages()
     url = (tmp_path / "export.zip").as_uri()
@@ -345,8 +360,9 @@ def test_exporter_puis_importer_donnees_redemarre(
     assert profils.CHEMIN_PROFILS.read_text(encoding="utf-8") == '{"Exportée": {}}'
 
 
+@pytest.mark.usefixtures("qapp")
 def test_importer_un_fichier_douteux_signale_l_erreur_sans_redemarrer(
-    qapp: QApplication, qtbot: QtBot, tmp_path: Path
+    qtbot: QtBot, tmp_path: Path
 ) -> None:
     faux = tmp_path / "faux.zip"
     faux.write_text("bonjour", encoding="utf-8")

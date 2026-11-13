@@ -3,6 +3,7 @@
 import os
 import socket
 from pathlib import Path
+from unittest.mock import Mock
 
 # Rendu Qt hors écran, identique avec ou sans affichage réel ; doit être
 # posé avant tout import de PySide6.
@@ -30,9 +31,9 @@ def _pas_de_verification_des_offres_reseau(monkeypatch: pytest.MonkeyPatch) -> N
     """Ouvrir l'écran Suivi lance la vérification automatique des offres :
     jamais de vrai appel réseau (une requête encore en vol au démarrage du test
     suivant, une fois l'interdiction levée, atteindrait le vrai site)."""
-
-    def injoignable(_url: str) -> bool:
-        raise RuntimeError("Vérification interdite pendant les tests.")
+    injoignable = Mock(
+        side_effect=RuntimeError("Vérification interdite pendant les tests.")
+    )
 
     monkeypatch.setattr(travailleurs, "verifier_disponibilite", injoignable)
 
@@ -129,9 +130,9 @@ def _rediriger_journal_vers_tmp(
 def _reseau_interdit(monkeypatch: pytest.MonkeyPatch) -> None:
     """Aucun test ne joint un vrai site : un appel réseau oublié échoue
     au lieu de passer (ou d'échouer) selon la connexion du moment."""
-
-    def connexion_refusee(*_args: object, **_kwargs: object) -> None:
-        raise OSError("Connexion réseau interdite pendant les tests.")
+    connexion_refusee = Mock(
+        side_effect=OSError("Connexion réseau interdite pendant les tests.")
+    )
 
     monkeypatch.setattr(socket.socket, "connect", connexion_refusee)
     monkeypatch.setattr(socket.socket, "connect_ex", connexion_refusee)

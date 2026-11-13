@@ -45,6 +45,7 @@ class ReponseHttp:
 
     def stream(self, amt: int, decode_content: bool = True) -> Iterator[bytes]:
         """Corps par morceaux de `amt` octets, comme `urllib3.HTTPResponse`."""
+        del decode_content  # accepté comme urllib3, sans effet sur un corps décompressé
         for debut in range(0, len(self.data), amt):
             yield self.data[debut : debut + amt]
 
@@ -72,7 +73,7 @@ class FauxGestionnaire:
         url: str,
         body: Any = None,
         headers: dict[str, str] | None = None,
-        **_options: object,
+        **_: object,
     ) -> ReponseHttp:
         self.appels.append((methode, url, body, dict(headers or {})))
         return self.comportement(methode, url, body, dict(headers or {}))
@@ -85,16 +86,37 @@ def simuler_reseau(
     `ReponseHttp` seule est rendue à chaque requête."""
     if isinstance(comportement, ReponseHttp):
         reponse = comportement
-        comportement = lambda *_args: reponse  # noqa: E731
+        comportement = lambda *_: reponse  # noqa: E731
     faux = FauxGestionnaire(comportement)
-    monkeypatch.setattr(reseau, "_gestionnaire", lambda _url: faux)
+    monkeypatch.setattr(reseau, "_gestionnaire", lambda _: faux)
     return faux
+
+
+def selon_methode(choisir: Callable[[str], ReponseHttp]) -> Comportement:
+    """Comportement qui ne dépend que de la méthode HTTP de la requête."""
+
+    def comportement(methode: str, *_: object) -> ReponseHttp:
+        return choisir(methode)
+
+    return comportement
+
+
+def selon_url(choisir: Callable[[str], ReponseHttp]) -> Comportement:
+    """Comportement qui ne dépend que de l'adresse demandée."""
+
+    def comportement(
+        methode: str, url: str, corps: Any, entetes: dict[str, str]
+    ) -> ReponseHttp:
+        del methode, corps, entetes  # seule l'adresse compte ici
+        return choisir(url)
+
+    return comportement
 
 
 def echec_reseau(erreur: BaseException) -> Comportement:
     """Comportement qui lève `erreur` à chaque requête."""
 
-    def leve(*_args: object) -> ReponseHttp:
+    def leve(*_: object) -> ReponseHttp:
         raise erreur
 
     return leve

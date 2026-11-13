@@ -121,7 +121,7 @@ def _fenetre_detail(
 def test_detail_s_ouvre_des_l_attente_puis_se_remplit(
     moteur: QQmlApplicationEngine, qapp: QApplication
 ) -> None:
-    racine, recherche, dialogue = _fenetre_detail(moteur)
+    _, recherche, dialogue = _fenetre_detail(moteur)
     recherche.detail_attendu.emit(
         {"reference": "R1", "titre": "Chargé de mission", "sousTitre": "Paris"}
     )
@@ -140,7 +140,7 @@ def test_detail_s_ouvre_des_l_attente_puis_se_remplit(
 def test_detail_ignore_une_fiche_d_une_autre_offre_ou_arrivee_apres_la_fermeture(
     moteur: QQmlApplicationEngine, qapp: QApplication
 ) -> None:
-    racine, recherche, dialogue = _fenetre_detail(moteur)
+    _, recherche, dialogue = _fenetre_detail(moteur)
     recherche.detail_attendu.emit({"reference": "R1", "titre": "A", "sousTitre": ""})
     qapp.processEvents()
 
@@ -216,7 +216,7 @@ def test_detail_ne_propose_pas_deux_boutons_vers_la_meme_page(
     fiche: dict[str, Any],
     attendus: dict[str, bool],
 ) -> None:
-    racine, dialogue = _ouvrir_fiche(moteur, qapp, fiche)
+    _, dialogue = _ouvrir_fiche(moteur, qapp, fiche)
     assert _boutons_visibles(dialogue.property("contentItem")) == attendus
 
 
@@ -234,7 +234,7 @@ def test_detail_propose_le_suivi_depuis_la_recherche(
     fiche: dict[str, Any],
     attendus: dict[str, bool],
 ) -> None:
-    racine, dialogue = _ouvrir_fiche(moteur, qapp, fiche)
+    _, dialogue = _ouvrir_fiche(moteur, qapp, fiche)
     assert _boutons_visibles(dialogue.property("contentItem")) == attendus
 
 
@@ -242,7 +242,7 @@ def test_detail_ne_depasse_pas_quatre_boutons_dans_le_pied(
     moteur: QQmlApplicationEngine, qapp: QApplication
 ) -> None:
     """Au-delà, le pied dépasse la fenêtre (5 boutons mesurés trop larges)."""
-    racine, dialogue = _ouvrir_fiche(
+    _, dialogue = _ouvrir_fiche(
         moteur,
         qapp,
         {
@@ -271,7 +271,7 @@ def test_detail_ne_depasse_pas_quatre_boutons_dans_le_pied(
 def test_detail_se_ferme_par_la_croix(
     moteur: QQmlApplicationEngine, qapp: QApplication
 ) -> None:
-    racine, dialogue = _ouvrir_fiche(moteur, qapp, {})
+    _, dialogue = _ouvrir_fiche(moteur, qapp, {})
     assert dialogue.property("opened") is True
     croix = [
         e

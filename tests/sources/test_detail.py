@@ -2,6 +2,7 @@
 fiche et disponibilité d'une offre selon son site (pas de réseau)."""
 
 from collections.abc import Callable
+from unittest.mock import Mock
 
 import pytest
 import urllib3
@@ -13,6 +14,7 @@ from tests.sources.reponses import (
     Comportement,
     ReponseHttp,
     echec_reseau,
+    selon_url,
     simuler_reseau,
 )
 
@@ -71,7 +73,7 @@ def test_recuperer_detail_offre_utilise_l_extracteur_du_site(
     noms = ("choisirleservicepublic", "emploiterritorial", "fhf", "passerellesmef")
 
     def extracteur(nom: str) -> Callable[[str], DetailOffre]:
-        def recuperer(_url: str) -> DetailOffre:
+        def recuperer(_: str) -> DetailOffre:
             appels.append(nom)
             return FICHE
 
@@ -193,8 +195,7 @@ def test_verifier_disponibilite_retour_a_l_accueil_passerelles(
 def test_verifier_disponibilite_site_injoignable_propage(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def injoignable(_url: str) -> tuple[str, str]:
-        raise RuntimeError("Erreur réseau")
+    injoignable = Mock(side_effect=RuntimeError("Erreur réseau"))
 
     monkeypatch.setattr(detail, "consulter_page", injoignable)
     with pytest.raises(RuntimeError, match="Erreur réseau"):
@@ -278,9 +279,7 @@ def test_le_controle_en_echec_est_retenu_pour_les_offres_suivantes(
 def test_consulter_page_rend_url_finale_et_titre(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def comportement(
-        methode: str, url: str, corps: object, entetes: dict[str, str]
-    ) -> ReponseHttp:
+    def comportement(url: str) -> ReponseHttp:
         if url.endswith("/x/"):
             return ReponseHttp(
                 statut=302,
@@ -290,7 +289,7 @@ def test_consulter_page_rend_url_finale_et_titre(
             )
         return ReponseHttp("<html><title> Offre dépubliée </title></html>")
 
-    simuler_reseau(monkeypatch, comportement)
+    simuler_reseau(monkeypatch, selon_url(comportement))
     assert base.consulter_page("https://choisirleservicepublic.gouv.fr/x/") == (
         "https://choisirleservicepublic.gouv.fr/offre-depubliee/",
         "Offre dépubliée",
@@ -309,7 +308,7 @@ def test_consulter_page_404_et_410_page_introuvable(
 @pytest.mark.parametrize(
     "comportement",
     [
-        lambda *_a: ReponseHttp(statut=503),
+        lambda *_: ReponseHttp(statut=503),
         echec_reseau(urllib3.exceptions.HTTPError("hors ligne")),
         echec_reseau(TimeoutError("délai dépassé")),
     ],

@@ -48,6 +48,7 @@ class Fhf:
         une localisation, une recherche par département du site (la liste
         n'affiche qu'une ville, le numéro vient donc de la recherche) ; la
         date de publication est appliquée par l'appelant."""
+        del on_fiche  # imposé par le contrat de SourceOffres, sans fiche à lire ici
         query = filtres.get("query", "")
         localisations = filtres.get("localisations", [])
         if not localisations:

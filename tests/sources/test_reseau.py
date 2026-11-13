@@ -10,6 +10,7 @@ import threading
 import urllib.request
 from collections.abc import Iterator
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from unittest.mock import Mock
 
 import pytest
 import urllib3
@@ -19,6 +20,8 @@ from src.sources.reseau import ErreurHttp, Session
 from tests.sources.reponses import (
     ReponseHttp,
     echec_reseau,
+    selon_methode,
+    selon_url,
     simuler_reseau,
 )
 
@@ -39,7 +42,7 @@ def test_les_cookies_recus_sont_renvoyes_au_meme_site(
 ) -> None:
     faux = simuler_reseau(
         monkeypatch,
-        lambda *_a: ReponseHttp(
+        lambda *_: ReponseHttp(
             entetes={"Set-Cookie": ["PHPSESSID=abc; path=/; HttpOnly", "x=1"]}
         ),
     )
@@ -58,7 +61,7 @@ def test_un_cookie_efface_par_le_site_n_est_plus_renvoye(
 ) -> None:
     faux = simuler_reseau(
         monkeypatch,
-        lambda *_a: ReponseHttp(
+        lambda *_: ReponseHttp(
             entetes={
                 "Set-Cookie": [
                     "keep=1; path=/",
@@ -78,7 +81,7 @@ def test_deux_sessions_ne_partagent_pas_leurs_cookies(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     faux = simuler_reseau(
-        monkeypatch, lambda *_a: ReponseHttp(entetes={"Set-Cookie": "s=1"})
+        monkeypatch, lambda *_: ReponseHttp(entetes={"Set-Cookie": "s=1"})
     )
     Session({}).lire("https://exemple.test/")
     Session({}).lire("https://exemple.test/")
@@ -88,9 +91,7 @@ def test_deux_sessions_ne_partagent_pas_leurs_cookies(
 def test_une_redirection_apres_un_post_devient_un_get_avec_les_cookies(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def comportement(
-        methode: str, url: str, corps: object, entetes: dict[str, str]
-    ) -> ReponseHttp:
+    def comportement(methode: str) -> ReponseHttp:
         if methode == "POST":
             return ReponseHttp(
                 statut=302,
@@ -98,7 +99,7 @@ def test_une_redirection_apres_un_post_devient_un_get_avec_les_cookies(
             )
         return ReponseHttp("page 1")
 
-    faux = simuler_reseau(monkeypatch, comportement)
+    faux = simuler_reseau(monkeypatch, selon_methode(comportement))
     reponse = Session({}).lire("https://exemple.test/recherche", {"q": "réseau"})
 
     assert reponse.url == "https://exemple.test/resultats"
@@ -111,14 +112,12 @@ def test_une_redirection_apres_un_post_devient_un_get_avec_les_cookies(
 
 
 def test_une_redirection_307_garde_le_post(monkeypatch: pytest.MonkeyPatch) -> None:
-    def comportement(
-        methode: str, url: str, corps: object, entetes: dict[str, str]
-    ) -> ReponseHttp:
+    def comportement(url: str) -> ReponseHttp:
         if url.endswith("/a"):
             return ReponseHttp(statut=307, entetes={"Location": "/b"})
         return ReponseHttp("ok")
 
-    faux = simuler_reseau(monkeypatch, comportement)
+    faux = simuler_reseau(monkeypatch, selon_url(comportement))
     Session({}).lire("https://exemple.test/a", {"q": "1"})
     assert [(m, c) for m, _, c, _ in faux.appels] == [("POST", "q=1"), ("POST", "q=1")]
 
@@ -161,32 +160,33 @@ def _sans_gestionnaires(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(reseau, "_gestionnaires", {})
 
 
+@pytest.mark.usefixtures("_sans_gestionnaires")
 def test_sans_proxy_les_connexions_sont_directes(
-    monkeypatch: pytest.MonkeyPatch, _sans_gestionnaires: None
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(urllib.request, "getproxies", lambda: {})
-    monkeypatch.setattr(urllib.request, "proxy_bypass", lambda _h: False)
+    monkeypatch.setattr(urllib.request, "proxy_bypass", Mock(return_value=False))
     gestionnaire = reseau._gestionnaire("https://exemple.test/")
     assert type(gestionnaire) is urllib3.PoolManager
 
 
-def test_le_proxy_du_systeme_est_utilise(
-    monkeypatch: pytest.MonkeyPatch, _sans_gestionnaires: None
-) -> None:
+@pytest.mark.usefixtures("_sans_gestionnaires")
+def test_le_proxy_du_systeme_est_utilise(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         urllib.request,
         "getproxies",
         lambda: {"https": "http://u%40x:mdp@proxy.test:3128"},
     )
-    monkeypatch.setattr(urllib.request, "proxy_bypass", lambda _h: False)
+    monkeypatch.setattr(urllib.request, "proxy_bypass", Mock(return_value=False))
     gestionnaire = reseau._gestionnaire("https://exemple.test/")
     assert isinstance(gestionnaire, urllib3.ProxyManager)
     assert gestionnaire.proxy is not None and gestionnaire.proxy.host == "proxy.test"
     assert gestionnaire.proxy_headers["proxy-authorization"].startswith("Basic ")
 
 
+@pytest.mark.usefixtures("_sans_gestionnaires")
 def test_le_proxy_recoit_le_contexte_tls_du_systeme_et_des_identifiants_utf8(
-    monkeypatch: pytest.MonkeyPatch, _sans_gestionnaires: None
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Depuis urllib3 2.8, le TLS du proxy ne reprend plus le contexte de la
     destination : il doit lui être donné, sinon l'AC d'entreprise est refusée."""
@@ -195,20 +195,21 @@ def test_le_proxy_recoit_le_contexte_tls_du_systeme_et_des_identifiants_utf8(
         "getproxies",
         lambda: {"https": "https://%C3%A9l:mdp@proxy.test:3128"},
     )
-    monkeypatch.setattr(urllib.request, "proxy_bypass", lambda _h: False)
+    monkeypatch.setattr(urllib.request, "proxy_bypass", Mock(return_value=False))
     gestionnaire = reseau._gestionnaire("https://exemple.test/")
     assert gestionnaire.proxy_ssl_context is reseau._contexte()
     jeton = gestionnaire.proxy_headers["proxy-authorization"].removeprefix("Basic ")
     assert base64.b64decode(jeton).decode("utf-8") == "él:mdp"
 
 
+@pytest.mark.usefixtures("_sans_gestionnaires")
 def test_un_hote_exclu_du_proxy_est_joint_directement(
-    monkeypatch: pytest.MonkeyPatch, _sans_gestionnaires: None
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
         urllib.request, "getproxies", lambda: {"https": "http://proxy.test:3128"}
     )
-    monkeypatch.setattr(urllib.request, "proxy_bypass", lambda _h: True)
+    monkeypatch.setattr(urllib.request, "proxy_bypass", Mock(return_value=True))
     assert type(reseau._gestionnaire("https://interne.test/")) is urllib3.PoolManager
 
 
@@ -237,7 +238,7 @@ class _Gestionnaire(BaseHTTPRequestHandler):
         self.server.connexions += 1  # type: ignore[attr-defined]
 
     def log_message(self, format: str, *args: object) -> None:
-        pass
+        del format, args  # le serveur de test ne journalise rien
 
     def _repondre(self, statut: int, corps: bytes, entetes: dict[str, str]) -> None:
         self.send_response(statut)
@@ -264,7 +265,7 @@ def site_local(monkeypatch: pytest.MonkeyPatch) -> Iterator[_Site]:
     monkeypatch.setattr(socket.socket, "connect", _CONNEXION_REELLE)
     monkeypatch.setattr(socket, "create_connection", _CREATION_REELLE)
     monkeypatch.setattr(urllib.request, "getproxies", lambda: {})
-    monkeypatch.setattr(urllib.request, "proxy_bypass", lambda _h: True)
+    monkeypatch.setattr(urllib.request, "proxy_bypass", Mock(return_value=True))
     monkeypatch.setattr(reseau, "_gestionnaires", {})
     site = _Site()
     fil = threading.Thread(
@@ -313,14 +314,12 @@ def test_les_cookies_suivent_une_redirection_sur_le_vrai_serveur(
 def test_une_redirection_vers_un_schema_inconnu_est_une_erreur_reseau(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def comportement(
-        methode: str, url: str, corps: object, entetes: dict[str, str]
-    ) -> ReponseHttp:
+    def comportement(url: str) -> ReponseHttp:
         if url.startswith("https://exemple.test"):
             return ReponseHttp(statut=302, entetes={"Location": "ftp://pirate.test/x"})
         raise urllib3.exceptions.URLSchemeUnknown("ftp")
 
-    simuler_reseau(monkeypatch, comportement)
+    simuler_reseau(monkeypatch, selon_url(comportement))
     with pytest.raises(RuntimeError, match="Erreur réseau"):
         Session({}).lire("https://exemple.test/")
 

@@ -2,18 +2,18 @@
 de `src.recherche.orchestration` en signaux. L'orchestration est testée dans test_recherche.py.
 """
 
-from collections.abc import Callable
 from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
 from PySide6.QtCore import QCoreApplication
-from pytestqt.qtbot import QtBot
 
 from src.donnees import parametres_sources
 from src.gui.travailleurs import TravailleurRecherche, VerificateurMiseAJour
 from src.sources.choisirleservicepublic import ChoisirLeServicePublic
 from src.sources.emploiterritorial import EmploiTerritorial
-from src.types import FiltresRecherche, InfoMaj, Offre
+from src.types import InfoMaj, Offre
+from tests.doubles import Appel, Resultat, SourceFactice
 
 
 @pytest.fixture(autouse=True)
@@ -67,21 +67,23 @@ def test_executer_fusionne_les_resultats_de_deux_sources(
     monkeypatch.setattr(
         ChoisirLeServicePublic,
         "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: ([_offre("O1")], 1, False),
+        Mock(return_value=([_offre("O1")], 1, False)),
     )
     monkeypatch.setattr(
         EmploiTerritorial,
         "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: (
-            [_offre("O2", "Territorial")],
-            1,
-            False,
+        Mock(
+            return_value=(
+                [_offre("O2", "Territorial")],
+                1,
+                False,
+            )
         ),
     )
     resultats, avertissements, erreurs = _executer(TravailleurRecherche({}, {}))
     assert avertissements == []
     assert erreurs == []
-    offres, nb_pages, arret_anticipe = resultats[0]
+    offres, _, _ = resultats[0]
     assert {o["reference"] for o in offres} == {"O1", "O2"}
 
 
@@ -91,16 +93,9 @@ def test_executer_avertissement_sur_echec_partiel_sans_bloquer(
     monkeypatch.setattr(
         ChoisirLeServicePublic,
         "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: ([_offre("O1")], 1, False),
+        Mock(return_value=([_offre("O1")], 1, False)),
     )
-
-    def _echec(
-        self: object,
-        filtres: FiltresRecherche,
-        on_page: Callable[[int, int], None] | None = None,
-        on_fiche: Callable[[int, int], None] | None = None,
-    ) -> None:
-        raise RuntimeError("Erreur réseau")
+    _echec = Mock(side_effect=RuntimeError("Erreur réseau"))
 
     monkeypatch.setattr(EmploiTerritorial, "rechercher", _echec)
     resultats, avertissements, erreurs = _executer(TravailleurRecherche({}, {}))
@@ -110,9 +105,7 @@ def test_executer_avertissement_sur_echec_partiel_sans_bloquer(
     assert resultats[0][0][0]["reference"] == "O1"
 
 
-def test_executer_erreur_si_aucune_source_active(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_executer_erreur_si_aucune_source_active() -> None:
     parametres_sources.sauvegarder_sources_actives(
         {
             "choisirleservicepublic": False,
@@ -121,7 +114,7 @@ def test_executer_erreur_si_aucune_source_active(
             "fhf": False,
         }
     )
-    resultats, avertissements, erreurs = _executer(TravailleurRecherche({}, {}))
+    resultats, _, erreurs = _executer(TravailleurRecherche({}, {}))
     assert resultats == []
     assert len(erreurs) == 1
 
@@ -130,15 +123,17 @@ def test_executer_emet_source_en_cours(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         ChoisirLeServicePublic,
         "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: ([_offre("O1")], 1, False),
+        Mock(return_value=([_offre("O1")], 1, False)),
     )
     monkeypatch.setattr(
         EmploiTerritorial,
         "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: (
-            [_offre("O2", "Territorial")],
-            1,
-            False,
+        Mock(
+            return_value=(
+                [_offre("O2", "Territorial")],
+                1,
+                False,
+            )
         ),
     )
     travailleur = TravailleurRecherche({}, {})
@@ -151,25 +146,23 @@ def test_executer_emet_source_en_cours(monkeypatch: pytest.MonkeyPatch) -> None:
     ]
 
 
+@pytest.mark.usefixtures("qtbot")
 def test_executer_emet_progression_nommee_et_source_terminee(
-    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def _csp(
-        self: object,
-        filtres: FiltresRecherche,
-        on_page: Callable[[int, int], None] | None = None,
-        on_fiche: Callable[[int, int], None] | None = None,
-    ) -> tuple[list[Offre], int, bool]:
-        assert on_page is not None
-        on_page(1, 2)
-        on_page(2, 2)
+    def _csp(appel: Appel) -> Resultat:
+        assert appel.on_page is not None
+        appel.on_page(1, 2)
+        appel.on_page(2, 2)
         return [_offre("O1")], 2, False
 
-    monkeypatch.setattr(ChoisirLeServicePublic, "rechercher", _csp)
+    monkeypatch.setattr(
+        ChoisirLeServicePublic, "rechercher", SourceFactice(_csp).rechercher
+    )
     monkeypatch.setattr(
         EmploiTerritorial,
         "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: ([], 1, False),
+        Mock(return_value=([], 1, False)),
     )
     travailleur = TravailleurRecherche({}, {})
     progressions: list[tuple[object, ...]] = []
@@ -187,22 +180,17 @@ def test_executer_emet_progression_nommee_et_source_terminee(
     )
 
 
+@pytest.mark.usefixtures("qtbot")
 def test_executer_source_en_echec_est_aussi_signalee_terminee(
-    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def _echec(
-        self: object,
-        filtres: FiltresRecherche,
-        on_page: Callable[[int, int], None] | None = None,
-        on_fiche: Callable[[int, int], None] | None = None,
-    ) -> None:
-        raise RuntimeError("HTTP 503")
+    _echec = Mock(side_effect=RuntimeError("HTTP 503"))
 
     monkeypatch.setattr(ChoisirLeServicePublic, "rechercher", _echec)
     monkeypatch.setattr(
         EmploiTerritorial,
         "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: ([_offre("O2")], 1, False),
+        Mock(return_value=([_offre("O2")], 1, False)),
     )
     travailleur = TravailleurRecherche({}, {})
     terminees: list[str] = []
@@ -274,8 +262,7 @@ def test_recherche_exception_inattendue_emet_une_erreur(
 ) -> None:
     from src.gui import travailleurs as travailleurs_module
 
-    def casse(*_args: object, **_kwargs: object) -> None:
-        raise KeyError("imprévu")
+    casse = Mock(side_effect=KeyError("imprévu"))
 
     monkeypatch.setattr(travailleurs_module, "rechercher_toutes_sources", casse)
     erreurs: list[str] = []
@@ -333,8 +320,7 @@ def test_verificateur_maj_marqueur_non_ecrit_n_empeche_pas_l_annonce(
 ) -> None:
     from src.gui import travailleurs as travailleurs_module
 
-    def refuse(_info: InfoMaj) -> None:
-        raise PermissionError("fichier tenu")
+    refuse = Mock(side_effect=PermissionError("fichier tenu"))
 
     monkeypatch.setattr(
         travailleurs_module, "verifier_derniere_publication", lambda: _INFO_MAJ_TEST

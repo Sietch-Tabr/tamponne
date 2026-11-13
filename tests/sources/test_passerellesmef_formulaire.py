@@ -1,6 +1,7 @@
 """Tests du formulaire de recherche de Passerelles/MEF (pas de réseau)."""
 
 import pytest
+from unittest.mock import Mock
 
 from src.sources import passerellesmef
 from src.sources.choisirleservicepublic.extraction import DETAIL_VIDE
@@ -164,15 +165,17 @@ def _offre(reference: str, localisation: str) -> Offre:
 def _site(monkeypatch: pytest.MonkeyPatch) -> dict[str, list[object]]:
     """Site simulé ; renvoie le journal de ses échanges."""
     echanges: dict[str, list[object]] = {"envois": [], "fiches": [], "pages": []}
-    monkeypatch.setattr(passerellesmef.time, "sleep", lambda _s: None)
+    monkeypatch.setattr(passerellesmef.time, "sleep", Mock(return_value=None))
     monkeypatch.setattr(passerellesmef, "nouvelle_session", lambda: None)
-    monkeypatch.setattr(passerellesmef, "obtenir_formulaire", lambda _o: FORMULAIRE)
+    monkeypatch.setattr(
+        passerellesmef, "obtenir_formulaire", Mock(return_value=FORMULAIRE)
+    )
 
-    def envoyer(_o: object, champs: dict[str, str]) -> PageAPI:
+    def envoyer(_: object, champs: dict[str, str]) -> PageAPI:
         echanges["envois"].append(champs)
         return {"html": "p1", "title": "(30 offres, page 1) / Catégorie : A"}
 
-    def page(_o: object, url: str) -> PageAPI:
+    def page(_: object, url: str) -> PageAPI:
         echanges["pages"].append(url)
         numero = url.rsplit("page=", 1)[1] if "page=" in url else "1"
         return {"html": f"p{numero}", "title": "(30 offres, page 1)"}
@@ -230,8 +233,7 @@ def test_rechercher_lit_les_fiches_des_criteres_que_le_site_ne_filtre_pas(
 def test_rechercher_sans_critere_pour_le_site_ne_charge_pas_le_formulaire(
     _site: dict[str, list[object]], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    def interdit(_o: object) -> str:
-        raise AssertionError("formulaire inutile")
+    interdit = Mock(side_effect=AssertionError("formulaire inutile"))
 
     monkeypatch.setattr(passerellesmef, "obtenir_formulaire", interdit)
     passerellesmef.PasserellesMef().rechercher({"query": "réseau"})
@@ -244,7 +246,9 @@ def test_rechercher_site_qui_ignore_les_criteres_retombe_sur_le_filtrage_local(
     monkeypatch.setattr(
         passerellesmef,
         "envoyer_recherche",
-        lambda _o, _c: {"html": "p1", "title": "(30 offres, page 1) / Tout afficher"},
+        Mock(
+            return_value={"html": "p1", "title": "(30 offres, page 1) / Tout afficher"}
+        ),
     )
     passerellesmef.PasserellesMef().rechercher({"categories": ["A"]})
     assert len(_site["fiches"]) == 4

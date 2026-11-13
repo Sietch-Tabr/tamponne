@@ -1,6 +1,7 @@
 """Tests de la lecture parallèle et mémorisée des fiches (src/sources/fiches.py)."""
 
 import threading
+from unittest.mock import Mock
 
 import pytest
 
@@ -36,7 +37,7 @@ class _Cache:
 
 @pytest.fixture(autouse=True)
 def _sans_attente(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(fiches.time, "sleep", lambda _s: None)
+    monkeypatch.setattr(fiches.time, "sleep", Mock(return_value=None))
 
 
 def test_lire_fiches_lit_en_parallele_et_memorise() -> None:
@@ -64,7 +65,7 @@ def test_lire_fiches_ne_relit_pas_une_fiche_connue() -> None:
 
 def test_lire_fiches_illisible_absente_et_non_memorisee() -> None:
     cache = _Cache()
-    assert lire_fiches(["https://x/1"], lambda _u: None, cache) == {}
+    assert lire_fiches(["https://x/1"], Mock(return_value=None), cache) == {}
     assert cache.fiches == {}
 
 
@@ -84,7 +85,7 @@ def test_lire_fiches_signale_chaque_fiche_lue_sans_compter_le_cache() -> None:
     suivi: list[tuple[int, int]] = []
     lire_fiches(
         ["https://x/1", "https://x/2", "https://x/3"],
-        lambda _u: _fiche("93"),
+        Mock(return_value=_fiche("93")),
         cache,
         lambda lues, total: suivi.append((lues, total)),
     )

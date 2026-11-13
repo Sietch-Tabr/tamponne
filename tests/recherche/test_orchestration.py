@@ -1,10 +1,10 @@
 """Tests de l'orchestration de recherche multi-source (src/recherche/orchestration.py)."""
 
 import threading
-from collections.abc import Callable
+from collections.abc import Iterator
 from datetime import date
-from functools import partialmethod
 from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
 
@@ -22,6 +22,7 @@ from src.sources.emploiterritorial import EmploiTerritorial
 from src.sources.fhf import Fhf
 from src.sources.passerellesmef import PasserellesMef
 from src.types import FiltresRecherche, Offre, PageAPI
+from tests.doubles import Appel, Resultat, SourceFactice
 
 
 @pytest.fixture(autouse=True)
@@ -85,21 +86,23 @@ def test_rechercher_fusionne_les_resultats_de_deux_sources(
     monkeypatch.setattr(
         ChoisirLeServicePublic,
         "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: ([_offre("O1")], 1, False),
+        Mock(return_value=([_offre("O1")], 1, False)),
     )
     monkeypatch.setattr(
         EmploiTerritorial,
         "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: (
-            [_offre("O2", "Territorial")],
-            1,
-            False,
+        Mock(
+            return_value=(
+                [_offre("O2", "Territorial")],
+                1,
+                False,
+            )
         ),
     )
     resultats, avertissements, erreurs = _executer({})
     assert avertissements == []
     assert erreurs == []
-    offres, nb_pages, arret_anticipe = resultats[0]
+    offres, _, _ = resultats[0]
     assert {o["reference"] for o in offres} == {"O1", "O2"}
 
 
@@ -109,15 +112,17 @@ def test_rechercher_dedoublonne_les_offres_communes(
     monkeypatch.setattr(
         ChoisirLeServicePublic,
         "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: ([_offre("O1")], 1, False),
+        Mock(return_value=([_offre("O1")], 1, False)),
     )
     monkeypatch.setattr(
         EmploiTerritorial,
         "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: (
-            [_offre("O1", "Territorial")],
-            1,
-            False,
+        Mock(
+            return_value=(
+                [_offre("O1", "Territorial")],
+                1,
+                False,
+            )
         ),
     )
     resultats, _, _ = _executer({})
@@ -132,16 +137,9 @@ def test_rechercher_avertissement_sur_echec_partiel_sans_bloquer(
     monkeypatch.setattr(
         ChoisirLeServicePublic,
         "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: ([_offre("O1")], 1, False),
+        Mock(return_value=([_offre("O1")], 1, False)),
     )
-
-    def _echec(
-        self: object,
-        filtres: FiltresRecherche,
-        on_page: Callable[[int, int], None] | None = None,
-        on_fiche: Callable[[int, int], None] | None = None,
-    ) -> None:
-        raise RuntimeError("Erreur réseau")
+    _echec = Mock(side_effect=RuntimeError("Erreur réseau"))
 
     monkeypatch.setattr(EmploiTerritorial, "rechercher", _echec)
     resultats, avertissements, erreurs = _executer({})
@@ -158,47 +156,35 @@ def test_rechercher_source_au_format_imprevu_n_arrete_pas_les_autres(
     monkeypatch.setattr(
         ChoisirLeServicePublic,
         "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: ([_offre("O1")], 1, False),
+        Mock(return_value=([_offre("O1")], 1, False)),
     )
-
-    def _format_imprevu(
-        self: object,
-        filtres: FiltresRecherche,
-        on_page: Callable[[int, int], None] | None = None,
-        on_fiche: Callable[[int, int], None] | None = None,
-    ) -> None:
-        raise AttributeError("'NoneType' object has no attribute 'find'")
+    _format_imprevu = Mock(
+        side_effect=AttributeError("'NoneType' object has no attribute 'find'")
+    )
 
     monkeypatch.setattr(EmploiTerritorial, "rechercher", _format_imprevu)
     resultats, avertissements, erreurs = _executer({})
     assert erreurs == []
     assert resultats[0][0][0]["reference"] == "O1"
     assert "réponse inattendue du site (AttributeError" in avertissements[0]
-    # Journal : la trace complète, pour retrouver la ligne qui a cédé.
-    assert "Traceback" in caplog.text and "_format_imprevu" in caplog.text
+    # Journal : la trace complète et le message de l'erreur, pour retrouver ce qui a cédé.
+    assert "Traceback" in caplog.text
+    assert "'NoneType' object has no attribute 'find'" in caplog.text
 
 
 def test_rechercher_erreur_si_toutes_les_sources_echouent(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def _echec(
-        self: object,
-        filtres: FiltresRecherche,
-        on_page: Callable[[int, int], None] | None = None,
-        on_fiche: Callable[[int, int], None] | None = None,
-    ) -> None:
-        raise RuntimeError("Erreur réseau")
+    _echec = Mock(side_effect=RuntimeError("Erreur réseau"))
 
     monkeypatch.setattr(ChoisirLeServicePublic, "rechercher", _echec)
     monkeypatch.setattr(EmploiTerritorial, "rechercher", _echec)
-    resultats, avertissements, erreurs = _executer({})
+    resultats, _, erreurs = _executer({})
     assert resultats == []
     assert len(erreurs) == 1
 
 
-def test_rechercher_erreur_si_aucune_source_active(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_rechercher_erreur_si_aucune_source_active() -> None:
     parametres_sources.sauvegarder_sources_actives(
         {
             "choisirleservicepublic": False,
@@ -207,7 +193,7 @@ def test_rechercher_erreur_si_aucune_source_active(
             "fhf": False,
         }
     )
-    resultats, avertissements, erreurs = _executer({})
+    resultats, _, erreurs = _executer({})
     assert resultats == []
     assert len(erreurs) == 1
 
@@ -221,16 +207,11 @@ def test_rechercher_source_desactivee_nest_pas_interrogee(
     monkeypatch.setattr(
         ChoisirLeServicePublic,
         "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: ([_offre("O1")], 1, False),
+        Mock(return_value=([_offre("O1")], 1, False)),
     )
-
-    def _echoue_si_appelee(
-        self: object,
-        filtres: FiltresRecherche,
-        on_page: Callable[[int, int], None] | None = None,
-        on_fiche: Callable[[int, int], None] | None = None,
-    ) -> None:
-        raise AssertionError("emploiterritorial ne doit pas être interrogée")
+    _echoue_si_appelee = Mock(
+        side_effect=AssertionError("emploiterritorial ne doit pas être interrogée")
+    )
 
     monkeypatch.setattr(EmploiTerritorial, "rechercher", _echoue_si_appelee)
     resultats, _, _ = _executer({})
@@ -249,26 +230,23 @@ def test_rechercher_versant_etat_seul_exclut_territorial_et_hospitaliere(
     monkeypatch.setattr(
         ChoisirLeServicePublic,
         "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: ([_offre("O1")], 1, False),
+        Mock(return_value=([_offre("O1")], 1, False)),
     )
     # Passerelles/MEF est elle-même mono-versant État : doit rester interrogée.
     monkeypatch.setattr(
         PasserellesMef,
         "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: (
-            [_offre("O2", "MEF")],
-            1,
-            False,
+        Mock(
+            return_value=(
+                [_offre("O2", "MEF")],
+                1,
+                False,
+            )
         ),
     )
-
-    def _echoue_si_appelee(
-        self: object,
-        filtres: FiltresRecherche,
-        on_page: Callable[[int, int], None] | None = None,
-        on_fiche: Callable[[int, int], None] | None = None,
-    ) -> None:
-        raise AssertionError("source mono-versant exclue par le filtre appelée")
+    _echoue_si_appelee = Mock(
+        side_effect=AssertionError("source mono-versant exclue par le filtre appelée")
+    )
 
     monkeypatch.setattr(EmploiTerritorial, "rechercher", _echoue_si_appelee)
     monkeypatch.setattr(Fhf, "rechercher", _echoue_si_appelee)
@@ -284,15 +262,17 @@ def test_rechercher_versant_territorial_seul_interroge_emploiterritorial(
     monkeypatch.setattr(
         ChoisirLeServicePublic,
         "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: ([_offre("O1")], 1, False),
+        Mock(return_value=([_offre("O1")], 1, False)),
     )
     monkeypatch.setattr(
         EmploiTerritorial,
         "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: (
-            [_offre("O2", "Territorial")],
-            1,
-            False,
+        Mock(
+            return_value=(
+                [_offre("O2", "Territorial")],
+                1,
+                False,
+            )
         ),
     )
     resultats, _, _ = _executer({"versants": ["territorial"]})
@@ -313,13 +293,7 @@ def test_rechercher_sans_filtre_versant_interroge_toutes_les_sources_actives(
         (Fhf, "O4"),
     ]:
         monkeypatch.setattr(
-            classe,
-            "rechercher",
-            lambda self, filtres, on_page=None, on_fiche=None, ref=ref: (
-                [_offre(ref)],
-                1,
-                False,
-            ),
+            classe, "rechercher", Mock(return_value=([_offre(ref)], 1, False))
         )
     resultats, _, _ = _executer({})
     offres = resultats[0][0]
@@ -335,11 +309,11 @@ def test_rechercher_traduit_categorie_et_departement_vers_emploiterritorial(
     monkeypatch.setattr(
         ChoisirLeServicePublic,
         "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: ([_offre("O1")], 1, False),
+        Mock(return_value=([_offre("O1")], 1, False)),
     )
     urls_appelees: list[str] = []
 
-    def _obtenir_page_recherche_factice(opener: object, url: str) -> PageAPI:
+    def _obtenir_page_recherche_factice(_: object, url: str) -> PageAPI:
         urls_appelees.append(url)
         return {"html": "<html></html>", "title": ""}
 
@@ -366,24 +340,28 @@ def test_rechercher_interroge_passerellesmef_et_fhf_quand_actives(
     monkeypatch.setattr(
         ChoisirLeServicePublic,
         "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: ([_offre("O1")], 1, False),
+        Mock(return_value=([_offre("O1")], 1, False)),
     )
     monkeypatch.setattr(
         PasserellesMef,
         "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: (
-            [_offre("O2", "MEF")],
-            1,
-            False,
+        Mock(
+            return_value=(
+                [_offre("O2", "MEF")],
+                1,
+                False,
+            )
         ),
     )
     monkeypatch.setattr(
         Fhf,
         "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: (
-            [_offre("FHF_1", "FHF")],
-            1,
-            False,
+        Mock(
+            return_value=(
+                [_offre("FHF_1", "FHF")],
+                1,
+                False,
+            )
         ),
     )
     resultats, avertissements, _ = _executer({})
@@ -413,13 +391,9 @@ def test_rechercher_fhf_dedoublonnee_contre_les_autres_sources(
     monkeypatch.setattr(
         ChoisirLeServicePublic,
         "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: ([offre_csp], 1, False),
+        Mock(return_value=([offre_csp], 1, False)),
     )
-    monkeypatch.setattr(
-        Fhf,
-        "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: ([offre_fhf], 1, False),
-    )
+    monkeypatch.setattr(Fhf, "rechercher", Mock(return_value=([offre_fhf], 1, False)))
     resultats, _, _ = _executer({})
     offres = resultats[0][0]
     assert {o["reference"] for o in offres} == {"O1"}
@@ -432,21 +406,16 @@ def test_rechercher_interroge_les_sources_en_parallele(
     # temps : en série, la première attendrait indéfiniment (timeout).
     barriere = threading.Barrier(2, timeout=5)
 
-    def _rechercher(
-        self: object,
-        filtres: FiltresRecherche,
-        on_page: Callable[[int, int], None] | None = None,
-        on_fiche: Callable[[int, int], None] | None = None,
-        ref: str = "",
-    ) -> tuple[list[Offre], int, bool]:
+    def _rechercher(ref: str) -> Iterator[tuple[list[Offre], int, bool]]:
+        # Le corps ne s'exécute qu'au premier appel du double, dans le fil de la source.
         barriere.wait()
-        return [_offre(ref)], 1, False
+        yield [_offre(ref)], 1, False
 
     monkeypatch.setattr(
-        ChoisirLeServicePublic, "rechercher", partialmethod(_rechercher, ref="O1")
+        ChoisirLeServicePublic, "rechercher", Mock(side_effect=_rechercher("O1"))
     )
     monkeypatch.setattr(
-        EmploiTerritorial, "rechercher", partialmethod(_rechercher, ref="O2")
+        EmploiTerritorial, "rechercher", Mock(side_effect=_rechercher("O2"))
     )
     resultats, avertissements, erreurs = _executer({})
     assert avertissements == [] and erreurs == []
@@ -460,26 +429,18 @@ def test_rechercher_fusion_dans_lordre_des_sources_meme_si_csp_finit_derniere(
     # gagner au dédoublonnage, même si elle arrive après la territoriale.
     territoriale_finie = threading.Event()
 
-    def _csp(
-        self: object,
-        filtres: FiltresRecherche,
-        on_page: Callable[[int, int], None] | None = None,
-        on_fiche: Callable[[int, int], None] | None = None,
-    ) -> tuple[list[Offre], int, bool]:
+    def _csp() -> Iterator[tuple[list[Offre], int, bool]]:
         territoriale_finie.wait(timeout=5)
-        return [_offre("REF", "CSP")], 1, False
+        yield [_offre("REF", "CSP")], 1, False
 
-    def _territorial(
-        self: object,
-        filtres: FiltresRecherche,
-        on_page: Callable[[int, int], None] | None = None,
-        on_fiche: Callable[[int, int], None] | None = None,
-    ) -> tuple[list[Offre], int, bool]:
+    def _territorial() -> Iterator[tuple[list[Offre], int, bool]]:
         territoriale_finie.set()
-        return [_offre("REF", "Territorial")], 1, False
+        yield [_offre("REF", "Territorial")], 1, False
 
-    monkeypatch.setattr(ChoisirLeServicePublic, "rechercher", _csp)
-    monkeypatch.setattr(EmploiTerritorial, "rechercher", _territorial)
+    monkeypatch.setattr(ChoisirLeServicePublic, "rechercher", Mock(side_effect=_csp()))
+    monkeypatch.setattr(
+        EmploiTerritorial, "rechercher", Mock(side_effect=_territorial())
+    )
     resultats, _, _ = _executer({})
     offres = resultats[0][0]
     assert [o["source"] for o in offres] == ["CSP"]
@@ -491,15 +452,17 @@ def test_rechercher_signale_chaque_source_en_cours_dans_lordre(
     monkeypatch.setattr(
         ChoisirLeServicePublic,
         "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: ([_offre("O1")], 1, False),
+        Mock(return_value=([_offre("O1")], 1, False)),
     )
     monkeypatch.setattr(
         EmploiTerritorial,
         "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: (
-            [_offre("O2", "Territorial")],
-            1,
-            False,
+        Mock(
+            return_value=(
+                [_offre("O2", "Territorial")],
+                1,
+                False,
+            )
         ),
     )
     sources_vues: list[str] = []
@@ -513,26 +476,17 @@ def test_rechercher_signale_chaque_source_en_cours_dans_lordre(
 def test_rechercher_remonte_progression_et_sources_terminees(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def _csp(
-        self: object,
-        filtres: FiltresRecherche,
-        on_page: Callable[[int, int], None] | None = None,
-        on_fiche: Callable[[int, int], None] | None = None,
-    ) -> tuple[list[Offre], int, bool]:
-        assert on_page is not None
-        on_page(1, 2)
-        on_page(2, 2)
+    def _csp(appel: Appel) -> Resultat:
+        assert appel.on_page is not None
+        appel.on_page(1, 2)
+        appel.on_page(2, 2)
         return [_offre("O1")], 2, False
 
-    def _echec(
-        self: object,
-        filtres: FiltresRecherche,
-        on_page: Callable[[int, int], None] | None = None,
-        on_fiche: Callable[[int, int], None] | None = None,
-    ) -> None:
-        raise RuntimeError("HTTP 503")
+    _echec = Mock(side_effect=RuntimeError("HTTP 503"))
 
-    monkeypatch.setattr(ChoisirLeServicePublic, "rechercher", _csp)
+    monkeypatch.setattr(
+        ChoisirLeServicePublic, "rechercher", SourceFactice(_csp).rechercher
+    )
     monkeypatch.setattr(EmploiTerritorial, "rechercher", _echec)
     progressions: list[tuple[str, int, int]] = []
     terminees: list[str] = []
@@ -633,23 +587,13 @@ def test_rechercher_previent_sans_exclure_une_source_qui_ignore_un_critere(
             "fhf": True,
         }
     )
-    interrogees: list[str] = []
-
-    def _fhf_espion(
-        self: Fhf,
-        filtres: FiltresRecherche,
-        on_page: object = None,
-        on_fiche: object = None,
-    ) -> _Resultat:
-        interrogees.append("fhf")
-        return [_offre("F1", "FHF")], 1, False
-
-    monkeypatch.setattr(Fhf, "rechercher", _fhf_espion)
+    fhf = Mock(return_value=([_offre("F1", "FHF")], 1, False))
+    monkeypatch.setattr(Fhf, "rechercher", fhf)
     avertissements: list[str] = []
     offres, _, _ = rechercher_toutes_sources(
         {"categories": ["A"]}, {}, on_avertissement=avertissements.append
     )
-    assert interrogees == ["fhf"]
+    fhf.assert_called_once()
     assert [o["reference"] for o in offres] == ["F1"]
     assert len(avertissements) == 1
     assert "la catégorie" in avertissements[0]
@@ -673,11 +617,7 @@ def test_rechercher_ecarte_les_offres_hors_fenetre_de_date_des_sources_sans_filt
     monkeypatch.setattr(
         PasserellesMef,
         "rechercher",
-        lambda self, filtres, on_page=None, on_fiche=None: (
-            [recente, ancienne],
-            1,
-            False,
-        ),
+        Mock(return_value=([recente, ancienne], 1, False)),
     )
     offres, _, _ = rechercher_toutes_sources(
         {"date_publication": "7 derniers jours"}, {}
@@ -688,20 +628,17 @@ def test_rechercher_ecarte_les_offres_hors_fenetre_de_date_des_sources_sans_filt
 def test_rechercher_remonte_la_lecture_des_fiches(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def _csp(
-        self: object,
-        filtres: FiltresRecherche,
-        on_page: Callable[[int, int], None] | None = None,
-        on_fiche: Callable[[int, int], None] | None = None,
-    ) -> tuple[list[Offre], int, bool]:
-        assert on_fiche is not None
-        on_fiche(1, 2)
-        on_fiche(2, 2)
+    def _csp(appel: Appel) -> Resultat:
+        assert appel.on_fiche is not None
+        appel.on_fiche(1, 2)
+        appel.on_fiche(2, 2)
         return [_offre("O1")], 1, False
 
-    monkeypatch.setattr(ChoisirLeServicePublic, "rechercher", _csp)
     monkeypatch.setattr(
-        EmploiTerritorial, "rechercher", lambda *_a, **_k: ([], 1, False)
+        ChoisirLeServicePublic, "rechercher", SourceFactice(_csp).rechercher
+    )
+    monkeypatch.setattr(
+        EmploiTerritorial, "rechercher", Mock(return_value=([], 1, False))
     )
     lectures: list[tuple[str, int, int]] = []
     rechercher_toutes_sources(
@@ -716,10 +653,10 @@ def test_une_source_sans_offre_dont_le_site_va_bien_est_une_recherche_vide(
     monkeypatch: pytest.MonkeyPatch, _site_en_bon_etat: list[str]
 ) -> None:
     monkeypatch.setattr(
-        ChoisirLeServicePublic, "rechercher", lambda *_a, **_k: ([], 1, False)
+        ChoisirLeServicePublic, "rechercher", Mock(return_value=([], 1, False))
     )
     monkeypatch.setattr(
-        EmploiTerritorial, "rechercher", lambda *_a, **_k: ([_offre("T1")], 1, False)
+        EmploiTerritorial, "rechercher", Mock(return_value=([_offre("T1")], 1, False))
     )
     resultats, avertissements, erreurs = _executer({})
 
@@ -737,10 +674,10 @@ def test_une_source_sans_offre_dont_le_site_est_en_panne_est_signalee(
 
     monkeypatch.setattr(orchestration, "controler_site", panne)
     monkeypatch.setattr(
-        ChoisirLeServicePublic, "rechercher", lambda *_a, **_k: ([], 1, False)
+        ChoisirLeServicePublic, "rechercher", Mock(return_value=([], 1, False))
     )
     monkeypatch.setattr(
-        EmploiTerritorial, "rechercher", lambda *_a, **_k: ([_offre("T1")], 1, False)
+        EmploiTerritorial, "rechercher", Mock(return_value=([_offre("T1")], 1, False))
     )
     resultats, avertissements, erreurs = _executer({})
 
@@ -753,15 +690,14 @@ def test_une_source_sans_offre_dont_le_site_est_en_panne_est_signalee(
 def test_toutes_les_sources_vides_et_en_panne_la_recherche_est_impossible(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def panne(_url: str) -> None:
-        raise RuntimeError("Le site annonce une panne")
+    panne = Mock(side_effect=RuntimeError("Le site annonce une panne"))
 
     monkeypatch.setattr(orchestration, "controler_site", panne)
     monkeypatch.setattr(
-        ChoisirLeServicePublic, "rechercher", lambda *_a, **_k: ([], 1, False)
+        ChoisirLeServicePublic, "rechercher", Mock(return_value=([], 1, False))
     )
     monkeypatch.setattr(
-        EmploiTerritorial, "rechercher", lambda *_a, **_k: ([], 1, False)
+        EmploiTerritorial, "rechercher", Mock(return_value=([], 1, False))
     )
     _, _, erreurs = _executer({})
     assert erreurs and "indisponibles" in erreurs[0]
@@ -770,14 +706,13 @@ def test_toutes_les_sources_vides_et_en_panne_la_recherche_est_impossible(
 def test_source_en_echec_est_signalee_par_son_nom(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def echec(*_args: object, **_kwargs: object) -> None:
-        raise RuntimeError("HTTP 503")
+    echec = Mock(side_effect=RuntimeError("HTTP 503"))
 
     monkeypatch.setattr(EmploiTerritorial, "rechercher", echec)
     monkeypatch.setattr(
         ChoisirLeServicePublic,
         "rechercher",
-        lambda *_a, **_k: ([_offre("O1")], 1, False),
+        Mock(return_value=([_offre("O1")], 1, False)),
     )
     noms: list[str] = []
     rechercher_toutes_sources({}, {}, on_echec_source=noms.append)
@@ -787,8 +722,7 @@ def test_source_en_echec_est_signalee_par_son_nom(
 def test_date_de_lancement_non_enregistree_ne_fait_pas_echouer_le_traitement(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def refuse(_nom: str) -> None:
-        raise PermissionError("tenu")
+    refuse = Mock(side_effect=PermissionError("tenu"))
 
     monkeypatch.setattr(orchestration, "noter_lancement", refuse)
     resultat = post_traiter_resultats([_offre("O1")], [], False, "fiche")

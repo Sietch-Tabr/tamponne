@@ -2,6 +2,7 @@
 vérification en arrière-plan (QThread) et actions."""
 
 from datetime import date
+from unittest.mock import Mock
 
 import pytest
 from PySide6.QtCore import QModelIndex, Qt
@@ -93,7 +94,9 @@ def test_verifier_offres_relaie_progression_et_marque_depubliee(
     qapp: QApplication, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     textes: list[str] = []
-    monkeypatch.setattr(travailleurs, "verifier_disponibilite", lambda _url: False)
+    monkeypatch.setattr(
+        travailleurs, "verifier_disponibilite", Mock(return_value=False)
+    )
     controleur = ControleurSuivi(qapp)
     controleur.etat_change.connect(
         lambda: textes.append(controleur.property("texte_verification"))
@@ -117,8 +120,7 @@ def test_verifier_offres_relaie_progression_et_marque_depubliee(
 def test_verifier_offres_echec_reseau_signale_sans_rien_conclure(
     qapp: QApplication, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    def injoignable(_url: str) -> bool:
-        raise RuntimeError("Erreur réseau lors du chargement")
+    injoignable = Mock(side_effect=RuntimeError("Erreur réseau lors du chargement"))
 
     monkeypatch.setattr(travailleurs, "verifier_disponibilite", injoignable)
     controleur = ControleurSuivi(qapp)
@@ -137,7 +139,7 @@ def test_verifier_offres_echec_reseau_signale_sans_rien_conclure(
 def test_verifier_offres_sans_echec_sans_avertissement(
     qapp: QApplication, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(travailleurs, "verifier_disponibilite", lambda _url: True)
+    monkeypatch.setattr(travailleurs, "verifier_disponibilite", Mock(return_value=True))
     controleur = ControleurSuivi(qapp)
     controleur.verifier_offres()
     qtbot.waitUntil(
@@ -324,7 +326,7 @@ def test_verification_automatique_revoit_une_depublication_recente_et_l_efface(
     candidature["depubliee_le"] = date.today().isoformat()
     candidature["derniere_verification"] = "2020-01-01"
     _sauver(candidature)
-    monkeypatch.setattr(travailleurs, "verifier_disponibilite", lambda _url: True)
+    monkeypatch.setattr(travailleurs, "verifier_disponibilite", Mock(return_value=True))
     controleur = ControleurSuivi(qapp)
 
     controleur.verifier_si_necessaire()

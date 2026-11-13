@@ -2,9 +2,10 @@
 (aucun appel réseau) : formulaire, recherche en QThread, registre,
 classement en profil, mode édition et actions sur une offre."""
 
-from collections.abc import Callable, Iterator
+from collections.abc import Iterator
 from datetime import date
 from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
 from PySide6.QtCore import QModelIndex, Qt
@@ -22,6 +23,7 @@ from src.sources.choisirleservicepublic import ChoisirLeServicePublic
 from src.sources.choisirleservicepublic.extraction import DETAIL_VIDE
 from src.sources.emploiterritorial import EmploiTerritorial
 from src.types import FiltresRecherche, Offre
+from tests.doubles import Appel, Resultat, SourceFactice
 
 
 def _offre(
@@ -47,15 +49,10 @@ def _sources_factices(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         {"passerellesmef": False, "fhf": False}
     )
 
-    def _csp(
-        self: object,
-        filtres: FiltresRecherche,
-        on_page: Callable[[int, int], None] | None = None,
-        on_fiche: Callable[[int, int], None] | None = None,
-    ) -> tuple[list[Offre], int, bool]:
-        assert on_page is not None
-        on_page(1, 2)
-        on_page(2, 2)
+    def _csp(appel: Appel) -> Resultat:
+        assert appel.on_page is not None
+        appel.on_page(1, 2)
+        appel.on_page(2, 2)
         return (
             [
                 _offre("MINT_2026-1", "Attaché(e) d'administration RH", "01/10/2026"),
@@ -65,13 +62,8 @@ def _sources_factices(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
             False,
         )
 
-    def _territorial(
-        self: object,
-        filtres: FiltresRecherche,
-        on_page: Callable[[int, int], None] | None = None,
-        on_fiche: Callable[[int, int], None] | None = None,
-    ) -> tuple[list[Offre], int, bool]:
-        return (
+    _territorial = Mock(
+        return_value=(
             [
                 _offre(
                     "T3",
@@ -83,8 +75,11 @@ def _sources_factices(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
             1,
             False,
         )
+    )
 
-    monkeypatch.setattr(ChoisirLeServicePublic, "rechercher", _csp)
+    monkeypatch.setattr(
+        ChoisirLeServicePublic, "rechercher", SourceFactice(_csp).rechercher
+    )
     monkeypatch.setattr(EmploiTerritorial, "rechercher", _territorial)
 
 
@@ -252,7 +247,7 @@ def test_consulter_et_tamponner_passent_par_un_thread(
     )
     detail["description"] = "Missions."
     monkeypatch.setattr(
-        controleur_recherche, "recuperer_detail_offre", lambda url: detail
+        controleur_recherche, "recuperer_detail_offre", Mock(return_value=detail)
     )
     suivis: list[str] = []
     monkeypatch.setattr(
@@ -279,7 +274,7 @@ def test_consulter_ligne_ouvre_la_fiche_dans_l_application(
     monkeypatch.setattr(
         controleur_recherche,
         "recuperer_detail_offre",
-        lambda url: DETAIL_VIDE,
+        Mock(return_value=DETAIL_VIDE),
     )
     ouverts: list[object] = []
     monkeypatch.setattr(
@@ -404,19 +399,15 @@ def test_fiche_aux_criteres_modifies_n_est_pas_touchee(
 def test_export_resume_les_criteres_de_la_recherche_affichee(
     controleur: ControleurRecherche, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    recus: list[str] = []
-
-    def exporter(offres: object, resume: str, nb_pages: int, profil: object) -> Path:
-        recus.append(resume)
-        return Path("export.html")
-
+    exporter = Mock(return_value=Path("export.html"))
     monkeypatch.setattr(controleur_recherche, "exporter_html", exporter)
     controleur.basculer("categories", "A", True)
     controleur.lancer()
     _attendre(controleur, qtbot)
     controleur.basculer("categories", "C", True)
     controleur.exporter()
-    assert recus[0] == resumer_filtres(
+    resume_exporte = exporter.call_args.args[1]
+    assert resume_exporte == resumer_filtres(
         {**controleur.construire_filtres(), "categories": ["A"]}
     )
 
@@ -424,14 +415,7 @@ def test_export_resume_les_criteres_de_la_recherche_affichee(
 def test_nouvelles_seulement_et_export_des_offres_visibles(
     controleur: ControleurRecherche, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    exportees: list[list[Offre]] = []
-
-    def exporter(
-        offres: list[Offre], resume: str, nb_pages: int, profil: object
-    ) -> Path:
-        exportees.append(offres)
-        return Path("export.html")
-
+    exporter = Mock(return_value=Path("export.html"))
     monkeypatch.setattr(controleur_recherche, "exporter_html", exporter)
     profils.sauvegarder_profils(
         {"f": {"label": "F", "versants": ["etat", "territorial"]}}
@@ -441,7 +425,7 @@ def test_nouvelles_seulement_et_export_des_offres_visibles(
     controleur.filtrer("finances")
     assert controleur.property("modele").rowCount() == 1
     controleur.exporter()
-    assert [o["reference"] for o in exportees[0]] == ["T3"]
+    assert [o["reference"] for o in exporter.call_args.args[0]] == ["T3"]
     controleur.filtrer("")
     controleur.nouvelles_seulement(True)
     assert controleur.property("modele").rowCount() == 2
@@ -538,11 +522,11 @@ def test_consulter_ouvre_la_fenetre_avant_la_fin_du_telechargement(
     controleur: ControleurRecherche, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(
-        controleur_recherche, "recuperer_detail_offre", lambda url: _detail_lu()
+        controleur_recherche, "recuperer_detail_offre", Mock(return_value=_detail_lu())
     )
     ordre: list[str] = []
     controleur.detail_attendu.connect(lambda apercu: ordre.append(apercu["titre"]))
-    controleur.detail_pret.connect(lambda fiche: ordre.append("pret"))
+    controleur.detail_pret.connect(lambda _: ordre.append("pret"))
     controleur.lancer()
     _attendre(controleur, qtbot)
     controleur.selectionner(0)
@@ -623,8 +607,7 @@ def test_precharger_selection_prepare_la_consultation(
 def test_exception_inattendue_pendant_la_recherche_ne_bloque_pas_l_ecran(
     controleur: ControleurRecherche, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    def casse(*_args: object, **_kwargs: object) -> None:
-        raise KeyError("imprévu")
+    casse = Mock(side_effect=KeyError("imprévu"))
 
     monkeypatch.setattr(travailleurs, "rechercher_toutes_sources", casse)
     controleur.lancer()
@@ -638,8 +621,7 @@ def test_exception_inattendue_pendant_la_recherche_ne_bloque_pas_l_ecran(
 def test_exception_pendant_l_affichage_du_resultat_est_signalee(
     controleur: ControleurRecherche, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    def casse(*_args: object, **_kwargs: object) -> None:
-        raise OSError("disque")
+    casse = Mock(side_effect=OSError("disque"))
 
     monkeypatch.setattr(controleur_recherche, "post_traiter_resultats", casse)
     controleur.lancer()
@@ -666,8 +648,7 @@ def test_source_en_echec_est_marquee_indisponible_sans_lire_le_texte(
 def test_echec_du_prechargement_ne_montre_aucune_erreur(
     controleur: ControleurRecherche, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    def casse(url: str) -> dict[str, object]:
-        raise RuntimeError("site injoignable")
+    casse = Mock(side_effect=RuntimeError("site injoignable"))
 
     monkeypatch.setattr(controleur_recherche, "recuperer_detail_offre", casse)
     controleur.lancer()
@@ -686,8 +667,7 @@ def test_echec_du_prechargement_ne_montre_aucune_erreur(
 def test_echec_de_la_consultation_est_montre(
     controleur: ControleurRecherche, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    def casse(url: str) -> dict[str, object]:
-        raise RuntimeError("site injoignable")
+    casse = Mock(side_effect=RuntimeError("site injoignable"))
 
     monkeypatch.setattr(controleur_recherche, "recuperer_detail_offre", casse)
     controleur.lancer()
@@ -703,7 +683,7 @@ def test_verrous_par_url_sont_retires_apres_usage(
     controleur: ControleurRecherche, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(
-        controleur_recherche, "recuperer_detail_offre", lambda url: _detail_lu()
+        controleur_recherche, "recuperer_detail_offre", Mock(return_value=_detail_lu())
     )
     for numero in range(5):
         controleur._lire_detail(f"https://exemple.test/{numero}")
@@ -714,7 +694,7 @@ def test_fiches_de_poste_ecrites_par_lots_et_a_l_arret(
     controleur: ControleurRecherche, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(
-        controleur_recherche, "recuperer_detail_offre", lambda url: _detail_lu()
+        controleur_recherche, "recuperer_detail_offre", Mock(return_value=_detail_lu())
     )
     lot = controleur_recherche.ENREGISTREMENT_DETAILS_PAR_LOT
     for numero in range(lot - 1):
@@ -735,7 +715,7 @@ def test_consulter_signale_une_offre_deja_suivie(
     controleur: ControleurRecherche, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(
-        controleur_recherche, "recuperer_detail_offre", lambda url: _detail_lu()
+        controleur_recherche, "recuperer_detail_offre", Mock(return_value=_detail_lu())
     )
     fiches: list[dict[str, object]] = []
     controleur.detail_pret.connect(fiches.append)
