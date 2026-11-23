@@ -3,6 +3,7 @@
 import io
 import json
 import shutil
+import sys
 import tempfile
 import urllib.request
 import zipfile
@@ -307,6 +308,7 @@ def _construire_zip_test_avec_executable(tmp_path: Path) -> str:
     return str(chemin_zip)
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="droits POSIX")
 def test_appliquer_maj_fichier_executable_dans_larchive_reste_executable(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -410,6 +412,7 @@ def test_installer_archive_ne_purge_rien_dans_un_clone_git(tmp_path: Path) -> No
     assert (racine / "src/local.py").exists()
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="un fichier ouvert n'est remplaçable que sous POSIX")
 def test_installer_archive_remplace_sans_reecrire_le_fichier_ouvert(
     tmp_path: Path,
 ) -> None:
@@ -636,6 +639,7 @@ def test_installer_archive_ne_purge_pas_src_si_la_publication_n_en_a_pas(
     assert (racine / "src" / "ancien.py").exists()
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="droits POSIX")
 def test_appliquer_maj_chmod_ignore_un_nom_d_archive_hors_du_dossier(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

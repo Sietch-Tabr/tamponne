@@ -143,8 +143,13 @@ def test_lancer_synchronisation_impossible_revient_a_la_version_precedente(
 
 
 def test_lancer_version_precedente_non_synchronisable_demande_de_relancer(
-    marqueur: Path, capsys: pytest.CaptureFixture[str]
+    marqueur: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    # Sous Windows, la mise à jour de uv passe aussi par l'installeur (voir
+    # test_mettre_a_jour_uv_sous_windows) : ici le cas des autres systèmes.
+    monkeypatch.setattr(lanceur.sys, "platform", "linux")
     marqueur.write_text('{"version": "1.1.0"}', encoding="utf-8")
     executer = Executeur(
         {"maj": [0], "sync": [1, 1, 1, 1], "self": [1, 1]}, {"maj": _installer_1_1}
