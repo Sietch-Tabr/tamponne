@@ -1,0 +1,46 @@
+name: Publication
+
+# Se déclenche à la pose d'un tag de version (jamais sans demande explicite) :
+# les notes sont la section du CHANGELOG.md correspondant au tag.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  publication:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Vérifier la version du tag
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          attendue=$(grep -m1 '^version = ' pyproject.toml | cut -d'"' -f2)
+          if [ "$version" != "$attendue" ]; then
+            echo "Le tag $GITHUB_REF_NAME ne correspond pas à pyproject.toml ($attendue)." >&2
+            exit 1
+          fi
+      - name: Extraire les notes du CHANGELOG
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v v="$version" '
+            /^## \[/ { if (trouve) exit; trouve = index($0, "[" v "]") }
+            trouve { print }
+          ' CHANGELOG.md | tail -n +2 > notes.md
+          if [ ! -s notes.md ]; then
+            echo "Aucune section $version dans CHANGELOG.md." >&2
+            exit 1
+          fi
+      - name: Créer la release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Une release déjà créée à la main n'est pas touchée.
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "La release $GITHUB_REF_NAME existe déjà."
+            exit 0
+          fi
+          gh release create "$GITHUB_REF_NAME" --verify-tag \
+            --title "$GITHUB_REF_NAME" --notes-file notes.md

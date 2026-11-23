@@ -1,0 +1,15 @@
+name: Amélioration
+description: Proposer une évolution ou une nouvelle source d'offres
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: besoin
+    attributes:
+      label: Le besoin
+      description: Ce que vous voulez pouvoir faire, et pourquoi.
+    validations:
+      required: true
+  - type: textarea
+    id: idee
+    attributes:
+      label: Piste de solution

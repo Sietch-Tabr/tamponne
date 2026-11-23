@@ -1,0 +1,31 @@
+name: Anomalie
+description: Quelque chose ne fonctionne pas comme prévu
+labels: ["bug"]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Version de Tamponné
+      description: Visible dans Réglages.
+    validations:
+      required: true
+  - type: dropdown
+    id: systeme
+    attributes:
+      label: Système
+      options: [Windows, macOS, Linux]
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Ce qui se passe
+      description: Ce que vous avez fait, ce que vous attendiez, ce qui est arrivé.
+    validations:
+      required: true
+  - type: textarea
+    id: journal
+    attributes:
+      label: Extrait du journal
+      description: Fin du fichier `data/tamponne.log`, sans nom de fiche ni contenu de candidature.
+      render: text
