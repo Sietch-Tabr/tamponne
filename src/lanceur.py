@@ -459,13 +459,20 @@ def verrou_libre() -> bool:
         return False
 
 
+def _boite_de_dialogue(message: str) -> None:
+    """Boîte de dialogue d'erreur de Windows, qui attend un clic (isolée pour
+    que les tests n'en ouvrent aucune)."""
+    if sys.platform == "win32":
+        ctypes.windll.user32.MessageBoxW(None, message, "Tamponné", 0x10)
+
+
 def signaler(message: str) -> None:
     """Message d'erreur dans le journal, sur la sortie d'erreur et, sous
     Windows où le lanceur tourne sans console, dans une boîte de dialogue."""
     noter(f"{datetime.now():%H:%M:%S} ERREUR lanceur\u00a0: {message}")
     print(message, file=sys.stderr)
     if sys.platform == "win32":
-        ctypes.windll.user32.MessageBoxW(None, message, "Tamponné", 0x10)
+        _boite_de_dialogue(message)
 
 
 def _relancer_sans_console() -> None:

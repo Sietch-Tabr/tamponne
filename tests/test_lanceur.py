@@ -143,8 +143,13 @@ def test_lancer_synchronisation_impossible_revient_a_la_version_precedente(
 
 
 def test_lancer_version_precedente_non_synchronisable_demande_de_relancer(
-    marqueur: Path, capsys: pytest.CaptureFixture[str]
+    marqueur: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    # Sous Windows, la mise à jour de uv passe aussi par l'installeur (voir
+    # test_mettre_a_jour_uv_sous_windows) : ici le cas des autres systèmes.
+    monkeypatch.setattr(lanceur.sys, "platform", "linux")
     marqueur.write_text('{"version": "1.1.0"}', encoding="utf-8")
     executer = Executeur(
         {"maj": [0], "sync": [1, 1, 1, 1], "self": [1, 1]}, {"maj": _installer_1_1}
@@ -365,6 +370,22 @@ def test_signaler_note_le_message_dans_le_journal(
     assert re.search(
         r"^\d\d:\d\d:\d\d ERREUR lanceur\u00a0: Mise à jour annulée\.$", contenu, re.M
     )
+
+
+def test_signaler_sous_windows_ouvre_la_boite_de_dialogue(
+    monkeypatch: pytest.MonkeyPatch, _neutraliser_boite_de_dialogue: Mock
+) -> None:
+    monkeypatch.setattr(lanceur.sys, "platform", "win32")
+    lanceur.signaler("Mise à jour annulée.")
+    _neutraliser_boite_de_dialogue.assert_called_once_with("Mise à jour annulée.")
+
+
+def test_signaler_hors_windows_n_ouvre_pas_de_boite_de_dialogue(
+    monkeypatch: pytest.MonkeyPatch, _neutraliser_boite_de_dialogue: Mock
+) -> None:
+    monkeypatch.setattr(lanceur.sys, "platform", "linux")
+    lanceur.signaler("Mise à jour annulée.")
+    _neutraliser_boite_de_dialogue.assert_not_called()
 
 
 def test_avec_detail_sans_journal_garde_le_message(

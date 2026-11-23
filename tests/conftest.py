@@ -123,7 +123,18 @@ def _rediriger_journal_vers_tmp(
     """Le lanceur note ses messages dans le journal : jamais dans le vrai
     data/tamponne.log pendant les tests."""
     monkeypatch.setattr(lanceur, "CHEMIN_JOURNAL", tmp_path / "tamponne.log")
+
+
     monkeypatch.setattr(lanceur, "CHEMIN_JOURNAL_ARCHIVE", tmp_path / "tamponne.1.log")
+
+
+@pytest.fixture(autouse=True)
+def _neutraliser_boite_de_dialogue(monkeypatch: pytest.MonkeyPatch) -> Mock:
+    """Sous Windows, `signaler` ouvre une vraie boîte modale : elle bloquerait
+    la série de tests (et la CI) jusqu'à un clic."""
+    boite = Mock()
+    monkeypatch.setattr(lanceur, "_boite_de_dialogue", boite)
+    return boite
 
 
 @pytest.fixture(autouse=True)
