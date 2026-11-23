@@ -33,6 +33,7 @@ def _rediriger_maj_vers_tmp(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> 
     temporaire isolé — jamais de vrai appel réseau ni d'écriture dans le
     vrai dépôt pendant les tests."""
     monkeypatch.setattr(maj, "CHEMIN_MARQUEUR", tmp_path / "maj_disponible.json")
+    monkeypatch.setattr(maj, "CHEMIN_ECHEC", tmp_path / "maj_echouee.json")
     chemin_pyproject = tmp_path / "pyproject.toml"
     chemin_pyproject.write_text('[project]\nversion = "1.0.0"\n', encoding="utf-8")
     monkeypatch.setattr(maj, "CHEMIN_PYPROJECT", chemin_pyproject)
