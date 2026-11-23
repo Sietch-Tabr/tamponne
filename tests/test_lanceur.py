@@ -367,6 +367,22 @@ def test_signaler_note_le_message_dans_le_journal(
     )
 
 
+def test_signaler_sous_windows_ouvre_la_boite_de_dialogue(
+    monkeypatch: pytest.MonkeyPatch, _neutraliser_boite_de_dialogue: Mock
+) -> None:
+    monkeypatch.setattr(lanceur.sys, "platform", "win32")
+    lanceur.signaler("Mise à jour annulée.")
+    _neutraliser_boite_de_dialogue.assert_called_once_with("Mise à jour annulée.")
+
+
+def test_signaler_hors_windows_n_ouvre_pas_de_boite_de_dialogue(
+    monkeypatch: pytest.MonkeyPatch, _neutraliser_boite_de_dialogue: Mock
+) -> None:
+    monkeypatch.setattr(lanceur.sys, "platform", "linux")
+    lanceur.signaler("Mise à jour annulée.")
+    _neutraliser_boite_de_dialogue.assert_not_called()
+
+
 def test_avec_detail_sans_journal_garde_le_message(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

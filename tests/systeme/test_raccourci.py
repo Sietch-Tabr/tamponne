@@ -4,6 +4,7 @@ pour chaque système (profil utilisateur redirigé par `conftest.py`)."""
 import os
 import plistlib
 import subprocess
+import sys
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
@@ -47,6 +48,7 @@ def test_premier_lancement_question_posee_une_seule_fois(
     assert raccourci.etat(racine) == "absent"
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="chemins et droits POSIX")
 def test_linux_desktop_cree_puis_deplace_puis_retire(
     monkeypatch: pytest.MonkeyPatch, racine: Path, tmp_path: Path
 ) -> None:
@@ -74,6 +76,7 @@ def test_linux_desktop_cree_puis_deplace_puis_retire(
     assert raccourci.question_au_lancement(deplacee) == "aucune"
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="chemins et droits POSIX")
 def test_linux_exec_echappe_guillemets_dollar_et_pourcent(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -88,6 +91,7 @@ def test_linux_exec_echappe_guillemets_dollar_et_pourcent(
     assert '\\\\"b\\\\$c%%d/Tamponne.command"' in contenu
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="chemins et droits POSIX")
 def test_macos_application_creee(monkeypatch: pytest.MonkeyPatch, racine: Path) -> None:
     _sur(monkeypatch, "macos")
     raccourci.creer(racine)
