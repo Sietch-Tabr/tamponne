@@ -4,6 +4,18 @@ Toutes les évolutions notables de Tamponné, de la plus récente à la plus
 ancienne. Le détail de chaque version est aussi publié sur la page
 [Releases](https://github.com/Sietch-Tabr/tamponne/releases) du dépôt.
 
+## [1.7.9] — 2026-11-23
+
+### Nouveautés
+
+- Tamponné est désormais distribué sous licence GNU GPL version 3 ou ultérieure : le fichier `LICENSE` accompagne l'application et le README indique la licence de chaque composant
+
+### En coulisses
+
+- Intégration continue sur GitHub : les tests tournent sous Linux, macOS et Windows, avec la vérification des types ; analyse de sécurité CodeQL, mises à jour de bibliothèques proposées chaque semaine par Dependabot, politique de sécurité et modèles de tickets
+- Tests : sous Windows, le lanceur ouvrait une vraie boîte de dialogue qui bloquait la série ; elle est isolée et neutralisée, et les cas propres à POSIX (droits, chemins, fichier ouvert) y sont ignorés
+- Tests : l'échec de mise à jour mémorisé par deux tests s'écrivait dans le vrai dossier `data/` ; il est redirigé comme les autres données
+
 ## [1.7.8] — 2026-11-14
 
 ### En coulisses
