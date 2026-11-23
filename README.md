@@ -216,3 +216,7 @@ uv run python -m outils.comparer_maquette recherche   # maquette / application, 
 
 - `RECHERCHES.md` — notes de reverse engineering de l'API choisirleservicepublic.gouv.fr
 - `outils/maquette/` — maquette de référence de l'interface
+
+## Licence
+
+Tamponné est distribué sous licence [GNU GPL version 3 ou ultérieure](LICENSE). PySide6 est utilisé sous sa licence GPL, les polices gardent leur licence SIL OFL 1.1.
