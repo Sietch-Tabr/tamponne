@@ -4,6 +4,14 @@ Toutes les évolutions notables de Tamponné, de la plus récente à la plus
 ancienne. Le détail de chaque version est aussi publié sur la page
 [Releases](https://github.com/Sietch-Tabr/tamponne/releases) du dépôt.
 
+## [1.7.10] — 2026-11-25
+
+### Corrections
+
+- Réglages › Avis de mise à jour : quand GitHub ne peut pas être interrogé, l'avis dit désormais pourquoi et quoi faire, sur des lignes distinctes, au lieu d'une seule ligne de texte brut ; le détail technique est isolé dans un bloc à part
+- Quota de requêtes GitHub épuisé (limite de 60 par heure et par adresse internet, partagée derrière un proxy d'entreprise) : l'avis l'explique et donne l'heure de reprise
+- Un refus HTTP 403 ou 429 qui n'est pas un quota épuisé (proxy qui bloque `api.github.com`) n'est plus présenté comme un quota ; proxy demandant une authentification (407), panne de GitHub (5xx) et réponse coupée ou altérée en route ont chacun leur message
+
 ## [1.7.9] — 2026-11-23
 
 ### Nouveautés
