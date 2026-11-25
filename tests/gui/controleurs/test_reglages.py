@@ -197,24 +197,46 @@ def test_verifier_mise_a_jour_affiche_l_avis_trouve(
 
 
 @pytest.mark.usefixtures("qapp")
-def test_verifier_mise_a_jour_github_injoignable_le_dit(
+def test_verifier_mise_a_jour_echec_separe_objet_explication_et_detail(
     qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     def injoignable() -> None:
-        raise maj.VerificationImpossible("<urlopen error timed out>")
+        raise maj.VerificationImpossible(
+            "<urlopen error timed out>", "Vérifiez le proxy & réessayez."
+        )
 
     monkeypatch.setattr(travailleurs, "verifier_derniere_publication", injoignable)
     reglages = ControleurReglages()
     reglages.verifier_mise_a_jour()
-    qtbot.waitUntil(
-        lambda: "GitHub ne répond pas" in reglages.property("avis")["objet"],
-        timeout=5000,
-    )
+    qtbot.waitUntil(lambda: "explication" in reglages.property("avis"), timeout=5000)
     reglages.arreter()
     avis = reglages.property("avis")
     assert avis["a_jour"] is False
+    assert avis["objet"].endswith(
+        "impossible de savoir s'il existe une version plus récente."
+    )
     assert "rien de plus récent" not in avis["objet"]
-    assert avis["objet"].endswith("Détail\u00a0: &lt;urlopen error timed out&gt;")
+    assert avis["explication"] == "Vérifiez le proxy &amp; réessayez."
+    assert avis["detail"] == "<urlopen error timed out>"
+
+
+@pytest.mark.usefixtures("qapp")
+def test_echec_sans_explication_retombe_sur_le_message_generique() -> None:
+    reglages = ControleurReglages()
+    reglages.afficher_echec_verification("", "erreur imprévue")
+    avis = reglages.property("avis")
+    assert avis["explication"] == maj.MESSAGE_INJOIGNABLE
+    assert avis["detail"] == "erreur imprévue"
+
+
+@pytest.mark.usefixtures("qapp")
+def test_un_resultat_efface_l_echec_precedent() -> None:
+    reglages = ControleurReglages()
+    reglages.afficher_echec_verification("Cause.", "détail")
+    reglages.afficher_avis(None)
+    avis = reglages.property("avis")
+    assert "explication" not in avis
+    assert avis["a_jour"] is True
 
 
 @pytest.mark.usefixtures("qapp")

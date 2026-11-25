@@ -281,7 +281,7 @@ wheels = [
 
 [[package]]
 name = "tamponne"
-version = "1.7.9"
+version = "1.7.10"
 source = { editable = "." }
 dependencies = [
     { name = "beautifulsoup4" },

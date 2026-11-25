@@ -357,15 +357,16 @@ def test_texte_offres_non_verifiees_accorde_et_donne_le_detail() -> None:
 
 
 def test_texte_avis_sans_publication_distingue_en_cours_echec_et_a_jour() -> None:
-    assert presentation.texte_avis_sans_publication("1.3.2", True, "") == (
+    assert presentation.texte_avis_sans_publication("1.3.2", True, False) == (
         "version 1.3.2 installée, recherche d'une mise à jour…"
     )
-    assert presentation.texte_avis_sans_publication("1.3.2", False, "") == (
+    assert presentation.texte_avis_sans_publication("1.3.2", False, False) == (
         "version 1.3.2 installée, rien de plus récent."
     )
-    echec = presentation.texte_avis_sans_publication("1.3.2", False, "timed out")
-    assert "GitHub ne répond pas (connexion internet ou proxy)" in echec
-    assert echec.endswith("Détail : timed out")
+    assert presentation.texte_avis_sans_publication("1.3.2", False, True) == (
+        "version 1.3.2 installée\u00a0; impossible de savoir s'il existe une "
+        "version plus récente."
+    )
 
 
 def test_texte_date_cache_absent_est_vide() -> None:

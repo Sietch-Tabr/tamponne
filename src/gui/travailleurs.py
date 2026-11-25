@@ -132,8 +132,9 @@ class VerificateurMiseAJour(QObject):
     resultat = Signal(object)
     """`InfoMaj | None` — `None` si aucune mise à jour (rien de publié,
     déjà à jour)."""
-    echec = Signal(str)
-    """GitHub injoignable : détail technique de l'erreur."""
+    echec = Signal(str, str)
+    """Vérification impossible : explication simple (cause et action), puis
+    détail technique de l'erreur."""
 
     def executer(self) -> None:
         """Slot à connecter à `QThread.started`. Pose le marqueur de mise
@@ -146,11 +147,11 @@ class VerificateurMiseAJour(QObject):
             info = verifier_derniere_publication()
         except VerificationImpossible as erreur:
             journal.warning("Vérification de mise à jour impossible\u00a0: %s", erreur)
-            self.echec.emit(str(erreur))
+            self.echec.emit(erreur.explication, str(erreur))
             return
         except Exception:  # noqa: BLE001 - tout échec doit terminer le thread
             journal.exception("Vérification de mise à jour : erreur inattendue")
-            self.echec.emit(MESSAGE_INATTENDU)
+            self.echec.emit("", MESSAGE_INATTENDU)
             return
         if info is not None and not maj_en_echec(info["version"]):
             try:

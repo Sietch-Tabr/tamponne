@@ -17,10 +17,12 @@ import shutil
 import sys
 import tempfile
 import tomllib
+lazy import http.client
 lazy import urllib.error
 lazy import urllib.request
 lazy import zipfile
-from datetime import date
+from collections.abc import Mapping
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import cast
 
@@ -74,8 +76,78 @@ def version_plus_recente(distante: str, locale: str) -> bool:
 
 
 class VerificationImpossible(RuntimeError):
-    """GitHub n'a pas pu être interrogé ; le message est le détail
-    technique (erreur réseau, réponse illisible, limite de requêtes)."""
+    """GitHub n'a pas pu être interrogé.
+
+    `str(erreur)` est le détail technique (journal, bloc « Détail ») ;
+    `explication` dit en une ou deux phrases simples ce qui s'est passé et
+    quoi faire. Vide, l'interface retombe sur un message générique.
+    """
+
+    def __init__(self, detail: str, explication: str = "") -> None:
+        super().__init__(detail)
+        self.explication = explication
+
+
+MESSAGE_INJOIGNABLE = (
+    "GitHub n'a pas répondu. Vérifiez votre connexion internet ou le proxy "
+    "de votre réseau, puis réessayez."
+)
+
+
+def _heure_de_reprise(en_tetes: Mapping[str, str]) -> str:
+    """Heure locale (« 14\u00a0h\u00a005 ») à laquelle GitHub rouvre l'accès,
+    d'après `x-ratelimit-reset` (horodatage Unix) ou `retry-after`
+    (secondes) ; vide si l'en-tête manque ou est illisible."""
+    try:
+        if "x-ratelimit-reset" in en_tetes:
+            moment = datetime.fromtimestamp(int(en_tetes["x-ratelimit-reset"]))
+        elif "retry-after" in en_tetes:
+            moment = datetime.now() + timedelta(seconds=int(en_tetes["retry-after"]))
+        else:
+            return ""
+    except ValueError, OverflowError, OSError:
+        return ""
+    return f"{moment.hour}\u00a0h\u00a0{moment.minute:02d}"
+
+
+def _erreur_http(erreur: urllib.error.HTTPError) -> VerificationImpossible:
+    """Traduit une réponse d'erreur de GitHub (ou du proxy) : quota épuisé,
+    accès refusé par le proxy, panne de GitHub ou autre refus."""
+    code = erreur.code
+    en_tetes = {cle.lower(): valeur for cle, valeur in erreur.headers.items()}
+    detail = f"HTTP {code} {erreur.reason}".strip()
+    if code in (403, 429) and en_tetes.get("x-ratelimit-remaining") == "0":
+        reprise = _heure_de_reprise(en_tetes)
+        quand = f"vers {reprise}" if reprise else "dans une heure environ"
+        return VerificationImpossible(
+            f"{detail} (x-ratelimit-remaining\u00a0: 0)",
+            "GitHub limite les vérifications à 60 par heure et par adresse "
+            "internet, et ce quota est partagé par tous les postes derrière "
+            f"votre proxy. Il est épuisé\u00a0: réessayez {quand}.",
+        )
+    if code == 407:
+        return VerificationImpossible(
+            detail,
+            "Le proxy de votre réseau demande une authentification que "
+            "Tamponné ne peut pas fournir. Contactez votre service "
+            "informatique.",
+        )
+    if code in (403, 429):
+        return VerificationImpossible(
+            detail,
+            "L'accès à GitHub est refusé, sans que le quota en soit la cause\u00a0: "
+            "le proxy de votre réseau bloque probablement api.github.com. "
+            "Demandez à votre service informatique de l'autoriser.",
+        )
+    if code >= 500:
+        return VerificationImpossible(
+            detail,
+            "GitHub rencontre un problème de son côté. Réessayez plus tard.",
+        )
+    return VerificationImpossible(
+        detail,
+        "GitHub a répondu par une erreur inattendue. Réessayez plus tard.",
+    )
 
 
 def verifier_derniere_publication() -> InfoMaj | None:
@@ -102,17 +174,22 @@ def verifier_derniere_publication() -> InfoMaj | None:
         with urllib.request.urlopen(requete, timeout=_TIMEOUT) as reponse:
             donnees = json.loads(reponse.read().decode("utf-8"))
     except urllib.error.HTTPError as erreur:
-        if erreur.code in (403, 429):
-            raise VerificationImpossible(
-                f"limite de requêtes de GitHub atteinte (HTTP {erreur.code}), "
-                "réessayez plus tard"
-            ) from erreur
-        raise VerificationImpossible(str(erreur)) from erreur
-    except (OSError, json.JSONDecodeError) as erreur:
-        raise VerificationImpossible(str(erreur)) from erreur
+        raise _erreur_http(erreur) from erreur
+    except (ValueError, http.client.HTTPException) as erreur:
+        # JSON invalide, texte non UTF-8 ou réponse coupée en route.
+        raise VerificationImpossible(
+            str(erreur) or type(erreur).__name__,
+            "La réponse de GitHub est illisible, sans doute altérée par le "
+            "proxy de votre réseau. Réessayez plus tard.",
+        ) from erreur
+    except OSError as erreur:
+        raise VerificationImpossible(str(erreur), MESSAGE_INJOIGNABLE) from erreur
 
     if not isinstance(donnees, list):
-        raise VerificationImpossible("réponse inattendue de GitHub")
+        raise VerificationImpossible(
+            "réponse inattendue de GitHub",
+            "La réponse de GitHub n'a pas le format attendu. Réessayez plus tard.",
+        )
     installee = version_locale()
     nouvelles = [
         publication

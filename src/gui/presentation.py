@@ -513,17 +513,16 @@ TEXTES_RACCOURCI: Final[Mapping[str, str]] = {
 """État du raccourci (`src.systeme.raccourci.etat`) → phrase de la feuille Raccourci."""
 
 
-def texte_avis_sans_publication(installee: str, en_cours: bool, erreur: str) -> str:
+def texte_avis_sans_publication(installee: str, en_cours: bool, en_echec: bool) -> str:
     """Objet de l'avis de mise à jour quand aucune publication n'est
-    proposée : vérification en cours, impossible (avec le détail technique
-    `erreur`), ou version déjà la plus récente."""
+    proposée : vérification en cours, impossible (`en_echec` ; la cause
+    s'affiche à part) ou version déjà la plus récente."""
     if en_cours:
         return f"version {installee} installée, recherche d'une mise à jour…"
-    if erreur:
+    if en_echec:
         return (
-            f"version {installee} installée\u00a0; impossible de savoir s'il existe "
-            "plus récent, GitHub ne répond pas (connexion internet ou proxy). "
-            f"Détail\u00a0: {erreur}"
+            f"version {installee} installée\u00a0; impossible de savoir s'il "
+            "existe une version plus récente."
         )
     return f"version {installee} installée, rien de plus récent."
 

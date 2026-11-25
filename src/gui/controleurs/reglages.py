@@ -33,7 +33,12 @@ from src.gui.presentation import (
     texte_exports,
 )
 from src.gui.travailleurs import TacheReseau, VerificateurMiseAJour
-from src.maj import ecrire_maj_disponible, lire_echec, version_locale
+from src.maj import (
+    MESSAGE_INJOIGNABLE,
+    ecrire_maj_disponible,
+    lire_echec,
+    version_locale,
+)
 from src.recherche import export
 from src.systeme import raccourci
 from src.types import InfoMaj, Organisations
@@ -78,7 +83,7 @@ class ControleurReglages(QObject):
         self._reduire_animations = charger_reduire_animations()
         self._info_maj: InfoMaj | None = None
         self._verification_en_cours = False
-        self._erreur_verification = ""
+        self._echec_verification: tuple[str, str] | None = None
         self._date_avis = ""
         self._avis_lu = False
         self._redemarrage_demande = False
@@ -163,33 +168,37 @@ class ControleurReglages(QObject):
         ou état « À jour » si `None`."""
         self._info_maj = info
         self._verification_en_cours = False
-        self._erreur_verification = ""
+        self._echec_verification = None
         self._date_avis = date_avis().strftime("%d/%m/%Y")
         self.etat_change.emit()
 
-    def afficher_echec_verification(self, detail: str) -> None:
-        """GitHub injoignable : l'avis le dit au lieu d'annoncer « rien
-        de plus récent », avec le détail technique `detail`."""
+    def afficher_echec_verification(self, explication: str, detail: str) -> None:
+        """Vérification impossible : l'avis le dit au lieu d'annoncer « rien
+        de plus récent », avec l'`explication` simple (vide : message
+        générique) et le `detail` technique."""
         self._verification_en_cours = False
-        self._erreur_verification = detail
+        self._echec_verification = (explication or MESSAGE_INJOIGNABLE, detail)
         self.etat_change.emit()
 
     def _lire_avis(self) -> dict[str, object]:
         installee = version_locale()
         info = self._info_maj
         if info is None:
+            cause = self._echec_verification
             objet = texte_avis_sans_publication(
-                installee, self._verification_en_cours, self._erreur_verification
+                installee, self._verification_en_cours, cause is not None
             )
-            return {
+            avis: dict[str, object] = {
                 "disponible": False,
-                "a_jour": not (
-                    self._verification_en_cours or self._erreur_verification
-                ),
-                # Affiché en texte riche : un détail comme « <urlopen error …> »
-                # serait pris pour une balise.
+                "a_jour": not (self._verification_en_cours or cause),
                 "objet": html.escape(objet, quote=False),
             }
+            if cause is not None:
+                # `objet` et `explication` s'affichent en texte riche (échappés) ;
+                # `detail` en texte brut, sans interprétation de balises.
+                avis["explication"] = html.escape(cause[0], quote=False)
+                avis["detail"] = cause[1]
+            return avis
         objet = f"version {info['version']} disponible (installée\u00a0: {installee})."
         echec = lire_echec()
         if echec is not None and echec["version"] == info["version"]:
