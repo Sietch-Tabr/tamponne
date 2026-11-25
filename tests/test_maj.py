@@ -277,7 +277,7 @@ def test_verifier_derniere_publication_refus_sans_quota_accuse_le_proxy(
     with pytest.raises(maj.VerificationImpossible) as e:
         maj.verifier_derniere_publication()
     assert "sans que le quota en soit la cause" in e.value.explication
-    assert "api.github.com" in e.value.explication
+    assert "bloque probablement" in e.value.explication
 
 
 def test_verifier_derniere_publication_proxy_authentifie_le_dit(
