@@ -307,12 +307,14 @@ def test_verificateur_maj_exception_inattendue_emet_un_echec(
         raise TypeError("imprévu")
 
     monkeypatch.setattr(travailleurs_module, "verifier_derniere_publication", casse)
-    echecs: list[str] = []
+    echecs: list[tuple[str, str]] = []
     verificateur = VerificateurMiseAJour()
-    verificateur.echec.connect(echecs.append)
+    verificateur.echec.connect(
+        lambda explication, detail: echecs.append((explication, detail))
+    )
     verificateur.executer()
 
-    assert echecs == [travailleurs_module.MESSAGE_INATTENDU]
+    assert echecs == [("", travailleurs_module.MESSAGE_INATTENDU)]
 
 
 def test_verificateur_maj_marqueur_non_ecrit_n_empeche_pas_l_annonce(
@@ -346,3 +348,23 @@ def test_tache_reseau_exception_inattendue_emet_un_echec() -> None:
     tache.executer()
 
     assert echecs == [travailleurs_module.MESSAGE_INATTENDU]
+
+
+def test_verificateur_maj_verification_impossible_emet_explication_et_detail(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from src import maj
+    from src.gui import travailleurs as travailleurs_module
+
+    def refuse() -> None:
+        raise maj.VerificationImpossible("HTTP 403", "Le proxy bloque.")
+
+    monkeypatch.setattr(travailleurs_module, "verifier_derniere_publication", refuse)
+    echecs: list[tuple[str, str]] = []
+    verificateur = VerificateurMiseAJour()
+    verificateur.echec.connect(
+        lambda explication, detail: echecs.append((explication, detail))
+    )
+    verificateur.executer()
+
+    assert echecs == [("Le proxy bloque.", "HTTP 403")]

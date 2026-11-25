@@ -1,5 +1,6 @@
 """Tests pour src/maj.py — vérification et application des mises à jour."""
 
+import http.client
 import io
 import json
 import shutil
@@ -7,6 +8,7 @@ import sys
 import tempfile
 import urllib.request
 import zipfile
+from datetime import datetime
 from email.message import Message
 from pathlib import Path
 from typing import Literal, Self
@@ -180,16 +182,18 @@ def test_verifier_derniere_publication_erreur_reseau_leve_verification_impossibl
     monkeypatch.setattr(
         urllib.request, "urlopen", Mock(side_effect=URLError("hors ligne"))
     )
-    with pytest.raises(maj.VerificationImpossible, match="hors ligne"):
+    with pytest.raises(maj.VerificationImpossible, match="hors ligne") as e:
         maj.verifier_derniere_publication()
+    assert e.value.explication == maj.MESSAGE_INJOIGNABLE
 
 
 def test_verifier_derniere_publication_json_invalide_leve_verification_impossible(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(urllib.request, "urlopen", _urlopen_factice(b"pas du json"))
-    with pytest.raises(maj.VerificationImpossible):
+    with pytest.raises(maj.VerificationImpossible) as e:
         maj.verifier_derniere_publication()
+    assert "illisible" in e.value.explication
 
 
 def test_verifier_derniere_publication_ignore_brouillons_et_pre_versions(
@@ -230,15 +234,68 @@ def test_verifier_derniere_publication_interroge_github_en_se_nommant(
     assert "tamponne" in requete.get_header("User-agent")
 
 
+def _erreur_http(code: int, **en_tetes: str) -> HTTPError:
+    message = Message()
+    for cle, valeur in en_tetes.items():
+        message[cle.replace("_", "-")] = valeur
+    return HTTPError(maj.URL_API_RELEASES, code, "refusé", message, None)
+
+
 @pytest.mark.parametrize("code", [403, 429])
-def test_verifier_derniere_publication_limite_de_requetes_dit_de_reessayer_plus_tard(
+def test_verifier_derniere_publication_quota_epuise_donne_l_heure_de_reprise(
     code: int, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    erreur = HTTPError(maj.URL_API_RELEASES, code, "rate limit", Message(), None)
+    reprise = int(datetime(2026, 11, 25, 14, 5).timestamp())
+    erreur = _erreur_http(
+        code, x_ratelimit_remaining="0", x_ratelimit_reset=str(reprise)
+    )
     monkeypatch.setattr(urllib.request, "urlopen", Mock(side_effect=erreur))
-    with pytest.raises(maj.VerificationImpossible, match="limite de requêtes") as e:
+    with pytest.raises(maj.VerificationImpossible) as e:
         maj.verifier_derniere_publication()
+    assert "x-ratelimit-remaining" in str(e.value)
     assert str(code) in str(e.value)
+    assert "60 par heure" in e.value.explication
+    assert "vers 14\u00a0h\u00a005" in e.value.explication
+
+
+def test_verifier_derniere_publication_quota_epuise_sans_heure_reste_utile(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    erreur = _erreur_http(403, x_ratelimit_remaining="0")
+    monkeypatch.setattr(urllib.request, "urlopen", Mock(side_effect=erreur))
+    with pytest.raises(maj.VerificationImpossible) as e:
+        maj.verifier_derniere_publication()
+    assert "dans une heure environ" in e.value.explication
+
+
+@pytest.mark.parametrize("code", [403, 429])
+def test_verifier_derniere_publication_refus_sans_quota_accuse_le_proxy(
+    code: int, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    erreur = _erreur_http(code, x_ratelimit_remaining="42")
+    monkeypatch.setattr(urllib.request, "urlopen", Mock(side_effect=erreur))
+    with pytest.raises(maj.VerificationImpossible) as e:
+        maj.verifier_derniere_publication()
+    assert "sans que le quota en soit la cause" in e.value.explication
+    assert "api.github.com" in e.value.explication
+
+
+def test_verifier_derniere_publication_proxy_authentifie_le_dit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(urllib.request, "urlopen", Mock(side_effect=_erreur_http(407)))
+    with pytest.raises(maj.VerificationImpossible, match="407") as e:
+        maj.verifier_derniere_publication()
+    assert "authentification" in e.value.explication
+
+
+def test_verifier_derniere_publication_panne_github_invite_a_reessayer(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(urllib.request, "urlopen", Mock(side_effect=_erreur_http(503)))
+    with pytest.raises(maj.VerificationImpossible, match="503") as e:
+        maj.verifier_derniere_publication()
+    assert "problème de son côté" in e.value.explication
 
 
 def test_verifier_derniere_publication_autre_erreur_http_garde_son_detail(
@@ -246,8 +303,19 @@ def test_verifier_derniere_publication_autre_erreur_http_garde_son_detail(
 ) -> None:
     erreur = HTTPError(maj.URL_API_RELEASES, 404, "Not Found", Message(), None)
     monkeypatch.setattr(urllib.request, "urlopen", Mock(side_effect=erreur))
-    with pytest.raises(maj.VerificationImpossible, match="404"):
+    with pytest.raises(maj.VerificationImpossible, match="404") as e:
         maj.verifier_derniere_publication()
+    assert "erreur inattendue" in e.value.explication
+
+
+def test_verifier_derniere_publication_reponse_coupee_est_signalee(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    coupee = http.client.IncompleteRead(b"[{", 100)
+    monkeypatch.setattr(urllib.request, "urlopen", Mock(side_effect=coupee))
+    with pytest.raises(maj.VerificationImpossible) as e:
+        maj.verifier_derniere_publication()
+    assert "illisible" in e.value.explication
 
 
 def _urlopen_factice(contenu: bytes) -> Mock:
@@ -412,7 +480,9 @@ def test_installer_archive_ne_purge_rien_dans_un_clone_git(tmp_path: Path) -> No
     assert (racine / "src/local.py").exists()
 
 
-@pytest.mark.skipif(sys.platform == "win32", reason="un fichier ouvert n'est remplaçable que sous POSIX")
+@pytest.mark.skipif(
+    sys.platform == "win32", reason="un fichier ouvert n'est remplaçable que sous POSIX"
+)
 def test_installer_archive_remplace_sans_reecrire_le_fichier_ouvert(
     tmp_path: Path,
 ) -> None:

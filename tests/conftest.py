@@ -124,7 +124,6 @@ def _rediriger_journal_vers_tmp(
     data/tamponne.log pendant les tests."""
     monkeypatch.setattr(lanceur, "CHEMIN_JOURNAL", tmp_path / "tamponne.log")
 
-
     monkeypatch.setattr(lanceur, "CHEMIN_JOURNAL_ARCHIVE", tmp_path / "tamponne.1.log")
 
 

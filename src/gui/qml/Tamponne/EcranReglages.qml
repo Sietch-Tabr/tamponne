@@ -200,6 +200,41 @@ Item {
                             lineHeight: racine.avis.disponible ? 17 * 1.55 : 16 * 1.5
                         }
 
+                        Paragraphe {
+                            // Cause et action quand la vérification a échoué.
+                            visible: (racine.avis.explication ?? "") !== ""
+                            text: racine.avis.explication ?? ""
+                            lineHeight: 16 * 1.5
+                        }
+
+                        Item {
+                            visible: (racine.avis.detail ?? "") !== ""
+                            width: parent.width
+                            height: texteDetail.height + 24
+                            Rectangle {
+                                anchors.fill: parent
+                                color: Theme.papier2
+                                Rectangle {
+                                    width: 3
+                                    height: parent.height
+                                    color: Theme.encre
+                                }
+                            }
+                            Texte {
+                                id: texteDetail
+                                x: 17
+                                y: 12
+                                width: parent.width - 31
+                                text: "Détail technique\u00a0: " + (racine.avis.detail ?? "")
+                                font.family: Theme.policeMono
+                                font.pixelSize: 13
+                                lineHeight: 13 * 1.5
+                                height: lineCount * lineHeight
+                                // Un détail peut contenir une adresse sans espace.
+                                wrapMode: Text.WrapAnywhere
+                            }
+                        }
+
                         Tampon {
                             // Pas pendant la vérification ni si GitHub n'a pas répondu.
                             visible: racine.avis.a_jour === true
