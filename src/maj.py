@@ -2,8 +2,8 @@
 
 Uniquement les publications explicitement faites sur le dépôt — jamais un
 `git pull`/`fetch` sur une branche — pour garantir que seul ce qui a été
-publié est déployé. Les brouillons et pré-versions sont écartés ici : la
-liste des publications de l'API GitHub les renvoie avec les autres.
+publié est déployé. La liste vient du flux Atom des publications, sur
+`github.com` : les proxys d'entreprise bloquent souvent `api.github.com`.
 
 Ne dépend d'aucune bibliothèque d'UI : ce module est appelé aussi bien
 depuis le vérificateur en arrière-plan (`src.gui.travailleurs`) que depuis
@@ -20,25 +20,26 @@ import tomllib
 lazy import http.client
 lazy import urllib.error
 lazy import urllib.request
+lazy import xml.etree.ElementTree as ElementTree
 lazy import zipfile
-from collections.abc import Mapping
-from datetime import date, datetime, timedelta
+from datetime import date
+from html.parser import HTMLParser
 from pathlib import Path
 from typing import cast
 
 from src.types import EchecMaj, InfoMaj
 from src.utils import ecriture_atomique
 
-URL_API_RELEASES = (
-    "https://api.github.com/repos/Sietch-Tabr/tamponne/releases?per_page=50"
-)
-PREFIXE_ARCHIVES = "https://api.github.com/repos/Sietch-Tabr/tamponne/"
-"""Seules les archives du dépôt sont téléchargées, quoi que dise l'API."""
+URL_FLUX_RELEASES = "https://github.com/Sietch-Tabr/tamponne/releases.atom"
+PREFIXE_ARCHIVES = "https://github.com/Sietch-Tabr/tamponne/archive/refs/tags/"
+"""Seules les archives des étiquettes du dépôt sont téléchargées."""
 HOTE_ARCHIVES = "https://codeload.github.com/Sietch-Tabr/tamponne/"
 """Adresse que doit avoir le téléchargement après la redirection : GitHub
-renvoie l'archive depuis `codeload.github.com`, pas depuis l'API."""
+renvoie l'archive depuis `codeload.github.com`, pas depuis `github.com`."""
 _USER_AGENT = "tamponne (+https://github.com/Sietch-Tabr/tamponne)"
-"""GitHub rejette les requêtes de l'API sans User-Agent."""
+_ESPACE_NOMS_ATOM = "{http://www.w3.org/2005/Atom}"
+_ETIQUETTE_STABLE = re.compile(r"v?\d+(\.\d+)*")
+"""Une étiquette de version finale : `v1.7.10`, pas `v1.8.0-rc1`."""
 TAILLE_MAX_ARCHIVE = 100 * 1024 * 1024
 """Octets au-delà desquels le téléchargement est abandonné (une publication
 pèse quelques Mo)."""
@@ -94,37 +95,11 @@ MESSAGE_INJOIGNABLE = (
 )
 
 
-def _heure_de_reprise(en_tetes: Mapping[str, str]) -> str:
-    """Heure locale (« 14\u00a0h\u00a005 ») à laquelle GitHub rouvre l'accès,
-    d'après `x-ratelimit-reset` (horodatage Unix) ou `retry-after`
-    (secondes) ; vide si l'en-tête manque ou est illisible."""
-    try:
-        if "x-ratelimit-reset" in en_tetes:
-            moment = datetime.fromtimestamp(int(en_tetes["x-ratelimit-reset"]))
-        elif "retry-after" in en_tetes:
-            moment = datetime.now() + timedelta(seconds=int(en_tetes["retry-after"]))
-        else:
-            return ""
-    except ValueError, OverflowError, OSError:
-        return ""
-    return f"{moment.hour}\u00a0h\u00a0{moment.minute:02d}"
-
-
 def _erreur_http(erreur: urllib.error.HTTPError) -> VerificationImpossible:
-    """Traduit une réponse d'erreur de GitHub (ou du proxy) : quota épuisé,
-    accès refusé par le proxy, panne de GitHub ou autre refus."""
+    """Traduit une réponse d'erreur de GitHub (ou du proxy) : accès refusé,
+    authentification du proxy, panne de GitHub ou autre refus."""
     code = erreur.code
-    en_tetes = {cle.lower(): valeur for cle, valeur in erreur.headers.items()}
     detail = f"HTTP {code} {erreur.reason}".strip()
-    if code in (403, 429) and en_tetes.get("x-ratelimit-remaining") == "0":
-        reprise = _heure_de_reprise(en_tetes)
-        quand = f"vers {reprise}" if reprise else "dans une heure environ"
-        return VerificationImpossible(
-            f"{detail} (x-ratelimit-remaining\u00a0: 0)",
-            "GitHub limite les vérifications à 60 par heure et par adresse "
-            "internet, et ce quota est partagé par tous les postes derrière "
-            f"votre proxy. Il est épuisé\u00a0: réessayez {quand}.",
-        )
     if code == 407:
         return VerificationImpossible(
             detail,
@@ -135,9 +110,9 @@ def _erreur_http(erreur: urllib.error.HTTPError) -> VerificationImpossible:
     if code in (403, 429):
         return VerificationImpossible(
             detail,
-            "L'accès à GitHub est refusé, sans que le quota en soit la cause\u00a0: "
-            "le proxy de votre réseau bloque probablement api.github.com. "
-            "Demandez à votre service informatique de l'autoriser.",
+            "L'accès à GitHub est refusé\u00a0: le proxy de votre réseau bloque "
+            "probablement github.com ou codeload.github.com. Demandez à votre "
+            "service informatique de les autoriser.",
         )
     if code >= 500:
         return VerificationImpossible(
@@ -150,33 +125,97 @@ def _erreur_http(erreur: urllib.error.HTTPError) -> VerificationImpossible:
     )
 
 
+class _HtmlVersMarkdown(HTMLParser):
+    """Réduit le HTML des notes de publication au Markdown que l'avis affiche :
+    titres, puces, code en ligne, gras ; le reste du balisage est ignoré."""
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self._morceaux: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag in ("h1", "h2", "h3", "h4"):
+            self._morceaux.append("\n\n" + "#" * int(tag[1]) + " ")
+        elif tag == "li":
+            self._morceaux.append("\n- ")
+        elif tag in ("p", "ul", "ol"):
+            self._morceaux.append("\n\n")
+        elif tag == "code":
+            self._morceaux.append("`")
+        elif tag in ("strong", "b"):
+            self._morceaux.append("**")
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag == "code":
+            self._morceaux.append("`")
+        elif tag in ("strong", "b"):
+            self._morceaux.append("**")
+
+    def handle_data(self, data: str) -> None:
+        self._morceaux.append(re.sub(r"\s+", " ", data))
+
+    def markdown(self) -> str:
+        texte = "".join(self._morceaux)
+        texte = "\n".join(ligne.strip() for ligne in texte.split("\n"))
+        return re.sub(r"\n{3,}", "\n\n", texte).strip()
+
+
+def _html_vers_markdown(html: str) -> str:
+    convertisseur = _HtmlVersMarkdown()
+    convertisseur.feed(html)
+    convertisseur.close()
+    return convertisseur.markdown()
+
+
+def _publications_du_flux(flux: bytes) -> list[tuple[str, str, str]]:
+    """Lit le flux Atom : liste de (étiquette, notes en Markdown, page).
+
+    Raises:
+        ValueError: XML invalide.
+    """
+    try:
+        racine = ElementTree.fromstring(flux)
+    except ElementTree.ParseError as erreur:
+        raise ValueError(str(erreur)) from erreur
+    if racine.tag != f"{_ESPACE_NOMS_ATOM}feed":
+        raise ValueError("flux Atom attendu")
+    publications = []
+    for entree in racine.findall(f"{_ESPACE_NOMS_ATOM}entry"):
+        etiquette = (entree.findtext(f"{_ESPACE_NOMS_ATOM}title") or "").strip()
+        lien = entree.find(f"{_ESPACE_NOMS_ATOM}link")
+        page = lien.get("href", "") if lien is not None else ""
+        notes = entree.findtext(f"{_ESPACE_NOMS_ATOM}content") or ""
+        publications.append((etiquette, _html_vers_markdown(notes), page))
+    return publications
+
+
 def verifier_derniere_publication() -> InfoMaj | None:
-    """Interroge les publications GitHub — `None` si aucune n'est plus
+    """Interroge le flux des publications GitHub — `None` si aucune n'est plus
     récente que la version installée.
 
     Les notes réunissent toutes les publications postérieures à la version
     installée, de la plus récente à la plus ancienne, chacune sous son numéro.
-    Brouillons et pré-versions sont ignorés.
+    Les étiquettes qui ne sont pas une version finale (`v1.8.0-rc1`) sont
+    ignorées.
 
     Raises:
-        VerificationImpossible: GitHub injoignable, limite de requêtes
-            atteinte ou réponse illisible : on ne sait pas s'il existe une
-            version plus récente.
+        VerificationImpossible: GitHub injoignable ou réponse illisible : on
+            ne sait pas s'il existe une version plus récente.
     """
     try:
         requete = urllib.request.Request(
-            URL_API_RELEASES,
+            URL_FLUX_RELEASES,
             headers={
-                "Accept": "application/vnd.github+json",
+                "Accept": "application/atom+xml",
                 "User-Agent": _USER_AGENT,
             },
         )
         with urllib.request.urlopen(requete, timeout=_TIMEOUT) as reponse:
-            donnees = json.loads(reponse.read().decode("utf-8"))
+            publications = _publications_du_flux(reponse.read())
     except urllib.error.HTTPError as erreur:
         raise _erreur_http(erreur) from erreur
     except (ValueError, http.client.HTTPException) as erreur:
-        # JSON invalide, texte non UTF-8 ou réponse coupée en route.
+        # XML invalide, page du proxy à la place du flux ou réponse coupée.
         raise VerificationImpossible(
             str(erreur) or type(erreur).__name__,
             "La réponse de GitHub est illisible, sans doute altérée par le "
@@ -185,37 +224,24 @@ def verifier_derniere_publication() -> InfoMaj | None:
     except OSError as erreur:
         raise VerificationImpossible(str(erreur), MESSAGE_INJOIGNABLE) from erreur
 
-    if not isinstance(donnees, list):
-        raise VerificationImpossible(
-            "réponse inattendue de GitHub",
-            "La réponse de GitHub n'a pas le format attendu. Réessayez plus tard.",
-        )
     installee = version_locale()
     nouvelles = [
         publication
-        for publication in donnees
-        if isinstance(publication, dict)
-        and not publication.get("draft")
-        and not publication.get("prerelease")
-        and publication.get("tag_name")
-        and version_plus_recente(str(publication["tag_name"]), installee)
+        for publication in publications
+        if _ETIQUETTE_STABLE.fullmatch(publication[0])
+        and version_plus_recente(publication[0], installee)
     ]
     if not nouvelles:
         return None
-    nouvelles.sort(
-        key=lambda p: _tuple_version(str(p["tag_name"])),
-        reverse=True,
-    )
-    derniere = nouvelles[0]
-    notes = [
-        (str(p["tag_name"]).lstrip("vV"), str(p.get("body", "")).strip())
-        for p in nouvelles
-    ]
+    nouvelles.sort(key=lambda p: _tuple_version(p[0]), reverse=True)
+    etiquette, _, page = nouvelles[0]
     return {
-        "version": str(derniere["tag_name"]).lstrip("vV"),
-        "notes": _notes_cumulees(notes),
-        "url_zip": str(derniere.get("zipball_url", "")),
-        "url_publication": str(derniere.get("html_url", "")),
+        "version": etiquette.lstrip("vV"),
+        "notes": _notes_cumulees(
+            [(p[0].lstrip("vV"), p[1].strip()) for p in nouvelles]
+        ),
+        "url_zip": f"{PREFIXE_ARCHIVES}{etiquette}.zip",
+        "url_publication": page,
     }
 
 

@@ -2,14 +2,13 @@
 
 import http.client
 import io
-import json
 import shutil
 import sys
 import tempfile
 import urllib.request
 import zipfile
-from datetime import datetime
 from email.message import Message
+from xml.sax.saxutils import escape
 from pathlib import Path
 from typing import Literal, Self
 from unittest.mock import Mock
@@ -20,12 +19,9 @@ import pytest
 from src import maj
 from src.types import InfoMaj
 
-_DEPOT_API = "https://api.github.com/repos/Sietch-Tabr/tamponne"
-_URL_ZIP = f"{_DEPOT_API}/zipball/v1.1.0"
-"""Adresse du zip d'une publication, telle que l'API de GitHub la donne."""
-_URL_FINALE = (
-    "https://codeload.github.com/Sietch-Tabr/tamponne/legacy.zip/refs/tags/v1.1.0"
-)
+_URL_ZIP = "https://github.com/Sietch-Tabr/tamponne/archive/refs/tags/v1.1.0.zip"
+"""Adresse du zip d'une publication, sur `github.com` (pas l'API)."""
+_URL_FINALE = "https://codeload.github.com/Sietch-Tabr/tamponne/zip/refs/tags/v1.1.0"
 """Adresse après la redirection de GitHub vers `codeload.github.com`."""
 _URL_PUBLICATION = "https://github.com/Sietch-Tabr/tamponne/releases/tag/v1.1.0"
 
@@ -107,28 +103,35 @@ def test_marqueur_effacement_sans_marqueur_ne_leve_pas() -> None:
 # --- verifier_derniere_publication ---
 
 
-def _release(
-    version: str, notes: str = "", *, draft: bool = False, prerelease: bool = False
-) -> dict[str, object]:
-    return {
-        "tag_name": f"v{version}",
-        "body": notes,
-        "draft": draft,
-        "prerelease": prerelease,
-        "zipball_url": f"{_DEPOT_API}/zipball/v{version}",
-        "html_url": f"https://github.com/Sietch-Tabr/tamponne/releases/tag/v{version}",
-    }
+def _entree(version: str, notes_html: str = "") -> str:
+    return (
+        "<entry>"
+        f'<link rel="alternate" type="text/html" href="{_PAGE}v{version}"/>'
+        f"<title>v{version}</title>"
+        f'<content type="html">{escape(notes_html)}</content>'
+        "</entry>"
+    )
+
+
+_PAGE = "https://github.com/Sietch-Tabr/tamponne/releases/tag/"
+
+
+def _flux(*entrees: str) -> bytes:
+    return (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<feed xmlns="http://www.w3.org/2005/Atom">' + "".join(entrees) + "</feed>"
+    ).encode("utf-8")
 
 
 def test_verifier_derniere_publication_version_plus_recente(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    reponse = json.dumps([_release("1.1.0", "notes")]).encode("utf-8")
+    reponse = _flux(_entree("1.1.0", "<ul><li>notes</li></ul>"))
     monkeypatch.setattr(urllib.request, "urlopen", _urlopen_factice(reponse))
     info = maj.verifier_derniere_publication()
     assert info == {
         "version": "1.1.0",
-        "notes": "notes",
+        "notes": "- notes",
         "url_zip": _URL_ZIP,
         "url_publication": _URL_PUBLICATION,
     }
@@ -138,42 +141,56 @@ def test_verifier_derniere_publication_cumule_les_notes_depuis_la_version_instal
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(maj, "version_locale", lambda: "1.3.4")
-    reponse = json.dumps(
-        [
-            _release("1.4.2", "- C"),
-            _release("1.4.0", "- A"),
-            _release("1.4.1", "- B"),
-            _release("1.3.4", "- ancienne"),
-            _release("1.3.3", "- plus ancienne"),
-        ]
-    ).encode("utf-8")
+    reponse = _flux(
+        _entree("1.4.2", "<p>C</p>"),
+        _entree("1.4.0", "<p>A</p>"),
+        _entree("1.4.1", "<p>B</p>"),
+        _entree("1.3.4", "<p>ancienne</p>"),
+        _entree("1.3.3", "<p>plus ancienne</p>"),
+    )
     monkeypatch.setattr(urllib.request, "urlopen", _urlopen_factice(reponse))
     info = maj.verifier_derniere_publication()
     assert info is not None
     assert info["version"] == "1.4.2"
-    assert info["url_zip"].endswith("/zipball/v1.4.2")
+    assert info["url_zip"].endswith("/archive/refs/tags/v1.4.2.zip")
     assert info["notes"] == (
-        "## Version 1.4.2\n\n- C\n\n## Version 1.4.1\n\n- B\n\n"
-        "## Version 1.4.0\n\n- A"
+        "## Version 1.4.2\n\nC\n\n## Version 1.4.1\n\nB\n\n## Version 1.4.0\n\nA"
     )
 
 
 def test_verifier_derniere_publication_deja_a_jour_retourne_none(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    reponse = json.dumps([_release("1.0.0")]).encode("utf-8")
-    monkeypatch.setattr(urllib.request, "urlopen", _urlopen_factice(reponse))
+    monkeypatch.setattr(
+        urllib.request, "urlopen", _urlopen_factice(_flux(_entree("1.0.0")))
+    )
     assert maj.verifier_derniere_publication() is None
 
 
-def test_verifier_derniere_publication_reponse_inattendue_leve_verification_impossible(
+def test_verifier_derniere_publication_flux_vide_retourne_none(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(
-        urllib.request, "urlopen", _urlopen_factice(b'{"message": "x"}')
-    )
-    with pytest.raises(maj.VerificationImpossible):
+    monkeypatch.setattr(urllib.request, "urlopen", _urlopen_factice(_flux()))
+    assert maj.verifier_derniere_publication() is None
+
+
+def test_verifier_derniere_publication_page_du_proxy_leve_verification_impossible(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    page = b"<!DOCTYPE html><html><body>Acc\xc3\xa8s bloqu\xc3\xa9</body></html>"
+    monkeypatch.setattr(urllib.request, "urlopen", _urlopen_factice(page))
+    with pytest.raises(maj.VerificationImpossible) as e:
         maj.verifier_derniere_publication()
+    assert "illisible" in e.value.explication
+
+
+def test_verifier_derniere_publication_xml_autre_qu_atom_leve_verification_impossible(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(urllib.request, "urlopen", _urlopen_factice(b"<html/>"))
+    with pytest.raises(maj.VerificationImpossible) as e:
+        maj.verifier_derniere_publication()
+    assert "illisible" in e.value.explication
 
 
 def test_verifier_derniere_publication_erreur_reseau_leve_verification_impossible(
@@ -187,25 +204,13 @@ def test_verifier_derniere_publication_erreur_reseau_leve_verification_impossibl
     assert e.value.explication == maj.MESSAGE_INJOIGNABLE
 
 
-def test_verifier_derniere_publication_json_invalide_leve_verification_impossible(
+def test_verifier_derniere_publication_ignore_etiquettes_non_finales(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(urllib.request, "urlopen", _urlopen_factice(b"pas du json"))
-    with pytest.raises(maj.VerificationImpossible) as e:
-        maj.verifier_derniere_publication()
-    assert "illisible" in e.value.explication
-
-
-def test_verifier_derniere_publication_ignore_brouillons_et_pre_versions(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    reponse = json.dumps(
-        [
-            _release("1.3.0", "brouillon", draft=True),
-            _release("1.2.0", "pré-version", prerelease=True),
-            _release("1.1.0", "stable"),
-        ]
-    ).encode("utf-8")
+    reponse = _flux(
+        _entree("1.3.0-rc1", "<p>candidate</p>"),
+        _entree("1.1.0", "<p>stable</p>"),
+    )
     monkeypatch.setattr(urllib.request, "urlopen", _urlopen_factice(reponse))
     info = maj.verifier_derniere_publication()
     assert info is not None
@@ -213,71 +218,42 @@ def test_verifier_derniere_publication_ignore_brouillons_et_pre_versions(
     assert info["notes"] == "stable"
 
 
-def test_verifier_derniere_publication_que_des_brouillons_retourne_none(
+def test_verifier_derniere_publication_convertit_titres_code_et_gras(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    reponse = json.dumps([_release("1.3.0", draft=True)]).encode("utf-8")
-    monkeypatch.setattr(urllib.request, "urlopen", _urlopen_factice(reponse))
-    assert maj.verifier_derniere_publication() is None
+    html = "<h3>Corrections</h3>\n<ul>\n<li>un <code>x</code> et <strong>y</strong></li>\n</ul>"
+    monkeypatch.setattr(
+        urllib.request, "urlopen", _urlopen_factice(_flux(_entree("1.1.0", html)))
+    )
+    info = maj.verifier_derniere_publication()
+    assert info is not None
+    assert info["notes"] == "### Corrections\n\n- un `x` et **y**"
 
 
-def test_verifier_derniere_publication_interroge_github_en_se_nommant(
+def test_verifier_derniere_publication_interroge_le_flux_sur_github_com(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    urlopen = _urlopen_factice(b"[]")
+    urlopen = _urlopen_factice(_flux())
     monkeypatch.setattr(urllib.request, "urlopen", urlopen)
     assert maj.verifier_derniere_publication() is None
     requete = urlopen.call_args.args[0]
-    assert requete.full_url == maj.URL_API_RELEASES
-    assert requete.full_url.startswith("https://api.github.com/repos/Sietch-Tabr/")
-    assert requete.get_header("Accept") == "application/vnd.github+json"
+    assert requete.full_url == maj.URL_FLUX_RELEASES
+    assert requete.full_url.startswith("https://github.com/Sietch-Tabr/")
     assert "tamponne" in requete.get_header("User-agent")
 
 
-def _erreur_http(code: int, **en_tetes: str) -> HTTPError:
-    message = Message()
-    for cle, valeur in en_tetes.items():
-        message[cle.replace("_", "-")] = valeur
-    return HTTPError(maj.URL_API_RELEASES, code, "refusé", message, None)
+def _erreur_http(code: int) -> HTTPError:
+    return HTTPError(maj.URL_FLUX_RELEASES, code, "refusé", Message(), None)
 
 
 @pytest.mark.parametrize("code", [403, 429])
-def test_verifier_derniere_publication_quota_epuise_donne_l_heure_de_reprise(
+def test_verifier_derniere_publication_refus_accuse_le_proxy(
     code: int, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    reprise = int(datetime(2026, 11, 25, 14, 5).timestamp())
-    erreur = _erreur_http(
-        code, x_ratelimit_remaining="0", x_ratelimit_reset=str(reprise)
-    )
-    monkeypatch.setattr(urllib.request, "urlopen", Mock(side_effect=erreur))
-    with pytest.raises(maj.VerificationImpossible) as e:
+    monkeypatch.setattr(urllib.request, "urlopen", Mock(side_effect=_erreur_http(code)))
+    with pytest.raises(maj.VerificationImpossible, match=str(code)) as e:
         maj.verifier_derniere_publication()
-    assert "x-ratelimit-remaining" in str(e.value)
-    assert str(code) in str(e.value)
-    assert "60 par heure" in e.value.explication
-    assert "vers 14\u00a0h\u00a005" in e.value.explication
-
-
-def test_verifier_derniere_publication_quota_epuise_sans_heure_reste_utile(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    erreur = _erreur_http(403, x_ratelimit_remaining="0")
-    monkeypatch.setattr(urllib.request, "urlopen", Mock(side_effect=erreur))
-    with pytest.raises(maj.VerificationImpossible) as e:
-        maj.verifier_derniere_publication()
-    assert "dans une heure environ" in e.value.explication
-
-
-@pytest.mark.parametrize("code", [403, 429])
-def test_verifier_derniere_publication_refus_sans_quota_accuse_le_proxy(
-    code: int, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    erreur = _erreur_http(code, x_ratelimit_remaining="42")
-    monkeypatch.setattr(urllib.request, "urlopen", Mock(side_effect=erreur))
-    with pytest.raises(maj.VerificationImpossible) as e:
-        maj.verifier_derniere_publication()
-    assert "sans que le quota en soit la cause" in e.value.explication
-    assert "bloque probablement" in e.value.explication
+    assert "bloque probablement github.com" in e.value.explication
 
 
 def test_verifier_derniere_publication_proxy_authentifie_le_dit(
@@ -301,8 +277,7 @@ def test_verifier_derniere_publication_panne_github_invite_a_reessayer(
 def test_verifier_derniere_publication_autre_erreur_http_garde_son_detail(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    erreur = HTTPError(maj.URL_API_RELEASES, 404, "Not Found", Message(), None)
-    monkeypatch.setattr(urllib.request, "urlopen", Mock(side_effect=erreur))
+    monkeypatch.setattr(urllib.request, "urlopen", Mock(side_effect=_erreur_http(404)))
     with pytest.raises(maj.VerificationImpossible, match="404") as e:
         maj.verifier_derniere_publication()
     assert "erreur inattendue" in e.value.explication
@@ -311,7 +286,7 @@ def test_verifier_derniere_publication_autre_erreur_http_garde_son_detail(
 def test_verifier_derniere_publication_reponse_coupee_est_signalee(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    coupee = http.client.IncompleteRead(b"[{", 100)
+    coupee = http.client.IncompleteRead(b"<feed", 100)
     monkeypatch.setattr(urllib.request, "urlopen", Mock(side_effect=coupee))
     with pytest.raises(maj.VerificationImpossible) as e:
         maj.verifier_derniere_publication()
@@ -602,7 +577,7 @@ def test_appliquer_maj_refuse_une_archive_de_l_ancien_depot_codeberg() -> None:
 
 def test_appliquer_maj_refuse_l_archive_d_un_autre_depot_github() -> None:
     info = _info()
-    info["url_zip"] = "https://api.github.com/repos/autre/depot/zipball/v1.1.0"
+    info["url_zip"] = "https://github.com/autre/depot/archive/refs/tags/v1.1.0.zip"
     with pytest.raises(RuntimeError, match="hors du dépôt"):
         maj.appliquer_maj(info)
 
