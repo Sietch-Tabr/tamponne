@@ -4,6 +4,14 @@ Toutes les évolutions notables de Tamponné, de la plus récente à la plus
 ancienne. Le détail de chaque version est aussi publié sur la page
 [Releases](https://github.com/Sietch-Tabr/tamponne/releases) du dépôt.
 
+## [1.7.11] — 2026-11-26
+
+### Corrections
+
+- Mise à jour derrière un proxy d'entreprise : la vérification lit désormais le flux des publications de `github.com` au lieu de l'API `api.github.com`, que ces proxys bloquent ; l'archive est téléchargée depuis `github.com` (redirigée vers `codeload.github.com`)
+- Les notes de version du flux sont converties en texte mis en forme pour l'avis de mise à jour
+- La limite de 60 vérifications par heure de l'API ne s'applique plus : l'avis d'erreur « quota épuisé » est retiré, le refus 403 ou 429 désigne `github.com` et `codeload.github.com`
+
 ## [1.7.10] — 2026-11-25
 
 ### Corrections
